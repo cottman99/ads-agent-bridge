@@ -2,7 +2,7 @@
 
 All notable public changes are documented here.
 
-## 0.1.0a19 — Unreleased
+## 0.1.0a19 — 2026-08-05
 
 - Add a read-only `ads-agent doctor` covering discovery, selected version,
   local docs, ADS Python, add-on registration, and live bridge sessions.
