@@ -2,6 +2,22 @@
 
 All notable public changes are documented here.
 
+## 0.1.0a20 - 2026-08-05
+
+- Add a five-example public catalog with machine-readable prerequisites,
+  state-change boundaries, acceptance evidence, and `examples list/show/run`.
+- Add bounded live DE context, DDS dataset readback, and fixed read-only AEL
+  workspace examples without enabling arbitrary embedded execution.
+- Package a portable `ads-kb-docs` Codex skill with conflict-safe,
+  recoverable install/status/uninstall commands.
+- Keep fast documentation bootstrap immediately available while an optional
+  background job converts installed HTML into private per-instance Markdown
+  and enriches the local SQLite index.
+- Keep version selection explicit and capability-driven across supported ADS
+  installations; no example or skill is tied to the newest installed version.
+- Include ADS's bundled Python libraries in the Linux headless runtime search
+  path so the packaged quickstart does not depend on an interactive shell.
+
 ## 0.1.0a19 — 2026-08-05
 
 - Add a read-only `ads-agent doctor` covering discovery, selected version,

@@ -21,14 +21,16 @@ ads-agent quickstart
 The current alpha slice implements cross-platform ADS installation discovery,
 capability/support reporting, per-installation local documentation indexing,
 DE/DDS add-on registration, and a headless minimal-AC quickstart with dataset
-readback.
+readback. Setup also installs the portable `ads-kb-docs` Codex skill when its
+target directory is free and starts private full-text documentation enrichment
+in the background.
 
 It does **not** currently claim a completed Momentum, RFPro, FEM, SIPro, or
 PIPro workflow. Those lanes require separate solver-side acceptance evidence.
 
 Official ADS documentation is never distributed with this package. Indexes
-are built privately from documentation already installed on the user's
-machine.
+and Markdown caches are built privately from documentation already installed
+on the user's machine.
 
 Set `ADS_AGENT_HOME` to place configuration, data, and caches under an explicit
 directory. This is useful for isolated tests, remote servers, and systems where
@@ -60,6 +62,55 @@ A successful quickstart independently reports documentation, add-on,
 workspace, circuit simulation, and dataset readback gates. It creates a new
 disposable workspace and refuses to overwrite an existing path.
 
+To leave Codex skills unchanged or postpone full-text conversion:
+
+```console
+ads-agent setup --skip-skill --no-background-docs
+```
+
+## Five public examples
+
+List the supported examples and their prerequisites before running one:
+
+```console
+ads-agent --pretty examples list
+```
+
+The initial catalog is intentionally small:
+
+1. ADS installation discovery and explicit version selection;
+2. a headless minimal-AC workspace, simulation, and dataset readback;
+3. read-only live DE workspace context;
+4. bounded DDS dataset readback into a new native DDS file;
+5. a fixed read-only AEL workspace call demonstrating the hybrid boundary.
+
+Every runner emits JSON, names its required state, and returns nonzero when its
+acceptance gate is not met. See [the example guide](docs/EXAMPLES.md) for exact
+commands and stop rules.
+
+## Portable Docs Skill
+
+`setup` installs the `ads-kb-docs` skill without replacing an existing skill.
+It can also be managed explicitly:
+
+```console
+ads-agent skill status docs
+ads-agent skill install docs
+ads-agent skill uninstall docs
+```
+
+The fast index is immediately queryable. Full enrichment converts installed
+HTML into private per-version Markdown and updates the local SQLite index:
+
+```console
+ads-agent docs ensure
+ads-agent docs build --background
+ads-agent docs status
+```
+
+Use `--ads INSTANCE_ID` on any docs command to bind the result to a non-default
+installation. No ADS version is hard-coded into the skill.
+
 ## Current commands
 
 ```text
@@ -69,10 +120,15 @@ ads-agent instances list
 ads-agent instances use INSTANCE_ID
 ads-agent compatibility explain [--ads INSTANCE_ID]
 ads-agent docs ensure [--ads INSTANCE_ID]
+ads-agent docs build [--ads INSTANCE_ID] [--background]
 ads-agent docs status [--ads INSTANCE_ID]
 ads-agent docs query QUERY [--ads INSTANCE_ID]
 ads-agent setup [--ads-root PATH] [--non-interactive] [--config-dir PATH]
 ads-agent quickstart [--ads INSTANCE_ID] [--workspace PATH] [--config-dir PATH]
+ads-agent examples list
+ads-agent examples show NAME
+ads-agent examples run NAME [--ads INSTANCE_ID] [--slot SLOT]
+ads-agent skill status|install|uninstall docs
 ads-agent addon status
 ads-agent bridge sessions
 ```
