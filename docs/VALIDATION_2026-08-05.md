@@ -12,6 +12,37 @@ The full v0.1 contract is not yet complete because the real two-port Momentum
 golden path has not passed. No EM or RFPro solver-completion claim is made by
 this record.
 
+## 0.1.0a19 remote candidate
+
+The unreleased a19 candidate adds a genuinely read-only `ads-agent doctor`,
+enforces the external-automation context in the headless quickstart, and
+changes release automation to build once and publish the same distributions
+to GitHub and PyPI. It remains a draft candidate until the required Windows
+ADS acceptance is complete.
+
+Remote target: `eda-server`, ADS 2026 Update 2.1, bundled Python 3.13.11,
+isolated `DISPLAY=:2`, state, workspace, config, and bridge slot `a19`.
+
+- GitHub CI: Windows and Linux, Python 3.10 and 3.13 passed with 23 tests.
+- `doctor --no-ping`: discovered ADS, Python, ADS/Python/AEL/DDS documentation,
+  and support tier without creating the requested `ADS_AGENT_HOME` directory.
+- First setup indexed all 9,422 discovered HTML pages and registered DE/DDS
+  only in an isolated config directory.
+- Documentation query: `create_workspace` returned a bootstrap-index result.
+- Headless quickstart: all gates passed; `running_automation=True`,
+  `is_pde_app=False`, 31 dataset rows, and 1.033-second simulator runtime.
+- Live DE and DDS: separate authenticated sessions used slot `a19`, localhost
+  ports, random tokens, and `DISPLAY=:2`; ping, status, and capability probes
+  passed for both profiles.
+- AEL interoperability: `de_save_all_designs` completed through the guarded
+  AEL channel after status proved that no workspace was open.
+- Linux GUI startup required ADS `tools/python/lib` in `LD_LIBRARY_PATH`; the
+  first launch exited before opening a window and left no process or session.
+- Cleanup: only the two session-owned PIDs were terminated. User ADS/DE and
+  DDS processes on `DISPLAY=:4` were preserved.
+- The real DE/DDS XML files were restored to their pre-test SHA256 value
+  `8e988072d890dd22b8030aa5f34fb401c33217ec8f42aee0f29b9a70afcf903c`.
+
 ## Release artifact
 
 - Wheel: `ads_agent_bridge-0.1.0a17-py3-none-any.whl`
@@ -92,5 +123,6 @@ unsupported boundary, not a failure of the stable ADS 2025+ claim.
    layout and cannot validate a Linux solver run.
 3. Run the ADS 2024 Update 2 preview and ADS 2023 Update 2 experimental lanes
    on real installations before strengthening their support language.
-4. Publishing to a public package index and creating a signed/tagged release
-   were not performed by this validation.
+4. Run the a19 Windows ADS acceptance matrix before merging or publishing the
+   candidate. The single-build GitHub/PyPI hash gate can only be accepted by
+   the a19 release workflow itself.
