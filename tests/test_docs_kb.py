@@ -63,3 +63,33 @@ def test_full_index_writes_private_markdown_and_enriches_query(tmp_path: Path, m
     assert markdown_path.is_file()
     assert "rare_full_text_token" in markdown_path.read_text(encoding="utf-8")
     assert status(instance)["enrichment_status"] == "ready"
+
+
+def test_multi_term_query_relaxes_inside_bootstrap_index_without_source_scan(tmp_path: Path, monkeypatch) -> None:
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "workspace.html").write_text("<html><title>Workspace</title></html>", encoding="utf-8")
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    instance = AdsInstance(
+        instance_id="ads-2026-test",
+        install_root=str(tmp_path),
+        product_version="ADS 2026",
+        year=2026,
+        update=None,
+        platform="test",
+        support_tier="stable",
+        docs_roots={"python": [str(docs)]},
+    )
+    ensure_fast_index(instance)
+    monkeypatch.setattr(
+        "ads_agent_bridge.docs_kb._query_source_fallback",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("source fallback must not run")),
+    )
+
+    result = query(instance, "python term_that_is_not_indexed")
+
+    assert result["search_mode"] == "bootstrap_index_relaxed"
+    assert result["results"][0]["relative_path"] == "workspace.html"
+    assert result["enrichment_status"] == "not_started"

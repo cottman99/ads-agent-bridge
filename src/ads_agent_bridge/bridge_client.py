@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import json
+import re
 import socket
 from pathlib import Path
 from typing import Any
 
 from .paths import _override_root
+from .processes import pid_running
+
+
+def _normalize_slot(value: str) -> str:
+    return re.sub(r"[^A-Za-z0-9]+", "_", value).strip("_").lower() or "default"
 
 
 def runtime_dir(*, ensure: bool = True) -> Path:
@@ -28,6 +34,8 @@ def _load_sessions(profile: str | None = None) -> list[dict[str, Any]]:
             continue
         if profile and payload.get("profile") != profile:
             continue
+        if not pid_running(payload.get("pid")):
+            continue
         payload["session_file"] = str(path)
         sessions.append(payload)
     return sessions
@@ -45,7 +53,8 @@ def list_sessions(profile: str | None = None) -> list[dict[str, Any]]:
 def select_session(slot: str | None, profile: str) -> dict[str, Any]:
     candidates = _load_sessions(profile)
     if slot:
-        candidates = [item for item in candidates if item.get("slot") == slot]
+        normalized_slot = _normalize_slot(slot)
+        candidates = [item for item in candidates if item.get("slot") == normalized_slot]
     if len(candidates) == 1:
         return candidates[0]
     if not candidates:

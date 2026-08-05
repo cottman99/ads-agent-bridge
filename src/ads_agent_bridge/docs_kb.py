@@ -9,6 +9,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator
@@ -18,10 +19,14 @@ from bs4 import BeautifulSoup
 
 from .models import AdsInstance
 from .paths import docs_cache
+from .processes import pid_running
 
 
 INDEX_SCHEMA_VERSION = 2
 BATCH_SIZE = 100
+SOURCE_FALLBACK_MAX_FILES = 200
+SOURCE_FALLBACK_MAX_BYTES = 64 * 1024
+SOURCE_FALLBACK_MAX_SECONDS = 1.0
 
 
 def _iter_html(instance: AdsInstance) -> Iterator[tuple[str, Path, Path]]:
@@ -261,23 +266,13 @@ def build_full_index(instance: AdsInstance, *, force: bool = False, max_pages: i
     }
 
 
-def _pid_running(pid: int | None) -> bool:
-    if not pid:
-        return False
-    try:
-        os.kill(int(pid), 0)
-    except (OSError, ValueError):
-        return False
-    return True
-
-
 def start_background_build(instance: AdsInstance, *, force: bool = False) -> dict[str, object]:
     ensure_fast_index(instance)
     cache = docs_cache(instance.instance_id)
     state_path = cache / "build-state.json"
     previous = _load_manifest(state_path) or {}
     previous_pid = int(previous.get("pid") or 0)
-    if _pid_running(previous_pid):
+    if pid_running(previous_pid):
         return {**previous, "status": "running", "reused": True}
     log_path = cache / "build.log"
     command = [sys.executable, "-m", "ads_agent_bridge", "docs", "build", "--ads", instance.instance_id]
@@ -314,7 +309,7 @@ def status(instance: AdsInstance) -> dict[str, object]:
         return {"instance_id": instance.instance_id, "status": "missing"}
     payload = _load_manifest(manifest_path) or {}
     build_state = _load_manifest(cache / "build-state.json") or {}
-    if build_state and build_state.get("status") == "running" and not _pid_running(int(build_state.get("pid") or 0)):
+    if build_state and build_state.get("status") == "running" and not pid_running(int(build_state.get("pid") or 0)):
         updated_at = str(payload.get("enrichment_updated_at") or "")
         started_at = str(build_state.get("started_at") or "")
         if updated_at and updated_at >= started_at:
@@ -332,7 +327,8 @@ def query(instance: AdsInstance, text: str, limit: int = 10) -> dict[str, object
     terms = [term.lower() for term in re.findall(r"[\w.:-]+", text, flags=re.UNICODE) if len(term) > 1]
     if not terms:
         raise ValueError("Query must contain at least one searchable term.")
-    where = " AND ".join("lower(title || ' ' || content) LIKE ?" for _ in terms)
+    searchable = "lower(domain || ' ' || title || ' ' || content)"
+    where = " AND ".join(f"{searchable} LIKE ?" for _ in terms)
     params = [f"%{term}%" for term in terms]
     sql = (
         "SELECT domain, source_root, relative_path, title, markdown_path, "
@@ -342,9 +338,22 @@ def query(instance: AdsInstance, text: str, limit: int = 10) -> dict[str, object
         connection.row_factory = sqlite3.Row
         rows = [dict(row) for row in connection.execute(sql, [*params, limit])]
     search_mode = "bootstrap_index"
+    if not rows and len(terms) > 1:
+        score = " + ".join(f"CASE WHEN {searchable} LIKE ? THEN 1 ELSE 0 END" for _ in terms)
+        relaxed_where = " OR ".join(f"{searchable} LIKE ?" for _ in terms)
+        relaxed_sql = (
+            "SELECT domain, source_root, relative_path, title, markdown_path, "
+            f"substr(content, 1, 500) AS snippet FROM pages WHERE {relaxed_where} "
+            f"ORDER BY ({score}) DESC, title LIMIT ?"
+        )
+        with sqlite3.connect(db_path) as connection:
+            connection.row_factory = sqlite3.Row
+            rows = [dict(row) for row in connection.execute(relaxed_sql, [*params, *params, limit])]
+        if rows:
+            search_mode = "bootstrap_index_relaxed"
     if not rows:
         rows = _query_source_fallback(instance, terms, limit)
-        search_mode = "source_fallback"
+        search_mode = "source_fallback_bounded"
     for row in rows:
         source_root = row.pop("source_root", None)
         if source_root:
@@ -356,6 +365,7 @@ def query(instance: AdsInstance, text: str, limit: int = 10) -> dict[str, object
         "product_version": instance.product_version,
         "query": text,
         "search_mode": search_mode,
+        "enrichment_status": state.get("enrichment_status", "not_started"),
         "results": rows,
     }
 
@@ -363,9 +373,15 @@ def query(instance: AdsInstance, text: str, limit: int = 10) -> dict[str, object
 def _query_source_fallback(instance: AdsInstance, terms: list[str], limit: int) -> list[dict[str, object]]:
     encoded_terms = [term.encode("utf-8", errors="ignore") for term in terms]
     results: list[dict[str, object]] = []
+    started = time.monotonic()
+    scanned = 0
     for domain, root, path in _iter_html(instance):
+        if scanned >= SOURCE_FALLBACK_MAX_FILES or time.monotonic() - started >= SOURCE_FALLBACK_MAX_SECONDS:
+            break
+        scanned += 1
         try:
-            raw = path.read_bytes()
+            with path.open("rb") as stream:
+                raw = stream.read(SOURCE_FALLBACK_MAX_BYTES)
         except OSError:
             continue
         lowered = raw.lower()

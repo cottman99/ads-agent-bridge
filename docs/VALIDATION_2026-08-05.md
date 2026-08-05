@@ -2,7 +2,7 @@
 
 ## Outcome
 
-`ads-agent-bridge 0.1.0a20` passes the minimum public core on Windows and
+`ads-agent-bridge 0.1.0a21` passes the minimum public core on Windows and
 Linux. The candidate is suitable for a limited public release that claims
 multi-installation discovery, private local documentation conversion and
 indexing, recoverable DE/DDS add-on registration, authenticated localhost
@@ -10,6 +10,42 @@ bridge connectivity, five bounded public examples, and a portable Docs Skill.
 
 No EM or RFPro solver-completion claim is made by this record. Those workflows
 remain future extension lanes and are not part of the minimum v0.1 promise.
+
+## 0.1.0a21 Windows onboarding hardening
+
+The a21 candidate retains the a20 capability surface and closes three defects
+found during a clean Windows PyPI acceptance run:
+
+- A new ADS 2026 Update 2 state indexed 9,422 local HTML pages. Before full
+  Markdown enrichment, the formerly unbounded query
+  `de.open_workspace ADS Python` completed in 0.271 seconds and returned the
+  exact version-matched API source from the bootstrap index.
+- Client slot selection now accepts the same punctuation and case variants as
+  the embedded server. Stale DE/DDS session files remain inert on disk but are
+  no longer listed or selected after their owning ADS process exits.
+- The packaged a21 wheel connected from an isolated Linux virtual environment
+  to the existing `DISPLAY=:4` DE session when given the hyphenated slot
+  `ads2026u2-d4`; ping and status resolved it to `ads2026u2_d4`. The candidate
+  environment was then removed, leaving the server's canonical command on the
+  latest actually published release.
+- Windows process liveness uses `OpenProcess` and `GetExitCodeProcess`; it does
+  not send a signal to ADS or another process.
+
+The clean PyPI a20 baseline installed into an isolated virtual environment,
+passed `pip check`, auto-discovered ADS 2026 Update 2, built the complete
+9,422-page private Markdown corpus with zero errors, and passed headless AC
+simulation with 31 dataset rows. An isolated Windows DE/DDS launch then passed
+authenticated localhost ping, status, capability probes, and bounded DDS
+readback with 31 rows while unsafe execution remained disabled. The Windows
+launcher did not open the workspace supplied as its command-line argument, so
+the two DE examples correctly stopped at their declared `open workspace`
+prerequisite. The same five examples passed remotely on the dedicated ADS
+session at `DISPLAY=:4`.
+
+Only the exact test-owned Windows process tree was terminated. The existing
+user DE process (PID 56928) remained alive, its workspace was not modified,
+and the ADS 6.40 registry HOME was restored and verified as
+`F:\pfli\Workspace\ADS`. All 32 unit tests passed after the a21 changes.
 
 ## 0.1.0a20 five-example and Docs Skill candidate
 
