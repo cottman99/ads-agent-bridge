@@ -1,0 +1,93 @@
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+from ads_agent_bridge.models import AdsInstance
+from ads_agent_bridge import onboarding
+
+
+def instance(tmp_path: Path) -> AdsInstance:
+    root = tmp_path / "ADS2026_Update2"
+    python = root / "tools" / "python" / "bin" / "python3.13"
+    python.parent.mkdir(parents=True)
+    python.touch()
+    return AdsInstance(
+        instance_id="ads-2026-u2-test",
+        install_root=str(root),
+        product_version="ADS 2026 Update 2",
+        year=2026,
+        update="2",
+        platform="linux",
+        support_tier="stable",
+        python_executable=str(python),
+        capabilities={"local_docs": True, "python_addon_generation": "available"},
+    )
+
+
+def test_quickstart_runs_ads_python_and_requires_dataset_readback(tmp_path: Path, monkeypatch) -> None:
+    selected = instance(tmp_path)
+    monkeypatch.setenv("ADS_AGENT_HOME", str(tmp_path / "state"))
+    monkeypatch.setattr(onboarding, "select_instance", lambda _: selected)
+    monkeypatch.setattr(onboarding, "ensure_fast_index", lambda _: {"status": "ready"})
+    monkeypatch.setattr(onboarding, "query", lambda *_args, **_kwargs: {"results": [{"title": "Python"}]})
+    monkeypatch.setattr(
+        onboarding,
+        "addon_status",
+        lambda _config=None: {"profiles": [{"registrations": [{"Name": "AdsAgentBridge"}]}]},
+    )
+
+    def fake_run(command, **kwargs):
+        assert command[0] == selected.python_executable
+        assert kwargs["env"]["HPEESOF_DIR"] == selected.install_root
+        assert kwargs["cwd"].endswith("quickstarts")
+        if sys.platform.startswith("linux"):
+            assert "lib/linux_x86_64" in kwargs["env"]["LD_LIBRARY_PATH"]
+        payload = {"ok": True, "workspace": command[-1], "rows": 31, "columns": ["freq", "R1_v"]}
+        return subprocess.CompletedProcess(command, 0, stdout="ADS log\n" + json.dumps(payload) + "\n", stderr="")
+
+    monkeypatch.setattr(onboarding.subprocess, "run", fake_run)
+    payload, code = onboarding.quickstart(workspace=tmp_path / "quickstart", config_dir=tmp_path / "config")
+
+    assert code == 0
+    assert payload["status"] == "passed"
+    assert payload["gates"]["dataset_readback"] == "passed"
+    assert payload["simulation"]["rows"] == 31
+
+
+def test_quickstart_refuses_existing_workspace(tmp_path: Path, monkeypatch) -> None:
+    selected = instance(tmp_path)
+    monkeypatch.setattr(onboarding, "select_instance", lambda _: selected)
+    workspace = tmp_path / "existing"
+    workspace.mkdir()
+
+    try:
+        onboarding.quickstart(workspace=workspace)
+    except ValueError as exc:
+        assert "already exists" in str(exc)
+    else:
+        raise AssertionError("expected quickstart to refuse an existing workspace")
+
+
+def test_setup_degrades_when_old_install_has_no_docs_or_addons(tmp_path: Path, monkeypatch) -> None:
+    selected = instance(tmp_path)
+    selected = AdsInstance(
+        **{
+            **selected.to_dict(),
+            "capabilities": {
+                "local_docs": False,
+                "embedded_python": True,
+                "python_addon_generation": "unavailable",
+            },
+        }
+    )
+    monkeypatch.setattr(onboarding, "discover", lambda *_args: [selected])
+    monkeypatch.setattr(onboarding, "update_instances", lambda *_args: {"default_instance_id": selected.instance_id})
+    monkeypatch.setattr(onboarding, "ensure_fast_index", lambda *_args: (_ for _ in ()).throw(AssertionError("must not index")))
+    monkeypatch.setattr(onboarding, "install_addon", lambda: (_ for _ in ()).throw(AssertionError("must not install")))
+
+    payload = onboarding.setup(roots=[], search_roots=[], non_interactive=True)
+
+    assert payload["status"] == "ready"
+    assert payload["docs"]["status"] == "not_available"
+    assert payload["addon"]["status"] == "skipped"

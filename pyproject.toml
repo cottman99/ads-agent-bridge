@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ads-agent-bridge"
+version = "0.1.0a17"
+description = "Unofficial local documentation and automation bridge for Keysight ADS"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "ADS Agent Bridge contributors" }]
+keywords = ["keysight", "ads", "eda", "automation", "rf"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+  "beautifulsoup4>=4.12,<5",
+  "html2text>=2024.2.26,<2027",
+  "platformdirs>=4,<5",
+]
+
+[project.urls]
+Homepage = "https://github.com/cottman99/ads-agent-bridge"
+Repository = "https://github.com/cottman99/ads-agent-bridge"
+Issues = "https://github.com/cottman99/ads-agent-bridge/issues"
+Changelog = "https://github.com/cottman99/ads-agent-bridge/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+test = ["pytest>=8,<10"]
+
+[project.scripts]
+ads-agent = "ads_agent_bridge.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ads_agent_bridge"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]

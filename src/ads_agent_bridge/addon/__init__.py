@@ -1,0 +1,1 @@
+"""Packaged ADS addon resources."""
