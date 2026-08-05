@@ -2,6 +2,16 @@
 
 All notable public changes are documented here.
 
+## 0.1.0a19 — Unreleased
+
+- Add a read-only `ads-agent doctor` covering discovery, selected version,
+  local docs, ADS Python, add-on registration, and live bridge sessions.
+- Keep diagnostic reads from creating empty configuration, cache, data, or
+  runtime directories.
+- Build release distributions once, publish the exact artifacts to GitHub and
+  PyPI, and verify their SHA256 values after upload.
+- Update maintained GitHub Actions to Node 24-capable major versions.
+
 ## 0.1.0a18 — 2026-08-05
 
 - Discover non-default Windows ADS installations from registered installer
