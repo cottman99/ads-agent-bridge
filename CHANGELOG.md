@@ -8,6 +8,8 @@ All notable public changes are documented here.
   local docs, ADS Python, add-on registration, and live bridge sessions.
 - Keep diagnostic reads from creating empty configuration, cache, data, or
   runtime directories.
+- Record and enforce the external ADS automation context in the headless
+  quickstart result.
 - Build release distributions once, publish the exact artifacts to GitHub and
   PyPI, and verify their SHA256 values after upload.
 - Update maintained GitHub Actions to Node 24-capable major versions.

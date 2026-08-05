@@ -30,6 +30,17 @@ def summarize_dataset(path: Path) -> dict[str, object]:
 def run(workspace: Path) -> dict[str, object]:
     record: dict[str, object] = {"ok": False, "workspace": str(workspace)}
     try:
+        running_automation = bool(de.running_automation())
+        is_pde_app = bool(de.is_pde_app())
+        record["execution_context"] = {
+            "running_automation": running_automation,
+            "is_pde_app": is_pde_app,
+        }
+        if not running_automation or is_pde_app:
+            raise RuntimeError(
+                "Quickstart requires external ADS automation "
+                f"(running_automation={running_automation}, is_pde_app={is_pde_app})."
+            )
         if workspace.exists():
             raise RuntimeError(f"Refusing to overwrite an existing quickstart workspace: {workspace}")
         workspace.parent.mkdir(parents=True, exist_ok=True)
