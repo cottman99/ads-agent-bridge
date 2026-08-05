@@ -11,11 +11,20 @@ from pathlib import Path
 from .addon_installer import addon_status, install_addon
 from .config import select_instance, update_instances
 from .discovery import discover
-from .docs_kb import ensure_fast_index, query
+from .docs_kb import ensure_fast_index, query, start_background_build
 from .paths import data_dir
+from .skill_installer import install_docs_skill
 
 
-def setup(*, roots: list[Path], search_roots: list[Path], non_interactive: bool, config_dir: Path | None = None) -> dict[str, object]:
+def setup(
+    *,
+    roots: list[Path],
+    search_roots: list[Path],
+    non_interactive: bool,
+    config_dir: Path | None = None,
+    install_skill: bool = False,
+    start_docs_build: bool = False,
+) -> dict[str, object]:
     instances = discover(roots, search_roots)
     if not instances:
         raise ValueError("No ADS installation found. Pass --ads-root with the installation directory.")
@@ -39,6 +48,12 @@ def setup(*, roots: list[Path], search_roots: list[Path], non_interactive: bool,
         if selected.capabilities.get("local_docs")
         else {"status": "not_available", "reason": "No installed local HTML documentation was discovered."}
     )
+    docs_build = None
+    if start_docs_build and selected.capabilities.get("local_docs"):
+        try:
+            docs_build = start_background_build(selected)
+        except (OSError, ValueError) as exc:
+            docs_build = {"status": "failed_to_start", "error": str(exc)}
     addon = (
         install_addon(config_dir)
         if selected.capabilities.get("python_addon_generation") == "available"
@@ -47,18 +62,21 @@ def setup(*, roots: list[Path], search_roots: list[Path], non_interactive: bool,
             "reason": "This ADS generation does not advertise Python add-on support; headless Python may still be tried.",
         }
     )
+    skill = install_docs_skill() if install_skill else {"status": "skipped", "reason": "Skill installation not requested."}
     return {
         "status": "ready",
         "selected_instance": selected.to_dict(),
         "config": config,
         "docs": docs,
+        "docs_build": docs_build,
         "addon": addon,
+        "docs_skill": skill,
         "bridge": (
             "installed; starts when ADS DE or DDS is launched"
             if addon["status"] == "installed"
             else "not installed for this ADS generation"
         ),
-        "next": "ads-agent quickstart",
+        "next": ["ads-agent examples list", "ads-agent quickstart"],
     }
 
 
@@ -90,6 +108,8 @@ def quickstart(
     environment["PATH"] = str(Path(instance.install_root) / "bin") + os.pathsep + environment.get("PATH", "")
     if sys.platform.startswith("linux"):
         linux_libraries = [
+            str(Path(instance.install_root) / "tools" / "python" / "lib"),
+            str(Path(instance.install_root) / "tools" / "python" / "lib64"),
             str(Path(instance.install_root) / "lib" / "linux_x86_64"),
             str(Path(instance.install_root) / "lib" / "linux_x86"),
         ]

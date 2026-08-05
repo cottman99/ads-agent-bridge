@@ -3,8 +3,9 @@
 ## Product promise
 
 A new user can install one package, select the intended local ADS installation,
-query that installation's private local documentation, and run one verified
-circuit workflow without learning the internal adapter or plugin architecture.
+install a portable Docs Skill, query that installation's private local
+documentation, and progress through five explicit examples without learning
+the internal adapter or plugin architecture.
 
 ## User path
 
@@ -16,7 +17,9 @@ ads-agent quickstart
 
 `setup` must discover installed ADS instances, select one without silently
 preferring the newest version, probe capabilities, install recoverable user
-integration, and make documentation lookup immediately useful.
+integration, install the Docs Skill without replacing unmanaged content, make
+documentation lookup immediately useful, and start resumable private
+enrichment without blocking the first query.
 
 `quickstart` must report these gates independently:
 
@@ -47,16 +50,19 @@ addons, AEL interoperability, headless automation, or EM routes are available.
 - multi-instance discovery and explicit selection;
 - Windows and Linux setup/docs/bridge gates;
 - resumable private documentation indexing;
+- private HTML-to-Markdown enrichment separated by ADS instance;
+- recoverable, conflict-safe Docs Skill installation;
 - recoverable addon install, upgrade, and uninstall;
 - localhost token-authenticated live bridge;
 - disposable-workspace headless circuit simulation and dataset readback;
-- one real two-port Momentum golden path;
+- five cataloged examples with explicit prerequisites, state changes, evidence,
+  and nonzero failure behavior;
 - no vendor docs, private paths, or monorepo runtime imports.
 
 ## Non-blocking extensions
 
-The full plugin platform, RFPro/FEM completeness, SIPro/PIPro, broad PDK
-automation, AEL debugging, built-in SSH orchestration, and large example
+Momentum, the full plugin platform, RFPro/FEM completeness, SIPro/PIPro, broad
+PDK automation, AEL debugging, built-in SSH orchestration, and large example
 catalogs do not block the first public beta.
 
 ## Evidence language

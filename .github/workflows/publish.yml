@@ -8,7 +8,7 @@ on:
       tag:
         description: Existing signed release tag to publish
         required: true
-        default: v0.1.0a19
+        default: v0.1.0a20
 
 permissions:
   contents: read

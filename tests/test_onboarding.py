@@ -43,6 +43,7 @@ def test_quickstart_runs_ads_python_and_requires_dataset_readback(tmp_path: Path
         assert kwargs["cwd"].endswith("quickstarts")
         if sys.platform.startswith("linux"):
             assert "lib/linux_x86_64" in kwargs["env"]["LD_LIBRARY_PATH"]
+            assert "tools/python/lib" in kwargs["env"]["LD_LIBRARY_PATH"]
         payload = {"ok": True, "workspace": command[-1], "rows": 31, "columns": ["freq", "R1_v"]}
         return subprocess.CompletedProcess(command, 0, stdout="ADS log\n" + json.dumps(payload) + "\n", stderr="")
 

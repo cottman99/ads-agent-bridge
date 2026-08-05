@@ -12,9 +12,11 @@ from .bridge_client import list_sessions, request
 from .compatibility import explain
 from .config import configured_instances, load_config, select_instance, set_default, update_instances
 from .discovery import discover
-from .docs_kb import ensure_fast_index, query, status
+from .docs_kb import build_full_index, ensure_fast_index, query, start_background_build, status
 from .doctor import diagnose
+from .examples import run_example, list_examples, show_example
 from .onboarding import quickstart, setup
+from .skill_installer import install_docs_skill, skill_status, uninstall_docs_skill
 
 
 def _emit(payload: Any, pretty: bool) -> None:
@@ -57,6 +59,10 @@ def build_parser() -> argparse.ArgumentParser:
     ensure = docs_commands.add_parser("ensure")
     ensure.add_argument("--ads")
     ensure.add_argument("--force", action="store_true")
+    docs_build = docs_commands.add_parser("build")
+    docs_build.add_argument("--ads")
+    docs_build.add_argument("--force", action="store_true")
+    docs_build.add_argument("--background", action="store_true")
     docs_status = docs_commands.add_parser("status")
     docs_status.add_argument("--ads")
     docs_query = docs_commands.add_parser("query")
@@ -69,12 +75,40 @@ def build_parser() -> argparse.ArgumentParser:
     setup_parser.add_argument("--search-root", action="append", type=Path, default=[])
     setup_parser.add_argument("--non-interactive", action="store_true")
     setup_parser.add_argument("--config-dir", type=Path, help="Explicit ADS hpeesof/config directory.")
+    setup_parser.add_argument("--skip-skill", action="store_true", help="Do not install the portable Docs Skill for Codex.")
+    setup_parser.add_argument("--no-background-docs", action="store_true", help="Do not enrich local docs in the background.")
 
     quickstart_parser = commands.add_parser("quickstart")
     quickstart_parser.add_argument("--ads")
     quickstart_parser.add_argument("--workspace", type=Path)
     quickstart_parser.add_argument("--timeout", type=float, default=300)
     quickstart_parser.add_argument("--config-dir", type=Path, help="Explicit ADS hpeesof/config directory.")
+
+    examples = commands.add_parser("examples")
+    examples_commands = examples.add_subparsers(dest="examples_command", required=True)
+    examples_commands.add_parser("list")
+    examples_show = examples_commands.add_parser("show")
+    examples_show.add_argument("name")
+    examples_run = examples_commands.add_parser("run")
+    examples_run.add_argument("name")
+    examples_run.add_argument("--ads")
+    examples_run.add_argument("--ads-root", action="append", type=Path, default=[])
+    examples_run.add_argument("--search-root", action="append", type=Path, default=[])
+    examples_run.add_argument("--workspace", type=Path)
+    examples_run.add_argument("--dataset", type=Path)
+    examples_run.add_argument("--slot")
+    examples_run.add_argument("--timeout", type=float, default=300)
+    examples_run.add_argument("--config-dir", type=Path)
+
+    skill = commands.add_parser("skill")
+    skill_commands = skill.add_subparsers(dest="skill_command", required=True)
+    for name in ("status", "install", "uninstall"):
+        item = skill_commands.add_parser(name)
+        item.add_argument("docs", nargs="?", default="docs", choices=("docs",))
+        item.add_argument("--target", choices=("codex", "agents"), default="codex")
+        item.add_argument("--root", type=Path, help="Explicit parent directory for installed skills.")
+        if name == "install":
+            item.add_argument("--force", action="store_true")
 
     addon = commands.add_parser("addon")
     addon_commands = addon.add_subparsers(dest="addon_command", required=True)
@@ -145,6 +179,11 @@ def run(args: argparse.Namespace) -> tuple[Any, int]:
         instance = select_instance(args.ads)
         if args.docs_command == "ensure":
             return ensure_fast_index(instance, force=args.force), 0
+        if args.docs_command == "build":
+            if args.background:
+                return start_background_build(instance, force=args.force), 0
+            payload = build_full_index(instance, force=args.force)
+            return payload, 0 if payload.get("status") == "ready" else 2
         if args.docs_command == "status":
             return status(instance), 0
         if args.docs_command == "query":
@@ -155,9 +194,36 @@ def run(args: argparse.Namespace) -> tuple[Any, int]:
             search_roots=args.search_root,
             non_interactive=args.non_interactive,
             config_dir=args.config_dir,
+            install_skill=not args.skip_skill,
+            start_docs_build=not args.no_background_docs,
         ), 0
     if args.command == "quickstart":
         return quickstart(args.ads, args.workspace, args.timeout, args.config_dir)
+    if args.command == "examples":
+        if args.examples_command == "list":
+            return list_examples(), 0
+        if args.examples_command == "show":
+            return show_example(args.name), 0
+        if args.examples_command == "run":
+            return run_example(
+                args.name,
+                instance_id=args.ads,
+                ads_roots=args.ads_root,
+                search_roots=args.search_root,
+                workspace=args.workspace,
+                dataset=args.dataset,
+                slot=args.slot,
+                timeout=args.timeout,
+                config_dir=args.config_dir,
+            )
+    if args.command == "skill":
+        if args.skill_command == "status":
+            return skill_status(target=args.target, root=args.root), 0
+        if args.skill_command == "install":
+            payload = install_docs_skill(target=args.target, root=args.root, force=args.force)
+            return payload, 0 if payload.get("status") == "ready" else 2
+        if args.skill_command == "uninstall":
+            return uninstall_docs_skill(target=args.target, root=args.root), 0
     if args.command == "addon":
         profiles = ("de", "dds") if getattr(args, "profile", "both") == "both" else (args.profile,)
         if args.addon_command == "install":

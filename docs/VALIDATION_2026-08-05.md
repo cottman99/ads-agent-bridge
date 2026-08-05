@@ -2,15 +2,73 @@
 
 ## Outcome
 
-`ads-agent-bridge 0.1.0a17` passes the minimum public core on Windows and
-Linux. The alpha package is suitable for a limited public release that claims
-installation discovery, private local documentation indexing, recoverable
-DE/DDS add-on registration, authenticated localhost bridge connectivity, and
-the minimal headless AC workflow.
+`ads-agent-bridge 0.1.0a20` passes the minimum public core on Windows and
+Linux. The candidate is suitable for a limited public release that claims
+multi-installation discovery, private local documentation conversion and
+indexing, recoverable DE/DDS add-on registration, authenticated localhost
+bridge connectivity, five bounded public examples, and a portable Docs Skill.
 
-The full v0.1 contract is not yet complete because the real two-port Momentum
-golden path has not passed. No EM or RFPro solver-completion claim is made by
-this record.
+No EM or RFPro solver-completion claim is made by this record. Those workflows
+remain future extension lanes and are not part of the minimum v0.1 promise.
+
+## 0.1.0a20 five-example and Docs Skill candidate
+
+The public example catalog is exact and machine-readable:
+
+1. `discover-installations`
+2. `headless-minimal-ac`
+3. `live-de-context`
+4. `dds-dataset-readback`
+5. `bounded-ael-workspace`
+
+Remote acceptance used `eda-server`, ADS 2026 Update 2.1, bundled Python 3.13,
+and only `DISPLAY=:2`. State, configuration, workspace, bridge sessions, Docs
+Skill target, and logs were isolated under the a20 lab directory.
+
+- Installation and support discovery passed; 9,422 local HTML pages were
+  discovered without a hard-coded ADS version.
+- Headless minimal AC passed workspace creation, simulation, and dataset
+  readback with 31 rows and columns `freq`, `R1_v`, and `SRC1.i`.
+- Live DE context passed against the disposable workspace.
+- The fixed read-only AEL workspace command passed with
+  `unsafe_python_enabled=false`.
+- DDS readback created a bounded DDS file, validated `agent_readback=R1_v`,
+  and returned 31 rows with `unsafe_enabled=false`.
+- Arbitrary `exec` was rejected by the server after unsafe mode was removed,
+  even when the client supplied `--unsafe`.
+- The background Docs build converted all 9,422 inputs to private Markdown,
+  enriched all 9,422 index rows, recorded zero conversion errors, and changed
+  its durable status from `running` to `completed`.
+- A post-build query returned the generated Markdown path and original local
+  source path.
+- Portable Docs Skill installation, exact-digest status, idempotence, conflict
+  refusal, backup, and recoverable uninstall are covered by tests and clean
+  installation smoke checks.
+- Only the exact a20-owned DE/DDS process tree was terminated. Existing user
+  DE/DDS processes on `DISPLAY=:4` remained alive.
+- Real ADS add-on XML files were restored byte-identically; both SHA-256 values
+  are `8e988072d890dd22b8030aa5f34fb401c33217ec8f42aee0f29b9a70afcf903c`.
+
+Windows a20 acceptance used isolated state, add-on configuration, and a new
+disposable workspace. Automatic discovery found ADS 2026 U2, ADS 2026 U1,
+ADS 2025 U2, and ADS 2023 U1. ADS 2026 U2 headless minimal AC passed all gates
+with 31 dataset rows. No new Windows GUI session was launched, so the user's
+existing ADS windows were not touched.
+
+Package gates for a20:
+
+- 29 unit tests passed.
+- A clean wheel installation pulled all declared dependencies and passed
+  `pip check`.
+- Wheel inspection confirmed the five-example catalog, Docs tooling, and
+  packaged Skill assets.
+- The canonical and packaged Docs Skill both passed the Skill validator.
+- Agent Kit architecture, Docs KB, installed-skill zero-drift, and the three
+  required edition dry runs passed.
+- `scan_stale_references.py` still reports absolute paths inside historical
+  generated `products/releases/*` payloads. This pre-existing repository
+  hygiene debt must be cleared before publishing an Agent Kit edition; it does
+  not affect the standalone bridge wheel.
 
 ## 0.1.0a19 remote candidate
 
@@ -135,12 +193,9 @@ unsupported boundary, not a failure of the stable ADS 2025+ claim.
 
 ## Remaining gates
 
-1. Build and accept a distributable two-port Momentum fixture with solver-side
-   port, terminal status, result-artifact, and numeric S-parameter evidence.
-2. Make the maintained RFPro/Momentum acceptance harness cross-platform; the
-   current external harness assumes the Windows `tools/python/python.exe`
-   layout and cannot validate a Linux solver run.
-3. Run the ADS 2024 Update 2 preview and ADS 2023 Update 2 experimental lanes
+1. Clear or exclude historical generated release payloads that fail the Agent
+   Kit stale-reference scan before publishing an Agent Kit edition.
+2. Run the ADS 2024 Update 2 preview and ADS 2023 Update 2 experimental lanes
    on real installations before strengthening their support language.
-4. The single-build GitHub/PyPI hash gate can only be accepted by the a19
+3. The single-build GitHub/PyPI hash gate can only be accepted by the a20
    release workflow itself.

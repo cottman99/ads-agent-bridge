@@ -29,3 +29,15 @@ def test_instances_scan_no_save_is_read_only(tmp_path: Path, monkeypatch) -> Non
     assert code == 0
     assert payload["saved"] is False
     assert load_config()["instances"] == []
+
+
+def test_examples_and_skill_commands_are_public_cli_entrypoints() -> None:
+    parser = build_parser()
+
+    examples = parser.parse_args(["examples", "run", "live-de-context", "--slot", "test"])
+    skill = parser.parse_args(["skill", "install", "docs", "--target", "codex"])
+    docs = parser.parse_args(["docs", "build", "--ads", "ads-2025-test", "--background"])
+
+    assert examples.examples_command == "run"
+    assert skill.skill_command == "install"
+    assert docs.docs_command == "build"

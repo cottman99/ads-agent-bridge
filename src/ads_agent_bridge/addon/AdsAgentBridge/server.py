@@ -175,6 +175,7 @@ class _Runtime:
         if command == "capabilities":
             return {
                 "safe_commands": ["ping", "status", "capabilities"],
+                "bounded_commands": ["dds_readback", "ael_workspace_path"],
                 "unsafe_commands": ["eval", "exec", "ael_call"],
                 "unsafe_enabled": os.environ.get("ADS_AGENT_UNSAFE") == "1",
                 "localhost_only": True,
@@ -182,6 +183,10 @@ class _Runtime:
             }
         if command == "status":
             return self._status()
+        if command == "dds_readback":
+            return self._dds_readback(args)
+        if command == "ael_workspace_path":
+            return self._ael_workspace_path()
         if command in {"eval", "exec", "ael_call"}:
             self._require_unsafe(command)
         if command == "eval":
@@ -203,6 +208,57 @@ class _Runtime:
                 raise RuntimeError("keysight.ads.ael is unavailable")
             return getattr(ael.call, name)(*call_args)
         raise ValueError(f"Unsupported command: {command}")
+
+    def _ael_workspace_path(self) -> dict[str, Any]:
+        if self.profile != "de":
+            raise RuntimeError("ael_workspace_path requires the DE bridge profile")
+        ael = self.namespace.get("ael")
+        if ael is None:
+            raise RuntimeError("keysight.ads.ael is unavailable")
+        workspace_path = ael.call.de_get_open_workspace_pathname()
+        return {
+            "function": "de_get_open_workspace_pathname",
+            "workspace_path": str(workspace_path or ""),
+            "bounded": True,
+            "unsafe_python_enabled": os.environ.get("ADS_AGENT_UNSAFE") == "1",
+        }
+
+    def _dds_readback(self, args: dict[str, Any]) -> dict[str, Any]:
+        if self.profile != "dds":
+            raise RuntimeError("dds_readback requires the DDS bridge profile")
+        dds = self.namespace.get("dds")
+        if dds is None:
+            raise RuntimeError("keysight.ads.dds is unavailable")
+        workspace = Path(_required_text(args, "workspace")).expanduser().resolve()
+        dataset_path = Path(_required_text(args, "dataset")).expanduser().resolve()
+        if not workspace.is_dir():
+            raise FileNotFoundError(f"Workspace directory not found: {workspace}")
+        if not dataset_path.is_file():
+            raise FileNotFoundError(f"Dataset not found: {dataset_path}")
+        output_name = "ads_agent_dds_readback.dds"
+        output_path = workspace / output_name
+        if output_path.exists():
+            raise FileExistsError(f"Refusing to overwrite existing DDS file: {output_path}")
+        dds.init_dds_path(workspace)
+        dds_file = dds.new_dds_file(dataset_path, workspace)
+        dds_file.add_dataset_alias("agent_dataset", str(dataset_path))
+        page = dds_file.pages[0]
+        page.name = "ADS Agent dataset readback"
+        expression = "R1_v"
+        equation = page.add_equation("agent_readback", expression)
+        values = equation.variable.to_dataframe().values.tolist()
+        dds_file.save(output_name, workspace)
+        return {
+            "ok": equation.status == "Valid" and bool(values) and output_path.is_file(),
+            "workspace": str(workspace),
+            "dataset_path": str(dataset_path),
+            "dds_path": str(output_path),
+            "equation": equation.expression,
+            "equation_status": equation.status,
+            "row_count": len(values),
+            "dataset_aliases": dict(dds_file.dataset_aliases),
+            "bounded": True,
+        }
 
     def _require_unsafe(self, command: str) -> None:
         if os.environ.get("ADS_AGENT_UNSAFE") != "1":
