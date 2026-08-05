@@ -12,7 +12,7 @@ def test_fast_index_and_query(tmp_path: Path, monkeypatch) -> None:
         encoding="utf-8",
     )
     cache = tmp_path / "cache"
-    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id: cache)
+    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
     cache.mkdir()
     instance = AdsInstance(
         instance_id="ads-2025-test",

@@ -135,7 +135,7 @@ def ensure_fast_index(instance: AdsInstance, force: bool = False) -> dict[str, o
 
 
 def status(instance: AdsInstance) -> dict[str, object]:
-    cache = docs_cache(instance.instance_id)
+    cache = docs_cache(instance.instance_id, ensure=False)
     manifest_path = cache / "manifest.json"
     db_path = cache / "fast-index.sqlite"
     if not manifest_path.is_file() or not db_path.is_file():

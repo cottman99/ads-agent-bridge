@@ -8,19 +8,20 @@ from typing import Any
 from .paths import _override_root
 
 
-def runtime_dir() -> Path:
-    override = _override_root()
+def runtime_dir(*, ensure: bool = True) -> Path:
+    override = _override_root(ensure=ensure)
     if override:
         path = override / "runtime"
     else:
         path = Path.home() / ".ads-agent" / "runtime"
-    path.mkdir(parents=True, exist_ok=True)
+    if ensure:
+        path.mkdir(parents=True, exist_ok=True)
     return path
 
 
 def _load_sessions(profile: str | None = None) -> list[dict[str, Any]]:
     sessions = []
-    for path in sorted(runtime_dir().glob("session-*.json")):
+    for path in sorted(runtime_dir(ensure=False).glob("session-*.json")):
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
@@ -52,8 +53,7 @@ def select_session(slot: str | None, profile: str) -> dict[str, Any]:
     raise ValueError(f"Multiple bridge sessions found for profile={profile}; pass --slot")
 
 
-def request(command: str, args: dict[str, Any], slot: str | None, profile: str, timeout: float = 15) -> dict[str, Any]:
-    session = select_session(slot, profile)
+def _request_session(session: dict[str, Any], command: str, args: dict[str, Any], timeout: float) -> dict[str, Any]:
     payload = {"token": session["token"], "command": command, "args": args}
     with socket.create_connection((session["host"], int(session["port"])), timeout=timeout) as sock:
         sock.sendall(json.dumps(payload).encode("utf-8"))
@@ -67,3 +67,20 @@ def request(command: str, args: dict[str, Any], slot: str | None, profile: str, 
     response = json.loads(b"".join(chunks).decode("utf-8"))
     response["session"] = {key: session.get(key) for key in ("slot", "profile", "pid", "port", "started_at", "session_file")}
     return response
+
+
+def request(command: str, args: dict[str, Any], slot: str | None, profile: str, timeout: float = 15) -> dict[str, Any]:
+    return _request_session(select_session(slot, profile), command, args, timeout)
+
+
+def probe_sessions(profile: str | None = None, timeout: float = 1.0) -> list[dict[str, Any]]:
+    results = []
+    for session in _load_sessions(profile):
+        public = {key: session.get(key) for key in ("slot", "profile", "pid", "port", "started_at", "session_file")}
+        try:
+            response = _request_session(session, "ping", {}, timeout)
+            public.update({"reachable": True, "ok": bool(response.get("ok")), "error": response.get("error")})
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            public.update({"reachable": False, "ok": False, "error": str(exc)})
+        results.append(public)
+    return results

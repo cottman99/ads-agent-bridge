@@ -26,3 +26,11 @@ def test_session_listing_redacts_transport_token(tmp_path: Path, monkeypatch) ->
     assert public["has_token"] is True
     assert "token" not in public
     assert select_session("test", "de")["token"] == "do-not-print-me"
+
+
+def test_empty_session_listing_is_read_only(tmp_path: Path, monkeypatch) -> None:
+    state = tmp_path / "missing-state"
+    monkeypatch.setenv("ADS_AGENT_HOME", str(state))
+
+    assert list_sessions() == []
+    assert not state.exists()

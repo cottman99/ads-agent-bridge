@@ -9,10 +9,11 @@ Advanced Design System (ADS).
 > Keysight and ADS are trademarks of Keysight Technologies. This project is
 > not affiliated with or endorsed by Keysight.
 
-The intended PyPI user path is three commands:
+The intended PyPI user path is four commands:
 
 ```text
 pipx install ads-agent-bridge
+ads-agent doctor
 ads-agent setup
 ads-agent quickstart
 ```
@@ -43,6 +44,7 @@ Prerequisites:
 
 ```console
 pipx install ads-agent-bridge
+ads-agent doctor
 ads-agent setup
 ads-agent quickstart
 ```
@@ -61,6 +63,7 @@ disposable workspace and refuses to overwrite an existing path.
 ## Current commands
 
 ```text
+ads-agent doctor [--ads-root PATH] [--search-root PATH] [--no-ping]
 ads-agent instances scan [--ads-root PATH]
 ads-agent instances list
 ads-agent instances use INSTANCE_ID

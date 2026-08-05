@@ -13,6 +13,7 @@ from .compatibility import explain
 from .config import configured_instances, load_config, select_instance, set_default, update_instances
 from .discovery import discover
 from .docs_kb import ensure_fast_index, query, status
+from .doctor import diagnose
 from .onboarding import quickstart, setup
 
 
@@ -25,6 +26,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--pretty", action="store_true", help="Pretty-print JSON output.")
     commands = parser.add_subparsers(dest="command", required=True)
+
+    doctor = commands.add_parser("doctor")
+    doctor.add_argument("--ads-root", action="append", type=Path, default=[])
+    doctor.add_argument("--search-root", action="append", type=Path, default=[])
+    doctor.add_argument("--config-dir", type=Path, help="Explicit ADS hpeesof/config directory.")
+    doctor.add_argument("--no-ping", action="store_true", help="List bridge session files without contacting them.")
 
     instances = commands.add_parser("instances")
     instances_commands = instances.add_subparsers(dest="instances_command", required=True)
@@ -116,6 +123,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def run(args: argparse.Namespace) -> tuple[Any, int]:
+    if args.command == "doctor":
+        return diagnose(args.ads_root, args.search_root, args.config_dir, ping=not args.no_ping)
     if args.command == "instances":
         if args.instances_command == "scan":
             found = discover(args.ads_root, args.search_root)

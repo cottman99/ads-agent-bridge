@@ -11,7 +11,7 @@ from .paths import config_file
 
 
 def load_config(path: Path | None = None) -> dict[str, Any]:
-    target = path or config_file()
+    target = path or config_file(ensure=False)
     if not target.is_file():
         return {"schema_version": 1, "default_instance_id": None, "instances": []}
     return json.loads(target.read_text(encoding="utf-8"))
