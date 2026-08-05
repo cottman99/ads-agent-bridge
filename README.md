@@ -17,15 +17,6 @@ ads-agent setup
 ads-agent quickstart
 ```
 
-PyPI publication is pending trusted-publisher authorization. Until then,
-install the signed GitHub prerelease artifact directly:
-
-```console
-pipx install https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a17/ads_agent_bridge-0.1.0a17-py3-none-any.whl
-ads-agent setup
-ads-agent quickstart
-```
-
 The current alpha slice implements cross-platform ADS installation discovery,
 capability/support reporting, per-installation local documentation indexing,
 DE/DDS add-on registration, and a headless minimal-AC quickstart with dataset
@@ -51,7 +42,7 @@ Prerequisites:
 - `pipx` (recommended) or an isolated virtual environment.
 
 ```console
-pipx install ads-agent-bridge  # after the PyPI publisher is authorized
+pipx install ads-agent-bridge
 ads-agent setup
 ads-agent quickstart
 ```

@@ -2,6 +2,15 @@
 
 All notable public changes are documented here.
 
+## 0.1.0a18 — 2026-08-05
+
+- Discover non-default Windows ADS installations from registered installer
+  locations, including side-by-side versions on other drives.
+- Publish through token-free PyPI Trusted Publishing with separate build and
+  upload permission boundaries.
+- Update the public installation path now that the package is available from
+  PyPI.
+
 ## 0.1.0a17 — 2026-08-05
 
 Initial limited public alpha.

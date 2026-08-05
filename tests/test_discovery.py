@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from ads_agent_bridge import discovery
 from ads_agent_bridge.discovery import candidate_roots, inspect_root, locate_docs
 
 
@@ -49,6 +50,15 @@ def test_explicit_root_is_authoritative(tmp_path: Path, monkeypatch) -> None:
     other = make_ads_root(tmp_path, "ADS2026")
     monkeypatch.setenv("HPEESOF_DIR", str(other))
     assert candidate_roots([explicit]) == [explicit.resolve()]
+
+
+def test_windows_registry_installations_are_discovery_candidates(tmp_path: Path, monkeypatch) -> None:
+    registered = make_ads_root(tmp_path, "ADS2026_Update2")
+    monkeypatch.setattr(discovery.platform, "system", lambda: "Windows")
+    monkeypatch.setattr(discovery, "_windows_registry_install_roots", lambda: [registered])
+    monkeypatch.delenv("HPEESOF_DIR", raising=False)
+    monkeypatch.delenv("ADS_ROOT", raising=False)
+    assert registered.resolve() in candidate_roots()
 
 
 def test_locate_docs_classifies_nested_ael_and_dds_docs(tmp_path: Path) -> None:

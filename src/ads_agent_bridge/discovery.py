@@ -17,6 +17,11 @@ VERSION_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+WINDOWS_ADS_DISPLAY_NAME = re.compile(
+    r"(?:Advanced Design System|(?:Keysight\s+)?ADS\s*20\d{2})",
+    re.IGNORECASE,
+)
+
 
 def _unique_existing(paths: Iterable[Path]) -> list[Path]:
     result: list[Path] = []
@@ -31,6 +36,49 @@ def _unique_existing(paths: Iterable[Path]) -> list[Path]:
             seen.add(key)
             result.append(resolved)
     return result
+
+
+def _windows_registry_install_roots() -> list[Path]:
+    """Return ADS install roots registered by Windows installers."""
+    try:
+        import winreg
+    except ImportError:
+        return []
+
+    uninstall_key = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
+    hives = (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER)
+    views = {
+        0,
+        getattr(winreg, "KEY_WOW64_64KEY", 0),
+        getattr(winreg, "KEY_WOW64_32KEY", 0),
+    }
+    roots: list[Path] = []
+    for hive in hives:
+        for view in views:
+            try:
+                parent = winreg.OpenKey(hive, uninstall_key, 0, winreg.KEY_READ | view)
+            except OSError:
+                continue
+            with parent:
+                try:
+                    subkey_count = winreg.QueryInfoKey(parent)[0]
+                except OSError:
+                    continue
+                for index in range(subkey_count):
+                    try:
+                        subkey_name = winreg.EnumKey(parent, index)
+                        child = winreg.OpenKey(parent, subkey_name)
+                    except OSError:
+                        continue
+                    with child:
+                        try:
+                            display_name = str(winreg.QueryValueEx(child, "DisplayName")[0])
+                            install_location = str(winreg.QueryValueEx(child, "InstallLocation")[0])
+                        except OSError:
+                            continue
+                    if WINDOWS_ADS_DISPLAY_NAME.search(display_name) and install_location.strip():
+                        roots.append(Path(install_location.strip().strip('"')))
+    return roots
 
 
 def candidate_roots(explicit: Iterable[Path] = (), search_roots: Iterable[Path] = ()) -> list[Path]:
@@ -53,6 +101,7 @@ def candidate_roots(explicit: Iterable[Path] = (), search_roots: Iterable[Path] 
     system = platform.system().lower()
     parents = list(search_roots)
     if system == "windows":
+        direct.extend(_windows_registry_install_roots())
         for env_name in ("ProgramFiles", "ProgramFiles(x86)"):
             value = os.environ.get(env_name)
             if value:
