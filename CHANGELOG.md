@@ -2,6 +2,17 @@
 
 All notable public changes are documented here.
 
+## 0.1.0a21 - 2026-08-05
+
+- Keep first-use documentation queries bounded: multi-term misses relax inside
+  the local bootstrap index before a one-second, 200-file source fallback.
+- Normalize client slot names exactly like the embedded bridge, so names such
+  as `Windows-A21-Live` select the `windows_a21_live` session.
+- Hide session records whose ADS process has exited, using a read-only Windows
+  process probe instead of sending process signals.
+- Return documentation enrichment state with every query so clients can
+  distinguish bootstrap results from the completed private Markdown corpus.
+
 ## 0.1.0a20 - 2026-08-05
 
 - Add a five-example public catalog with machine-readable prerequisites,
