@@ -43,6 +43,25 @@ isolated `DISPLAY=:2`, state, workspace, config, and bridge slot `a19`.
 - The real DE/DDS XML files were restored to their pre-test SHA256 value
   `8e988072d890dd22b8030aa5f34fb401c33217ec8f42aee0f29b9a70afcf903c`.
 
+Windows a19 acceptance used isolated state, add-on config, documentation
+indexes, and disposable workspaces while preserving the user's open ADS 2026
+Update 2 DE/DDS processes.
+
+- Read-only doctor discovered ADS 2026 U2, ADS 2026 U1, ADS 2025 U2, and
+  unsupported ADS 2023 U1 from Windows installer records without creating its
+  requested state directory.
+- ADS 2026 U2: 9,422 pages indexed; headless quickstart passed with 31 rows.
+- ADS 2026 U1: 8,825 pages indexed; headless quickstart passed with 31 rows.
+- ADS 2025 U2: 7,649 pages indexed; headless quickstart passed with 31 rows.
+- All three runs reported `running_automation=True` and `is_pde_app=False`.
+- User DE/DDS PIDs `56928` and `38020` remained unchanged, and the real user
+  add-on XML hashes remained unchanged.
+- A new Windows live session was not launched: strict virtual-desktop preflight
+  found only the current desktop and no quiet move backend. The add-on server
+  is unchanged from the a18 Windows live acceptance; a19 client/doctor live
+  behavior is covered by the a19 Linux DE/DDS sessions. This inherited evidence
+  is sufficient only for the existing limited-alpha claim.
+
 ## Release artifact
 
 - Wheel: `ads_agent_bridge-0.1.0a17-py3-none-any.whl`
@@ -123,6 +142,5 @@ unsupported boundary, not a failure of the stable ADS 2025+ claim.
    layout and cannot validate a Linux solver run.
 3. Run the ADS 2024 Update 2 preview and ADS 2023 Update 2 experimental lanes
    on real installations before strengthening their support language.
-4. Run the a19 Windows ADS acceptance matrix before merging or publishing the
-   candidate. The single-build GitHub/PyPI hash gate can only be accepted by
-   the a19 release workflow itself.
+4. The single-build GitHub/PyPI hash gate can only be accepted by the a19
+   release workflow itself.
