@@ -9,10 +9,19 @@ Advanced Design System (ADS).
 > Keysight and ADS are trademarks of Keysight Technologies. This project is
 > not affiliated with or endorsed by Keysight.
 
-The first release is designed around three commands:
+The intended PyPI user path is three commands:
 
 ```text
 pipx install ads-agent-bridge
+ads-agent setup
+ads-agent quickstart
+```
+
+PyPI publication is pending trusted-publisher authorization. Until then,
+install the signed GitHub prerelease artifact directly:
+
+```console
+pipx install https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a17/ads_agent_bridge-0.1.0a17-py3-none-any.whl
 ads-agent setup
 ads-agent quickstart
 ```
@@ -42,7 +51,7 @@ Prerequisites:
 - `pipx` (recommended) or an isolated virtual environment.
 
 ```console
-pipx install ads-agent-bridge
+pipx install ads-agent-bridge  # after the PyPI publisher is authorized
 ads-agent setup
 ads-agent quickstart
 ```
