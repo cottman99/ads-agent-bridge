@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -16,11 +18,39 @@ from .docs_kb import build_full_index, ensure_fast_index, query, start_backgroun
 from .doctor import diagnose
 from .examples import run_example, list_examples, show_example
 from .onboarding import quickstart, setup
+from .session_manager import disconnect as disconnect_session
+from .session_manager import launch as launch_session
+from .session_manager import shutdown as shutdown_session
+from .session_manager import status as session_status
 from .skill_installer import install_docs_skill, skill_status, uninstall_docs_skill
 
 
 def _emit(payload: Any, pretty: bool) -> None:
     print(json.dumps(payload, ensure_ascii=False, indent=2 if pretty else None))
+
+
+def _dialog_image_path(value: Path | None) -> Path | None:
+    if value is None:
+        return None
+    path = value.expanduser().resolve()
+    if path.exists():
+        raise FileExistsError(f"Refusing to overwrite dialog image: {path}")
+    if not path.parent.is_dir():
+        raise FileNotFoundError(f"Dialog image parent directory not found: {path.parent}")
+    return path
+
+
+def _store_dialog_image(response: dict[str, Any], path: Path) -> None:
+    result = response.get("result") if response.get("ok") else None
+    if not isinstance(result, dict):
+        raise RuntimeError("ADS returned no dialog snapshot")
+    encoded = result.pop("image_png_base64", None)
+    if not isinstance(encoded, str) or not encoded:
+        raise RuntimeError("ADS returned no dialog image")
+    image = base64.b64decode(encoded, validate=True)
+    with path.open("xb") as stream:
+        stream.write(image)
+    result["image_path"] = str(path)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -84,6 +114,29 @@ def build_parser() -> argparse.ArgumentParser:
     quickstart_parser.add_argument("--timeout", type=float, default=300)
     quickstart_parser.add_argument("--config-dir", type=Path, help="Explicit ADS hpeesof/config directory.")
 
+    launch_parser = commands.add_parser("launch", help="Launch or safely reuse a workspace-bound ADS session.")
+    launch_parser.add_argument("--ads", help="Configured ADS instance id. Uses the explicit default when omitted.")
+    launch_parser.add_argument("--workspace", type=Path, required=True, help="Existing ADS workspace to open.")
+    launch_parser.add_argument("--slot", help="Bridge slot. Defaults to the selected ADS instance id.")
+    launch_parser.add_argument("--display", help="Linux/X display for this ADS session, for example :4.")
+    launch_parser.add_argument("--timeout", type=float, default=120.0, help="Seconds to wait for the DE bridge.")
+    launch_parser.add_argument(
+        "--reuse-existing",
+        action="store_true",
+        help="Reuse the same slot only if it has no workspace or already has the requested workspace.",
+    )
+    launch_parser.add_argument("--dry-run", action="store_true", help="Validate and print the launch plan only.")
+
+    status_parser = commands.add_parser("status", help="Report managed and externally owned ADS sessions.")
+    status_parser.add_argument("--slot")
+
+    disconnect_parser = commands.add_parser("disconnect", help="End the stateless client interaction without closing ADS.")
+    disconnect_parser.add_argument("--slot")
+
+    shutdown_parser = commands.add_parser("shutdown", help="Safely exit an agent-owned ADS session.")
+    shutdown_parser.add_argument("--slot", help="May be omitted only when exactly one agent-owned session is live.")
+    shutdown_parser.add_argument("--timeout", type=float, default=30.0, help="Seconds to wait for ADS to exit normally.")
+
     examples = commands.add_parser("examples")
     examples_commands = examples.add_subparsers(dest="examples_command", required=True)
     examples_commands.add_parser("list")
@@ -129,6 +182,36 @@ def build_parser() -> argparse.ArgumentParser:
         item = bridge_commands.add_parser(name)
         item.add_argument("--profile", choices=("de", "dds"), default="de")
         item.add_argument("--slot")
+    bridge_dialog_snapshot = bridge_commands.add_parser(
+        "dialog-snapshot", help="Inspect the active modal dialog through Qt semantics."
+    )
+    bridge_dialog_snapshot.add_argument("--profile", choices=("de", "dds"), default="de")
+    bridge_dialog_snapshot.add_argument("--slot")
+    bridge_dialog_snapshot.add_argument(
+        "--image-out", type=Path, help="Write a Qt-captured PNG for Agent vision fallback; never overwrites."
+    )
+    bridge_dialog_watch = bridge_commands.add_parser(
+        "dialog-watch", help="Wait on an independent client lane until a modal dialog appears."
+    )
+    bridge_dialog_watch.add_argument("--profile", choices=("de", "dds"), default="de")
+    bridge_dialog_watch.add_argument("--slot")
+    bridge_dialog_watch.add_argument("--timeout", type=float, default=3600.0)
+    bridge_dialog_watch.add_argument("--poll", type=float, default=1.0)
+    bridge_dialog_watch.add_argument("--image-out", type=Path)
+    bridge_dialog_action = bridge_commands.add_parser(
+        "dialog-action", help="Schedule one fingerprint-bound modal button action."
+    )
+    bridge_dialog_action.add_argument("--profile", choices=("de", "dds"), default="de")
+    bridge_dialog_action.add_argument("--slot")
+    bridge_dialog_action.add_argument("--fingerprint", required=True)
+    bridge_dialog_action.add_argument("--button-id", required=True)
+    bridge_dialog_action.add_argument("--risk", choices=("low", "medium", "high"), required=True)
+    bridge_dialog_action.add_argument(
+        "--authorization",
+        choices=("automatic", "workflow-policy", "user-confirmed"),
+        required=True,
+    )
+    bridge_dialog_action.add_argument("--reason", required=True)
     bridge_eval = bridge_commands.add_parser("eval")
     bridge_eval.add_argument("expression")
     bridge_eval.add_argument("--profile", choices=("de", "dds"), default="de")
@@ -199,6 +282,24 @@ def run(args: argparse.Namespace) -> tuple[Any, int]:
         ), 0
     if args.command == "quickstart":
         return quickstart(args.ads, args.workspace, args.timeout, args.config_dir)
+    if args.command == "launch":
+        payload = launch_session(
+            args.ads,
+            args.workspace,
+            slot=args.slot,
+            display=args.display,
+            wait_seconds=args.timeout,
+            reuse_existing=args.reuse_existing,
+            dry_run=args.dry_run,
+        )
+        return payload, 0 if payload.get("status") in {"ready", "planned"} else 2
+    if args.command == "status":
+        return session_status(args.slot), 0
+    if args.command == "disconnect":
+        return disconnect_session(args.slot), 0
+    if args.command == "shutdown":
+        payload = shutdown_session(args.slot, args.timeout)
+        return payload, 0 if payload.get("status") == "exited" else 2
     if args.command == "examples":
         if args.examples_command == "list":
             return list_examples(), 0
@@ -237,6 +338,57 @@ def run(args: argparse.Namespace) -> tuple[Any, int]:
             return {"sessions": list_sessions(args.profile)}, 0
         if args.bridge_command in {"ping", "status", "capabilities"}:
             response = request(args.bridge_command, {}, args.slot, args.profile)
+            return response, 0 if response.get("ok") else 2
+        if args.bridge_command == "dialog-snapshot":
+            image_path = _dialog_image_path(args.image_out)
+            response = request(
+                "dialog_snapshot",
+                {"include_image": image_path is not None},
+                args.slot,
+                args.profile,
+            )
+            if image_path is not None:
+                _store_dialog_image(response, image_path)
+            return response, 0 if response.get("ok") else 2
+        if args.bridge_command == "dialog-watch":
+            image_path = _dialog_image_path(args.image_out)
+            deadline = time.monotonic() + max(0.0, args.timeout)
+            last_response: dict[str, Any] | None = None
+            while True:
+                last_response = request("dialog_snapshot", {"include_image": False}, args.slot, args.profile)
+                if not last_response.get("ok"):
+                    return last_response, 2
+                result = last_response.get("result")
+                if isinstance(result, dict) and result.get("present") is True:
+                    if image_path is not None:
+                        last_response = request(
+                            "dialog_snapshot", {"include_image": True}, args.slot, args.profile
+                        )
+                        _store_dialog_image(last_response, image_path)
+                    return last_response, 0
+                if time.monotonic() >= deadline:
+                    return {
+                        "status": "timeout",
+                        "dialog_present": False,
+                        "slot": args.slot,
+                        "profile": args.profile,
+                    }, 2
+                time.sleep(max(0.1, args.poll))
+        if args.bridge_command == "dialog-action":
+            response = request(
+                "dialog_action",
+                {
+                    "dialog_fingerprint": args.fingerprint,
+                    "button_id": args.button_id,
+                    "decision": {
+                        "risk": args.risk,
+                        "authorization": args.authorization,
+                        "reason": args.reason,
+                    },
+                },
+                args.slot,
+                args.profile,
+            )
             return response, 0 if response.get("ok") else 2
         if args.bridge_command in {"eval", "exec", "exec-file"}:
             if not args.unsafe:

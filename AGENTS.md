@@ -10,6 +10,9 @@ The critical user path is:
 pipx install ads-agent-bridge
 ads-agent setup
 ads-agent quickstart
+ads-agent launch --workspace <workspace>
+ads-agent status
+ads-agent shutdown
 ```
 
 Work that does not improve or protect that path is not a v0.1 release blocker.

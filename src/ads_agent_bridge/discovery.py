@@ -229,7 +229,18 @@ def parse_version(root: Path) -> tuple[int | None, str | None, str]:
 def inspect_root(root: Path) -> AdsInstance | None:
     executable = _find_first(
         root,
-        ("bin/hpeesofde.exe", "bin/hpeesofde", "bin/hpeesofemx.exe", "bin/hpeesofemx", "hpeesofde.exe", "hpeesofde"),
+        (
+            "bin/ads.exe",
+            "bin/ads",
+            "bin/hpeesofde.exe",
+            "bin/hpeesofde",
+            "bin/hpeesofemx.exe",
+            "bin/hpeesofemx",
+            "ads.exe",
+            "ads",
+            "hpeesofde.exe",
+            "hpeesofde",
+        ),
     )
     python_executable = _find_python(root)
     docs_roots = locate_docs(root)
