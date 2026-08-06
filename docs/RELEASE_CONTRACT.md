@@ -7,6 +7,12 @@ install a portable Docs Skill, query that installation's private local
 documentation, and progress through five explicit examples without learning
 the internal adapter or plugin architecture.
 
+For live GUI work, the same package owns a conservative session lifecycle:
+launch ADS with an explicit workspace context, verify the bridge and active
+workspace, distinguish agent-owned from externally owned sessions, disconnect
+without closing ADS, and request native safe exit only for a verified
+agent-owned session.
+
 ## User path
 
 ```text
@@ -32,6 +38,32 @@ enrichment without blocking the first query.
 
 It passes only when all required gates pass.
 
+The live session lifecycle is a separate acceptance path:
+
+1. select an explicit configured ADS instance;
+2. validate an existing workspace without modifying it;
+3. launch with both the workspace argument and `cwd=workspace`;
+4. bind slot, display, and a one-time ownership identity before process start;
+5. reserve the managed identity immediately after process creation and retain
+   actionable `starting` state when bridge startup is delayed;
+6. serialize launch and shutdown mutations for each slot across local clients;
+7. wait for a token-authenticated DE bridge and verify its ownership nonce;
+8. verify that a reused session's bridge-reported ADS installation root matches
+   the selected instance, then verify the exact active workspace through ADS;
+9. report UI readiness, visible windows, modal blocking, structured dialog
+   controls, and ownership;
+10. let a client Agent independently watch long operations, request a targeted
+    dialog image when needed, and perform a fingerprint-bound action, with an
+    actuation-time identity recheck, under an explicit risk policy;
+11. use an identity-checked host desktop route for native or separate-process
+    dialogs that appear before the embedded bridge is reachable;
+12. disconnect without closing ADS;
+13. asynchronously prompt for modified files, expose the shutdown state, and
+    exit only a matching agent-owned session.
+
+No default path may force-switch workspaces, discard modified content, close an
+externally owned ADS process, or escalate to process termination.
+
 ## Support tiers
 
 - ADS 2025 and later: stable target.
@@ -54,6 +86,12 @@ addons, AEL interoperability, headless automation, or EM routes are available.
 - recoverable, conflict-safe Docs Skill installation;
 - recoverable addon install, upgrade, and uninstall;
 - localhost token-authenticated live bridge;
+- cross-platform workspace-bound ADS session launch, ownership, status,
+  recoverable startup, per-slot mutation locking, disconnect, UI-blockage
+  diagnosis, supervised dialog intervention, and native safe-exit gates;
+- Windows and Linux connected-Qt observation/action gates, plus a Linux
+  host-observation gate for one startup dialog that could not be reached through
+  the embedded Qt bridge;
 - disposable-workspace headless circuit simulation and dataset readback;
 - five cataloged examples with explicit prerequisites, state changes, evidence,
   and nonzero failure behavior;
@@ -64,6 +102,12 @@ addons, AEL interoperability, headless automation, or EM routes are available.
 Momentum, the full plugin platform, RFPro/FEM completeness, SIPro/PIPro, broad
 PDK automation, AEL debugging, built-in SSH orchestration, and large example
 catalogs do not block the first public beta.
+
+Generic non-modal business-window lifecycle automation, forced termination,
+multi-client leases beyond per-slot mutation serialization, and remote
+client/server ADS session transport remain non-blocking extensions. Dialog
+automation is intentionally Agent-supervised: opaque dialogs may use targeted
+vision, but high-risk or unverifiable outcomes stop for user confirmation.
 
 ## Evidence language
 

@@ -2,6 +2,44 @@
 
 All notable public changes are documented here.
 
+## 0.1.0a22 - 2026-08-06
+
+- Add a cross-platform ADS Session Manager with workspace-bound launch,
+  verified agent ownership, status, stateless disconnect, and native safe exit.
+- Pass the workspace as both the ADS launch argument and process working
+  directory, then verify the active workspace through the authenticated bridge.
+- Refuse implicit slot reuse, different-workspace switching, user-owned
+  shutdown, ownership mismatches, and shutdown while a modal dialog is active.
+- Add bounded bridge commands for opening an empty workspace context and for
+  prompting to save modified files before scheduling the native ADS exit.
+- Prefer the supported `ads` launcher during installation discovery while
+  retaining older executable-name fallbacks.
+- Detach GUI ADS standard input from SSH and route stdout/stderr to a
+  per-session local log so a successful remote launch returns promptly.
+- Remove dead DE/DDS bridge records for a completed owned slot after native
+  exit, while retaining live or identity-mismatched records.
+- Refuse partially occupied slots and report exit only after every live bridge
+  profile in the managed slot has stopped.
+- Preserve a recoverable `starting` record and launch log when license,
+  first-run, or add-on startup delays prevent the DE bridge from appearing.
+- Serialize lifecycle mutations per slot across local client processes and fix
+  identity-checked managed-record removal after a completed exit.
+- Report bounded top-level window and modal state without title-specific rules
+  or automatic clicks; surface launch as `blocked` when ADS needs user action.
+- Make native modified-file prompting asynchronous and expose shutdown states,
+  including `cancelled` and `awaiting-user-action`, instead of leaving a remote
+  client request apparently hung.
+- Add Agent-supervised dialog automation: independent watching, structured Qt
+  labels/buttons/roles, optional targeted PNG capture for vision, and exact
+  fingerprint-bound button actions with enforced risk and authorization floors.
+- Revalidate the active modal fingerprint and target button inside the Qt
+  actuation callback, expose its terminal state, and classify `No`, `NoToAll`,
+  and `NoRole` at no lower than medium risk.
+- Reacquire and raw-identity-check native ADS buttons after semantic inspection
+  so dialogs that rebuild PySide wrappers remain safely actionable.
+- Refuse existing-session reuse unless the bridge-reported ADS installation
+  root matches the explicitly selected instance, before any workspace action.
+
 ## 0.1.0a21 - 2026-08-05
 
 - Keep first-use documentation queries bounded: multi-term misses relax inside

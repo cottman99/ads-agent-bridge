@@ -10,7 +10,7 @@ from .paths import _override_root
 from .processes import pid_running
 
 
-def _normalize_slot(value: str) -> str:
+def normalize_slot(value: str) -> str:
     return re.sub(r"[^A-Za-z0-9]+", "_", value).strip("_").lower() or "default"
 
 
@@ -53,7 +53,7 @@ def list_sessions(profile: str | None = None) -> list[dict[str, Any]]:
 def select_session(slot: str | None, profile: str) -> dict[str, Any]:
     candidates = _load_sessions(profile)
     if slot:
-        normalized_slot = _normalize_slot(slot)
+        normalized_slot = normalize_slot(slot)
         candidates = [item for item in candidates if item.get("slot") == normalized_slot]
     if len(candidates) == 1:
         return candidates[0]
