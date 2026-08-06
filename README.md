@@ -21,6 +21,32 @@ ads-agent status
 ads-agent shutdown
 ```
 
+If `pipx` is missing or the system `python3` is older than 3.10, use the
+bootstrap installer. It searches installed Python versions instead of assuming
+that the default interpreter is usable, installs `pipx` in an isolated
+bootstrap environment when needed, and reports the exact command path. It does
+not modify an externally managed system Python:
+
+```console
+# Linux
+curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a23/install.sh
+sh install.sh
+
+# Windows PowerShell
+Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a23/install.ps1 -OutFile install.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+To select a non-default interpreter or install an offline/local wheel:
+
+```console
+sh install.sh --python /path/to/python3.11 --package /path/to/ads_agent_bridge.whl
+.\install.ps1 -Python C:\Path\To\python.exe -Package C:\Path\To\ads_agent_bridge.whl
+```
+
+Use `--check` on Linux or `-Check` on Windows to verify interpreter selection
+without installing or changing PATH.
+
 The current alpha slice implements cross-platform ADS installation discovery,
 capability/support reporting, per-installation local documentation indexing,
 DE/DDS add-on registration, and a headless minimal-AC quickstart with dataset
@@ -100,7 +126,7 @@ a different workspace. Reuse also requires the bridge-reported ADS installation
 root to match the explicitly selected instance; an absent or different root is
 rejected before any workspace action.
 
-`status` reports `starting`, `bridge-ready`, `workspace-ready`,
+`status` reports `starting`, `waiting-for-host-ui`, `bridge-ready`, `workspace-ready`,
 `blocked-by-dialog`, `degraded`, or `orphaned` with the managed log path and
 bounded window diagnostics where relevant. For long GUI tasks, an independent
 `dialog-watch` lane can inspect Qt labels, buttons, accessibility metadata, and
@@ -108,6 +134,15 @@ standard roles. The Agent may request a targeted screenshot for vision, then
 act against the exact dialog fingerprint and button ID. The embedded callback
 re-reads and revalidates both immediately before the Qt click. See the
 [dialog automation contract](docs/DIALOG_AUTOMATION.md).
+
+On Linux, the short-lived `ads` wrapper is provisional. The session manager
+adopts only `hpeesofemx` or `hpeesofde` processes carrying the exact launch
+nonce and slot. If that real ADS process is alive but the embedded bridge has
+not started, status becomes `waiting-for-host-ui` and returns a bounded host-UI
+handoff contract. The client Agent must inspect only windows owned by those
+reported candidate processes; separate-process UI helpers are observation-only
+and never establish ADS ownership. The Agent must not guess a license choice or
+start the slot again.
 
 Session commands deliberately separate client and application lifetime:
 

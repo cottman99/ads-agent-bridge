@@ -15,7 +15,7 @@ from .bridge_client import list_sessions, normalize_slot, request, select_sessio
 from .config import select_instance
 from .models import AdsInstance
 from .paths import _override_root
-from .processes import pid_running
+from .processes import managed_ads_processes, managed_host_processes, pid_running
 
 
 DEFAULT_WAIT_SECONDS = 120.0
@@ -251,17 +251,64 @@ def _identity_matches(record: dict[str, Any] | None, bridge: dict[str, Any] | No
     )
 
 
+def _managed_process_snapshot(record: dict[str, Any]) -> dict[str, Any]:
+    """Refresh a managed Linux launch from the nonce-bearing ADS processes."""
+    managed_session_id = str(record.get("managed_session_id") or "")
+    slot = normalize_slot(str(record.get("slot") or ""))
+    processes = managed_ads_processes(managed_session_id, slot)
+    if not processes:
+        return record
+    refreshed = dict(record)
+    refreshed["managed_processes"] = processes
+    refreshed["ads_pid"] = processes[0]["pid"]
+    return refreshed
+
+
+def _host_ui_wait_contract(managed: dict[str, Any]) -> dict[str, Any]:
+    managed_session_id = str(managed.get("managed_session_id") or "")
+    slot = normalize_slot(str(managed.get("slot") or ""))
+    candidate_processes = managed_host_processes(managed_session_id, slot)
+    if not candidate_processes:
+        candidate_processes = managed.get("managed_processes", [])
+    return {
+        "required": True,
+        "phase": "pre-bridge",
+        "reason": "managed-ads-process-alive-but-embedded-bridge-unreachable",
+        "display": managed.get("display"),
+        "workspace": managed.get("workspace"),
+        "managed_processes": managed.get("managed_processes", []),
+        "candidate_processes": candidate_processes,
+        "observation": "Inspect only windows owned by the listed candidate processes.",
+        "action_policy": (
+            "A host Agent may inspect accessibility or a target-window image, but must not guess a "
+            "license choice, click an unverified window, or relaunch the same slot."
+        ),
+    }
+
+
 def _session_summary(slot: str, bridge: dict[str, Any] | None, managed: dict[str, Any] | None) -> dict[str, Any]:
     normalized = normalize_slot(slot)
     if bridge is None:
         if managed is None:
             return {"slot": normalized, "state": "absent", "ownership": "none", "reachable": False}
+        managed = _managed_process_snapshot(managed)
         ads_alive = pid_running(managed.get("ads_pid"))
         launcher_alive = pid_running(managed.get("launcher_pid"))
-        starting = managed.get("state") == "starting" and (ads_alive or launcher_alive)
+        starting = managed.get("state") in {"starting", "waiting-for-host-ui"} and (ads_alive or launcher_alive)
         alive = ads_alive or launcher_alive
-        state = "starting" if starting else "degraded" if alive else "orphaned"
-        return {
+        waiting_for_host_ui = starting and ads_alive and (
+            managed.get("state") == "waiting-for-host-ui" or not launcher_alive
+        )
+        state = (
+            "waiting-for-host-ui"
+            if waiting_for_host_ui
+            else "starting"
+            if starting
+            else "degraded"
+            if alive
+            else "orphaned"
+        )
+        summary = {
             "slot": normalized,
             "state": state,
             "ownership": "agent-owned-unverified" if starting else "agent-owned-record" if alive else "orphaned-record",
@@ -273,20 +320,32 @@ def _session_summary(slot: str, bridge: dict[str, Any] | None, managed: dict[str
             "display": managed.get("display"),
             "log_path": managed.get("log_path"),
             "warning": (
-                "ADS was launched and is still waiting for its authenticated DE bridge."
+                "A nonce-bound ADS process is alive, but its embedded bridge is not reachable; host UI inspection is required."
+                if waiting_for_host_ui
+                else "ADS was launched and is still waiting for its authenticated DE bridge."
                 if starting
                 else "Managed ADS process has no reachable DE bridge."
                 if alive
                 else "Managed session record is stale."
             ),
             "next_actions": (
-                ["Inspect the launch log or ADS window for a license or first-run dialog.", "Run status again after resolving it."]
+                [
+                    "Inspect only windows owned by the reported managed ADS processes on the reported display.",
+                    "Resolve a verified startup dialog under the host Agent risk policy, then run status again.",
+                ]
+                if waiting_for_host_ui
+                else ["Inspect the launch log or ADS window for a license or first-run dialog.", "Run status again after resolving it."]
                 if starting
                 else ["Inspect the launch log and ADS window; do not start another session in this slot."]
                 if alive
                 else ["The stale record can be replaced by the next launch after verifying ADS is not running."]
             ),
         }
+        if waiting_for_host_ui:
+            summary["host_ui"] = _host_ui_wait_contract(managed)
+        if managed.get("managed_processes"):
+            summary["managed_processes"] = managed["managed_processes"]
+        return summary
 
     response = _bridge_status(normalized, bridge)
     result = (response or {}).get("result") if (response or {}).get("ok") else {}
@@ -471,6 +530,8 @@ def _launch_locked(
             )
         return _reuse_session(instance, normalized_slot, workspace)
     previous = _managed_record(normalized_slot)
+    if previous is not None:
+        previous = _managed_process_snapshot(previous)
     if previous is not None and (
         pid_running(previous.get("ads_pid")) or pid_running(previous.get("launcher_pid"))
     ):
@@ -548,20 +609,25 @@ def _launch_locked(
     try:
         bridge = _wait_for_bridge(normalized_slot, wait_seconds)
     except SessionError as exc:
+        record = _managed_process_snapshot(record)
+        if record.get("managed_processes"):
+            record["state"] = "waiting-for-host-ui"
+            _write_json(_managed_path(normalized_slot), record)
+        session = _session_summary(normalized_slot, None, record)
         return {
-            "status": "starting",
+            "status": session.get("state") if session.get("state") == "waiting-for-host-ui" else "starting",
             "launched": True,
             "reused": False,
             "ownership": "agent-owned-unverified",
             "plan": plan,
-            "session": _session_summary(normalized_slot, None, record),
+            "session": session,
             "warning": str(exc),
             "diagnostics": {
                 "log_path": str(log_path),
                 "log_tail": _tail_text(log_path),
                 "next_actions": [
-                    "Inspect ADS for a license, first-run, or add-on dialog.",
-                    "Resolve it and run status again; do not launch the same slot twice.",
+                    "Use the session host_ui contract to inspect only nonce-bound ADS process windows.",
+                    "Resolve a verified startup dialog and run status again; do not launch the same slot twice.",
                 ],
             },
         }
