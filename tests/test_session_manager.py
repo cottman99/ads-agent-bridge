@@ -309,6 +309,102 @@ def test_launch_timeout_preserves_recoverable_starting_record(tmp_path: Path, mo
     assert record["ads_pid"] is None
 
 
+def test_status_adopts_nonce_bound_linux_ads_process_after_wrapper_exit(monkeypatch) -> None:
+    managed = {
+        "state": "starting",
+        "managed_session_id": "owned-nonce",
+        "slot": "blind-slot",
+        "launcher_pid": 1234,
+        "ads_pid": None,
+        "workspace": "/tmp/BlindStart_wrk",
+        "display": ":4",
+    }
+    monkeypatch.setattr(
+        session_manager,
+        "managed_ads_processes",
+        lambda *_: [
+            {"pid": 4321, "process_name": "hpeesofde", "role": "design-environment"},
+            {"pid": 4320, "process_name": "hpeesofemx", "role": "ads-runtime"},
+        ],
+    )
+    monkeypatch.setattr(
+        session_manager,
+        "managed_host_processes",
+        lambda *_: [
+            {
+                "pid": 4330,
+                "parent_pid": 4321,
+                "process_name": "aglmpsel_exe",
+                "role": "managed-child",
+            }
+        ],
+    )
+    monkeypatch.setattr(session_manager, "pid_running", lambda pid: pid == 4321)
+
+    summary = session_manager._session_summary("blind-slot", None, managed)
+
+    assert summary["state"] == "waiting-for-host-ui"
+    assert summary["ownership"] == "agent-owned-unverified"
+    assert summary["ads_pid"] == 4321
+    assert summary["host_ui"]["phase"] == "pre-bridge"
+    assert summary["host_ui"]["display"] == ":4"
+    assert summary["host_ui"]["candidate_processes"][0]["process_name"] == "aglmpsel_exe"
+    assert "must not guess a license choice" in summary["host_ui"]["action_policy"]
+
+
+def test_explicit_host_ui_wait_state_does_not_depend_on_wrapper_exit(monkeypatch) -> None:
+    managed = {
+        "state": "waiting-for-host-ui",
+        "managed_session_id": "owned-nonce",
+        "slot": "blind-slot",
+        "launcher_pid": 1234,
+        "ads_pid": 4321,
+        "workspace": "/tmp/BlindStart_wrk",
+        "display": ":4",
+    }
+    monkeypatch.setattr(
+        session_manager,
+        "managed_ads_processes",
+        lambda *_: [{"pid": 4321, "process_name": "hpeesofde", "role": "design-environment"}],
+    )
+    monkeypatch.setattr(session_manager, "pid_running", lambda pid: pid in {1234, 4321})
+
+    summary = session_manager._session_summary("blind-slot", None, managed)
+
+    assert summary["state"] == "waiting-for-host-ui"
+    assert summary["launcher_pid"] == 1234
+    assert summary["ads_pid"] == 4321
+
+
+def test_launch_refuses_duplicate_when_wrapper_exited_but_nonce_bound_ads_is_alive(
+    tmp_path: Path, monkeypatch
+) -> None:
+    instance = make_instance(tmp_path)
+    workspace = make_workspace(tmp_path)
+    monkeypatch.setenv("ADS_AGENT_HOME", str(tmp_path / "state"))
+    session_manager._write_json(
+        session_manager._managed_path("blind-slot"),
+        {
+            "state": "starting",
+            "managed_session_id": "owned-nonce",
+            "slot": "blind-slot",
+            "launcher_pid": 1234,
+            "ads_pid": None,
+        },
+    )
+    monkeypatch.setattr(session_manager, "select_instance", lambda _: instance)
+    monkeypatch.setattr(session_manager, "_live_bridge", lambda _: None)
+    monkeypatch.setattr(
+        session_manager,
+        "managed_ads_processes",
+        lambda *_: [{"pid": 4321, "process_name": "hpeesofde", "role": "design-environment"}],
+    )
+    monkeypatch.setattr(session_manager, "pid_running", lambda pid: pid == 4321)
+
+    with pytest.raises(session_manager.SessionError, match="already has a managed ADS launch"):
+        session_manager.launch(None, workspace, slot="blind-slot", display=":4")
+
+
 def test_provisional_record_adopts_only_matching_bridge_nonce() -> None:
     record = {"managed_session_id": "nonce", "slot": "test", "ads_pid": None}
 

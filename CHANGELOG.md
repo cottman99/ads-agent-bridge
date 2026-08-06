@@ -2,6 +2,24 @@
 
 All notable public changes are documented here.
 
+## 0.1.0a23 - 2026-08-06
+
+- Adopt Linux `hpeesofde` and `hpeesofemx` processes only when both the exact
+  managed-session nonce and slot match, so a short-lived `ads` wrapper cannot
+  make a live ADS session appear orphaned or allow a duplicate launch.
+- Report `waiting-for-host-ui` when a nonce-bound ADS process is alive but its
+  embedded bridge is not reachable, with a bounded display, workspace, primary
+  process, and observation-only candidate-process handoff.
+- Include nonce-bound separate-process UI helpers in the host observation
+  inventory without treating them as ADS ownership evidence.
+- Add Linux and Windows bootstrap installers that find Python 3.10+, support an
+  explicit interpreter or offline wheel, and provide a no-change preflight.
+- Bootstrap missing `pipx` inside a dedicated virtual environment instead of
+  modifying PEP 668 externally managed Python installations.
+- Revalidate setup, six-gate quickstart, pre-bridge product selection,
+  workspace readiness, bounded live examples, and native safe exit on Linux
+  `DISPLAY=:4` without disturbing existing ADS sessions.
+
 ## 0.1.0a22 - 2026-08-06
 
 - Add a cross-platform ADS Session Manager with workspace-bound launch,

@@ -23,6 +23,17 @@ exercised the connected Qt route on Windows and Linux and a separate-process
 ADS product-selection route on Linux; unit tests alone are not accepted as
 proof of this coverage.
 
+When a nonce-bound Linux ADS process outlives the short `ads` wrapper but no
+authenticated bridge is reachable, `ads-agent status` reports
+`waiting-for-host-ui`. Its `host_ui` object binds the handoff to the exact slot,
+display, workspace, primary ADS processes, and nonce-bearing candidate host
+processes. Separate-process UI helpers may appear in the candidate inventory,
+but they are observation-only and never prove ADS ownership. This state is not an
+orphan and must not be retried as a second launch. The host Agent may inspect
+accessibility or a target-window image, but a license selection remains a
+policy decision: act automatically only when an explicit workflow preference
+identifies the exact product; otherwise request confirmation.
+
 ## Two independent lanes
 
 Run the intended ADS operation on the work lane. Run `dialog-watch` on a
