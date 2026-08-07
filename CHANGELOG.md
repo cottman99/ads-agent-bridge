@@ -2,6 +2,28 @@
 
 All notable public changes are documented here.
 
+## 0.1.0a25 - 2026-08-07
+
+- Add the first `bridge-runtime-snapshot/v1` and
+  `bridge-capability-descriptor/v1` contracts for compact Agent preflight.
+- Expose a revision-aware `bridge runtime-snapshot` command that avoids copying
+  the full context registry or returning full window inventories by default.
+- Preserve the Kit/bridge boundary: the bridge reports live runtime facts while
+  higher-level systems own task intent, authorization, routing, and evidence.
+- Preserve nested descriptor and snapshot arrays across the authenticated wire
+  serializer; live ADS validation caught and now covers the prior depth cutoff.
+- Add a cross-platform pre-bridge Host UI contract with nonce/PID-bound window
+  inventory, targeted PNG capture, fingerprint-bound client-relative clicks,
+  native close, and explicit risk/authorization decisions.
+- Package Pillow and Linux Xlib support so host-image handling works after the
+  normal one-package install without a separate user dependency step.
+- Keep product selection policy outside the package: no vendor title, license
+  row, bundle id, or fixed-coordinate rules are embedded; ADS retains its own
+  remembered selection after the verified first-run action.
+- Keep Windows capture and actuation in physical client pixels by entering a
+  per-monitor DPI-aware context before User32 geometry, Pillow capture, or
+  client-relative input.
+
 ## 0.1.0a24 - 2026-08-07
 
 - Add bounded `ADS_CONTEXT:v1` handles for exact DE design-window,

@@ -17,6 +17,8 @@ from .discovery import discover
 from .docs_kb import build_full_index, ensure_fast_index, query, start_background_build, status
 from .doctor import diagnose
 from .examples import run_example, list_examples, show_example
+from .host_ui import action as host_ui_action
+from .host_ui import snapshot as host_ui_snapshot
 from .onboarding import quickstart, setup
 from .session_manager import disconnect as disconnect_session
 from .session_manager import launch as launch_session
@@ -137,6 +139,36 @@ def build_parser() -> argparse.ArgumentParser:
     shutdown_parser.add_argument("--slot", help="May be omitted only when exactly one agent-owned session is live.")
     shutdown_parser.add_argument("--timeout", type=float, default=30.0, help="Seconds to wait for ADS to exit normally.")
 
+    host_ui = commands.add_parser(
+        "host-ui",
+        help="Observe or act on one nonce-bound pre-bridge host window.",
+    )
+    host_ui_commands = host_ui.add_subparsers(dest="host_ui_command", required=True)
+    host_ui_snapshot_parser = host_ui_commands.add_parser(
+        "snapshot",
+        help="List visible candidate windows and optionally capture one targeted image.",
+    )
+    host_ui_snapshot_parser.add_argument("--slot", required=True)
+    host_ui_snapshot_parser.add_argument("--window-id")
+    host_ui_snapshot_parser.add_argument("--image-out", type=Path)
+    host_ui_action_parser = host_ui_commands.add_parser(
+        "action",
+        help="Perform one fingerprint-bound click or native close on a pre-bridge window.",
+    )
+    host_ui_action_parser.add_argument("--slot", required=True)
+    host_ui_action_parser.add_argument("--window-id", required=True)
+    host_ui_action_parser.add_argument("--fingerprint", required=True)
+    operation = host_ui_action_parser.add_mutually_exclusive_group(required=True)
+    operation.add_argument("--click", nargs=2, type=int, metavar=("X", "Y"))
+    operation.add_argument("--close", action="store_true")
+    host_ui_action_parser.add_argument("--risk", choices=("low", "medium", "high"), required=True)
+    host_ui_action_parser.add_argument(
+        "--authorization",
+        choices=("automatic", "workflow-policy", "user-confirmed"),
+        required=True,
+    )
+    host_ui_action_parser.add_argument("--reason", required=True)
+
     examples = commands.add_parser("examples")
     examples_commands = examples.add_subparsers(dest="examples_command", required=True)
     examples_commands.add_parser("list")
@@ -182,6 +214,14 @@ def build_parser() -> argparse.ArgumentParser:
         item = bridge_commands.add_parser(name)
         item.add_argument("--profile", choices=("de", "dds"), default="de")
         item.add_argument("--slot")
+    bridge_runtime_snapshot = bridge_commands.add_parser(
+        "runtime-snapshot",
+        help="Return one compact, revision-aware view of the selected live ADS runtime.",
+    )
+    bridge_runtime_snapshot.add_argument("--profile", choices=("de", "dds"), default="de")
+    bridge_runtime_snapshot.add_argument("--slot")
+    bridge_runtime_snapshot.add_argument("--detail", choices=("compact", "full"), default="compact")
+    bridge_runtime_snapshot.add_argument("--since-revision")
     for name in ("context-capabilities", "context-list"):
         item = bridge_commands.add_parser(name)
         item.add_argument("--profile", choices=("de", "dds"), default="de")
@@ -309,6 +349,25 @@ def run(args: argparse.Namespace) -> tuple[Any, int]:
     if args.command == "shutdown":
         payload = shutdown_session(args.slot, args.timeout)
         return payload, 0 if payload.get("status") == "exited" else 2
+    if args.command == "host-ui":
+        if args.host_ui_command == "snapshot":
+            image_path = _dialog_image_path(args.image_out)
+            payload = host_ui_snapshot(args.slot, window_id=args.window_id, image_out=image_path)
+            return payload, 0 if payload.get("status") == "ready" else 2
+        if args.host_ui_command == "action":
+            point = args.click or (None, None)
+            payload = host_ui_action(
+                args.slot,
+                window_id=args.window_id,
+                fingerprint=args.fingerprint,
+                operation="close" if args.close else "click",
+                x=point[0],
+                y=point[1],
+                risk=args.risk,
+                authorization=args.authorization,
+                reason=args.reason,
+            )
+            return payload, 0
     if args.command == "examples":
         if args.examples_command == "list":
             return list_examples(), 0
@@ -347,6 +406,12 @@ def run(args: argparse.Namespace) -> tuple[Any, int]:
             return {"sessions": list_sessions(args.profile)}, 0
         if args.bridge_command in {"ping", "status", "capabilities"}:
             response = request(args.bridge_command, {}, args.slot, args.profile)
+            return response, 0 if response.get("ok") else 2
+        if args.bridge_command == "runtime-snapshot":
+            payload = {"detail": args.detail}
+            if args.since_revision:
+                payload["since_revision"] = args.since_revision
+            response = request("runtime_snapshot", payload, args.slot, args.profile)
             return response, 0 if response.get("ok") else 2
         if args.bridge_command in {"context-capabilities", "context-list"}:
             command = args.bridge_command.replace("-", "_")

@@ -69,3 +69,15 @@ def test_linux_process_discovery_requires_exact_nonce_slot_and_ads_process_name(
             "role": "managed-child",
         },
     ]
+
+
+def test_windows_descendant_selection_keeps_only_the_reserved_launch_tree() -> None:
+    entries = {
+        100: (1, "ads.exe"),
+        101: (100, "hpeesofemx.exe"),
+        102: (101, "hpeesofde.exe"),
+        103: (102, "aglmpsel_exe.exe"),
+        200: (1, "hpeesofde.exe"),
+    }
+
+    assert processes._descendant_pids(100, entries) == {100, 101, 102, 103}

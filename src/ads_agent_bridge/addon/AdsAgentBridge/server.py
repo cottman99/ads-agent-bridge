@@ -26,6 +26,21 @@ except ImportError:
     from context import ContextRegistry
 
 try:
+    from .contracts import (
+        CAPABILITY_DESCRIPTOR_SCHEMA_VERSION,
+        RUNTIME_SNAPSHOT_SCHEMA_VERSION,
+        capability_specs,
+        commands_by_safety,
+    )
+except ImportError:
+    from contracts import (
+        CAPABILITY_DESCRIPTOR_SCHEMA_VERSION,
+        RUNTIME_SNAPSHOT_SCHEMA_VERSION,
+        capability_specs,
+        commands_by_safety,
+    )
+
+try:
     from PySide6 import QtCore, QtWidgets
 except ImportError:
     try:
@@ -181,7 +196,7 @@ class _Runtime:
         try:
             with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
                 result = self._dispatch(command, args)
-            max_depth = 8 if command.startswith("context_") else 3
+            max_depth = 8 if command.startswith("context_") or command in {"capabilities", "runtime_snapshot"} else 3
             return {
                 "ok": True,
                 "result": _jsonable(result, max_depth=max_depth),
@@ -196,32 +211,11 @@ class _Runtime:
         if command == "ping":
             return {"status": "ok", "profile": self.profile, "slot": self.slot, "pid": os.getpid()}
         if command == "capabilities":
-            return {
-                "safe_commands": [
-                    "ping",
-                    "status",
-                    "capabilities",
-                    "dialog_snapshot",
-                    "context_capabilities",
-                    "context_list",
-                    "context_get",
-                    "context_refresh",
-                    "context_drop",
-                ],
-                "bounded_commands": [
-                    "dds_readback",
-                    "ael_workspace_path",
-                    "open_workspace",
-                    "safe_shutdown",
-                    "dialog_action",
-                ],
-                "unsafe_commands": ["eval", "exec", "ael_call"],
-                "unsafe_enabled": os.environ.get("ADS_AGENT_UNSAFE") == "1",
-                "localhost_only": True,
-                "token_required": True,
-            }
+            return self._capabilities()
         if command == "status":
             return self._status()
+        if command == "runtime_snapshot":
+            return self._runtime_snapshot(args)
         if command == "context_capabilities":
             return self.contexts.capabilities()
         if command == "context_list":
@@ -266,6 +260,226 @@ class _Runtime:
                 raise RuntimeError("keysight.ads.ael is unavailable")
             return getattr(ael.call, name)(*call_args)
         raise ValueError(f"Unsupported command: {command}")
+
+    def _capabilities(self, status: dict[str, Any] | None = None) -> dict[str, Any]:
+        runtime_status = status if status is not None else {"ui": self._modal_state()}
+        descriptors = [self._capability_descriptor(spec, runtime_status) for spec in capability_specs()]
+        return {
+            "descriptor_schema_version": CAPABILITY_DESCRIPTOR_SCHEMA_VERSION,
+            "runtime_snapshot_schema_version": RUNTIME_SNAPSHOT_SCHEMA_VERSION,
+            "safe_commands": commands_by_safety("safe"),
+            "bounded_commands": commands_by_safety("bounded"),
+            "unsafe_commands": commands_by_safety("unsafe"),
+            "unsafe_enabled": os.environ.get("ADS_AGENT_UNSAFE") == "1",
+            "localhost_only": True,
+            "token_required": True,
+            "descriptors": descriptors,
+        }
+
+    def _capability_descriptor(self, spec: dict[str, Any], status: dict[str, Any]) -> dict[str, Any]:
+        capability_id = spec["id"]
+        profile_compatible = self.profile in spec["profiles"]
+        namespace = getattr(self, "namespace", {})
+        namespaces = {
+            "de-python": "de" in namespace,
+            "dds-python": "dds" in namespace,
+            "ael-python": "ael" in namespace,
+            "de-app": "de_app" in namespace,
+            "context-registry": getattr(self, "contexts", None) is not None,
+        }
+        missing_runtime = [
+            requirement
+            for requirement in spec["requirements"]
+            if requirement in namespaces and not namespaces[requirement]
+        ]
+        compatible = profile_compatible and not missing_runtime
+        modal_blocking = bool((status.get("ui") or {}).get("modal_blocking"))
+        unsafe_enabled = os.environ.get("ADS_AGENT_UNSAFE") == "1"
+        authorized = spec["safety"] != "unsafe" or unsafe_enabled
+        available = compatible
+        reason: str | None = None
+        if not profile_compatible:
+            reason = "profile_not_supported"
+        elif missing_runtime:
+            reason = "runtime_feature_unavailable:" + ",".join(missing_runtime)
+        elif capability_id == "dialog_action" and not modal_blocking:
+            available = False
+            reason = "no_active_modal"
+        elif capability_id == "safe_shutdown":
+            de_app = namespace.get("de_app")
+            if not callable(getattr(de_app, "prompt_and_save_modified_workspace", None)) or not callable(
+                getattr(de_app, "exit_application", None)
+            ):
+                available = False
+                reason = "native_safe_shutdown_unavailable"
+        elif spec["safety"] == "unsafe" and not unsafe_enabled:
+            available = False
+            reason = "unsafe_opt_in_required"
+
+        healthy = compatible and not (
+            modal_blocking and spec["mutates"] and capability_id != "dialog_action"
+        )
+        if compatible and not healthy and reason is None:
+            reason = "blocked_by_dialog"
+
+        safe_next_actions: list[str] = []
+        if reason == "no_active_modal":
+            safe_next_actions = ["dialog_snapshot"]
+        elif reason == "blocked_by_dialog":
+            safe_next_actions = ["dialog_snapshot"]
+        elif reason == "unsafe_opt_in_required":
+            safe_next_actions = ["capabilities"]
+        elif reason == "profile_not_supported":
+            safe_next_actions = ["status"]
+
+        return {
+            "schema_version": CAPABILITY_DESCRIPTOR_SCHEMA_VERSION,
+            "id": capability_id,
+            "category": spec["category"],
+            "safety": spec["safety"],
+            "profiles": list(spec["profiles"]),
+            "mutates": bool(spec["mutates"]),
+            "latency_class": spec["latency_class"],
+            "requirements": list(spec["requirements"]),
+            "state": {
+                "declared": True,
+                "compatible": compatible,
+                "available": available,
+                "healthy": healthy,
+                "authorized": authorized,
+                "reason": reason,
+                "safe_next_actions": safe_next_actions,
+            },
+        }
+
+    def _runtime_snapshot(self, args: dict[str, Any]) -> dict[str, Any]:
+        detail = str(args.get("detail") or "compact")
+        if detail not in {"compact", "full"}:
+            raise ValueError("runtime_snapshot detail must be 'compact' or 'full'")
+        since_revision = args.get("since_revision")
+        if since_revision is not None and not isinstance(since_revision, str):
+            raise ValueError("runtime_snapshot since_revision must be a string")
+
+        status = self._status(detail=detail)
+        capabilities = self._capabilities(status)
+        context_summary = (
+            self.contexts.summary()
+            if getattr(self, "contexts", None) is not None
+            else {"count": 0, "max_contexts": 0, "latest": None}
+        )
+        latest_context = self._compact_context(context_summary["latest"]) if context_summary["latest"] else None
+        ui = dict(status.get("ui") or {})
+        if detail == "compact":
+            ui = {
+                key: ui.get(key)
+                for key in (
+                    "application_ready",
+                    "modal_blocking",
+                    "visible_window_count",
+                    "active_window",
+                )
+                if key in ui
+            }
+
+        state = {
+            "workspace": {
+                "is_open": status.get("workspace_is_open") is True,
+                "path": status.get("workspace") if isinstance(status.get("workspace"), str) else None,
+            },
+            "ui": ui,
+            "contexts": {
+                "count": context_summary["count"],
+                "max_contexts": context_summary["max_contexts"],
+                "latest": latest_context,
+            },
+            "shutdown": status.get("shutdown") or {"state": "idle"},
+            "dds": self._dds_state(detail),
+        }
+        capability_states = {
+            descriptor["id"]: descriptor["state"] for descriptor in capabilities["descriptors"]
+        }
+        stable_payload = {
+            "identity": {
+                "slot": self.slot,
+                "profile": self.profile,
+                "pid": os.getpid(),
+                "hpeesof_dir": status.get("hpeesof_dir"),
+                "display": status.get("display"),
+            },
+            "state": state,
+            "capability_states": capability_states,
+        }
+        encoded = json.dumps(stable_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        revision = hashlib.sha256(encoded.encode("utf-8")).hexdigest()[:20]
+        captured_at = datetime.now(timezone.utc).isoformat()
+        if since_revision == revision:
+            return {
+                "schema_version": RUNTIME_SNAPSHOT_SCHEMA_VERSION,
+                "captured_at": captured_at,
+                "state_revision": revision,
+                "changed": False,
+                "identity": stable_payload["identity"],
+            }
+        return {
+            "schema_version": RUNTIME_SNAPSHOT_SCHEMA_VERSION,
+            "captured_at": captured_at,
+            "state_revision": revision,
+            "changed": True,
+            "detail": detail,
+            **stable_payload,
+            "recommended_safe_actions": self._recommended_safe_actions(stable_payload),
+        }
+
+    @staticmethod
+    def _compact_context(context: dict[str, Any]) -> dict[str, Any]:
+        freshness = context.get("freshness") or {}
+        return {
+            "context_id": context.get("context_id"),
+            "target": context.get("target"),
+            "selection": {
+                "count": (context.get("selection") or {}).get("count"),
+                "truncated": (context.get("selection") or {}).get("truncated"),
+            },
+            "freshness": {
+                "state": freshness.get("state"),
+                "generation": freshness.get("generation"),
+                "last_refreshed_at": freshness.get("last_refreshed_at"),
+            },
+            "context_ref": context.get("context_ref"),
+        }
+
+    def _dds_state(self, detail: str) -> dict[str, Any]:
+        if self.profile != "dds":
+            return {"available": False, "reason": "profile_not_dds"}
+        dds = getattr(self, "namespace", {}).get("dds")
+        if dds is None:
+            return {"available": False, "reason": "dds_python_unavailable"}
+        try:
+            files = list(dds.get_dds_files())
+        except Exception as exc:
+            return {"available": False, "reason": "dds_inventory_failed", "error": str(exc)}
+        result: dict[str, Any] = {"available": True, "open_file_count": len(files)}
+        if detail == "full":
+            result["open_files"] = [
+                {
+                    "name": _bounded_text(getattr(item, "name", ""), 300),
+                    "path": _bounded_text(getattr(item, "path", ""), 1024),
+                }
+                for item in files[:20]
+            ]
+            result["truncated"] = len(files) > 20
+        return result
+
+    @staticmethod
+    def _recommended_safe_actions(snapshot: dict[str, Any]) -> list[str]:
+        state = snapshot["state"]
+        if (state.get("ui") or {}).get("modal_blocking"):
+            return ["dialog_snapshot"]
+        if snapshot["identity"].get("profile") == "de" and not (state.get("workspace") or {}).get("is_open"):
+            return ["open_workspace"]
+        if (state.get("contexts") or {}).get("count", 0) == 0:
+            return ["context_capabilities"]
+        return ["context_list"]
 
     def _ael_workspace_path(self) -> dict[str, Any]:
         if self.profile != "de":
@@ -724,7 +938,7 @@ class _Runtime:
         if os.environ.get("ADS_AGENT_UNSAFE") != "1":
             raise PermissionError(f"{command} is disabled; launch ADS with ADS_AGENT_UNSAFE=1 to opt in")
 
-    def _status(self) -> dict[str, Any]:
+    def _status(self, detail: str = "full") -> dict[str, Any]:
         result: dict[str, Any] = {
             "profile": self.profile,
             "slot": self.slot,
@@ -733,14 +947,14 @@ class _Runtime:
             "home": os.environ.get("HOME") or os.environ.get("USERPROFILE"),
             "hpeesof_dir": os.environ.get("HPEESOF_DIR"),
             "python_executable": sys.executable,
-            "ui": self._ui_state(),
+            "ui": self._ui_state(include_windows=detail == "full"),
             "shutdown": self._shutdown_status(),
             "dialog_action": self._dialog_action_status(),
         }
         contexts = getattr(self, "contexts", None)
         if contexts is not None:
             result["contexts"] = contexts.capabilities()
-        de = self.namespace.get("de")
+        de = getattr(self, "namespace", {}).get("de")
         if de is not None:
             for name in ("is_pde_app", "running_automation", "workspace_is_open"):
                 try:
@@ -766,7 +980,7 @@ class _Runtime:
             "dialog": snapshot,
         }
 
-    def _ui_state(self) -> dict[str, Any]:
+    def _ui_state(self, include_windows: bool = True) -> dict[str, Any]:
         result = self._modal_state()
         application = QtWidgets.QApplication.instance()
         if application is None:
@@ -781,7 +995,7 @@ class _Runtime:
             try:
                 if widget.isVisible():
                     visible_count += 1
-                    if len(windows) < 20:
+                    if include_windows and len(windows) < 20:
                         windows.append(self._widget_summary(widget))
             except Exception:
                 continue
@@ -789,14 +1003,15 @@ class _Runtime:
             active = application.activeWindow()
         except Exception:
             active = None
-        return {
+        result = {
             **result,
             "application_ready": True,
             "visible_window_count": visible_count,
-            "windows_truncated": visible_count > len(windows),
             "active_window": self._widget_summary(active) if active is not None else None,
-            "windows": windows,
         }
+        if include_windows:
+            result.update({"windows_truncated": visible_count > len(windows), "windows": windows})
+        return result
 
     @staticmethod
     def _widget_summary(widget: Any) -> dict[str, Any]:
@@ -816,6 +1031,13 @@ def _required_text(payload: dict[str, Any], name: str) -> str:
     if not isinstance(value, str) or not value:
         raise ValueError(f"{name} must be a non-empty string")
     return value
+
+
+def _bounded_text(value: Any, limit: int) -> str:
+    try:
+        return str(value or "")[:limit]
+    except Exception:
+        return ""
 
 
 def _same_path(left: str | Path | None, right: str | Path | None) -> bool:

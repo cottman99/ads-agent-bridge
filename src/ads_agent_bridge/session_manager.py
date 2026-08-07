@@ -255,7 +255,7 @@ def _managed_process_snapshot(record: dict[str, Any]) -> dict[str, Any]:
     """Refresh a managed Linux launch from the nonce-bearing ADS processes."""
     managed_session_id = str(record.get("managed_session_id") or "")
     slot = normalize_slot(str(record.get("slot") or ""))
-    processes = managed_ads_processes(managed_session_id, slot)
+    processes = managed_ads_processes(managed_session_id, slot, record.get("launcher_pid"))
     if not processes:
         return record
     refreshed = dict(record)
@@ -267,7 +267,7 @@ def _managed_process_snapshot(record: dict[str, Any]) -> dict[str, Any]:
 def _host_ui_wait_contract(managed: dict[str, Any]) -> dict[str, Any]:
     managed_session_id = str(managed.get("managed_session_id") or "")
     slot = normalize_slot(str(managed.get("slot") or ""))
-    candidate_processes = managed_host_processes(managed_session_id, slot)
+    candidate_processes = managed_host_processes(managed_session_id, slot, managed.get("launcher_pid"))
     if not candidate_processes:
         candidate_processes = managed.get("managed_processes", [])
     return {
@@ -275,10 +275,15 @@ def _host_ui_wait_contract(managed: dict[str, Any]) -> dict[str, Any]:
         "phase": "pre-bridge",
         "reason": "managed-ads-process-alive-but-embedded-bridge-unreachable",
         "display": managed.get("display"),
+        "xauthority": managed.get("xauthority"),
         "workspace": managed.get("workspace"),
         "managed_processes": managed.get("managed_processes", []),
         "candidate_processes": candidate_processes,
         "observation": "Inspect only windows owned by the listed candidate processes.",
+        "commands": {
+            "snapshot": f"ads-agent host-ui snapshot --slot {slot} --image-out <new-path.png>",
+            "action": f"ads-agent host-ui action --slot {slot} --window-id <id> --fingerprint <sha256> ...",
+        },
         "action_policy": (
             "A host Agent may inspect accessibility or a target-window image, but must not guess a "
             "license choice, click an unverified window, or relaunch the same slot."
@@ -407,6 +412,11 @@ def _launch_environment(instance: AdsInstance, slot: str, managed_session_id: st
     )
     if display:
         environment["DISPLAY"] = display
+    if os.name != "nt":
+        # Qt documents this as the supported override for AT-SPI. Some vendor
+        # builds omit the accessibility backend, so the host snapshot lane
+        # remains available as a verified fallback.
+        environment.setdefault("QT_LINUX_ACCESSIBILITY_ALWAYS_ON", "1")
     return environment
 
 
@@ -559,6 +569,7 @@ def _launch_locked(
         "workspace": str(workspace),
         "working_directory": str(workspace),
         "display": selected_display,
+        "xauthority": environment.get("XAUTHORITY") if os.name != "nt" else None,
         "log_path": str(log_path),
         "command": command,
         "ownership": "agent-owned",
@@ -599,6 +610,7 @@ def _launch_locked(
         "executable": str(executable),
         "workspace": str(workspace),
         "display": selected_display,
+        "xauthority": environment.get("XAUTHORITY") if os.name != "nt" else None,
         "log_path": str(log_path),
         "launcher_pid": process.pid,
         "ads_pid": None,

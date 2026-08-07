@@ -415,6 +415,17 @@ class ContextRegistry:
         with self._lock:
             return [copy.deepcopy(record["envelope"]) for record in reversed(self._records.values())]
 
+    def summary(self):
+        """Return bounded registry state without copying every stored context."""
+
+        with self._lock:
+            latest = next(reversed(self._records.values()), None) if self._records else None
+            return {
+                "count": len(self._records),
+                "max_contexts": self.limit,
+                "latest": copy.deepcopy(latest["envelope"]) if latest is not None else None,
+            }
+
     def get(self, value):
         context_id = self._validated_context_id(value)
         with self._lock:

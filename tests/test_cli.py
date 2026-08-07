@@ -60,6 +60,56 @@ def test_session_lifecycle_commands_are_public_cli_entrypoints(tmp_path: Path) -
     assert shutdown.slot == "test"
 
 
+def test_host_ui_commands_are_public_agent_entrypoints(tmp_path: Path, monkeypatch) -> None:
+    parser = build_parser()
+    image_path = tmp_path / "host-window.png"
+    snapshot = parser.parse_args(
+        ["host-ui", "snapshot", "--slot", "test", "--window-id", "0x2a", "--image-out", str(image_path)]
+    )
+    action = parser.parse_args(
+        [
+            "host-ui",
+            "action",
+            "--slot",
+            "test",
+            "--window-id",
+            "0x2a",
+            "--fingerprint",
+            "f" * 64,
+            "--click",
+            "100",
+            "94",
+            "--risk",
+            "medium",
+            "--authorization",
+            "workflow-policy",
+            "--reason",
+            "Select the explicit workflow product",
+        ]
+    )
+    calls = []
+    monkeypatch.setattr(
+        "ads_agent_bridge.cli.host_ui_snapshot",
+        lambda slot, **kwargs: calls.append(("snapshot", slot, kwargs)) or {"status": "ready"},
+    )
+    monkeypatch.setattr(
+        "ads_agent_bridge.cli.host_ui_action",
+        lambda slot, **kwargs: calls.append(("action", slot, kwargs)) or {"status": "accepted"},
+    )
+
+    assert run(snapshot)[1] == 0
+    assert run(action)[1] == 0
+    assert calls[0] == (
+        "snapshot",
+        "test",
+        {"window_id": "0x2a", "image_out": image_path.resolve()},
+    )
+    assert calls[1][0:2] == ("action", "test")
+    assert calls[1][2]["operation"] == "click"
+    assert calls[1][2]["x"] == 100
+    assert calls[1][2]["authorization"] == "workflow-policy"
+
+
 def test_dialog_commands_are_public_agent_entrypoints(tmp_path: Path, monkeypatch) -> None:
     parser = build_parser()
     image_path = tmp_path / "dialog.png"
@@ -160,3 +210,37 @@ def test_context_commands_are_safe_bridge_entrypoints(monkeypatch) -> None:
     assert calls[0] == ("context_list", {}, "candidate", "dds")
     assert calls[1][0] == "context_get"
     assert calls[1][1]["context"].startswith("ADS_CONTEXT:v1:")
+
+
+def test_runtime_snapshot_cli_forwards_compact_revision_request(monkeypatch) -> None:
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "bridge",
+            "runtime-snapshot",
+            "--slot",
+            "candidate",
+            "--profile",
+            "de",
+            "--since-revision",
+            "rev-7",
+        ]
+    )
+    calls = []
+
+    def fake_request(command, payload, slot, profile):
+        calls.append((command, payload, slot, profile))
+        return {"ok": True, "result": {"changed": False}}
+
+    monkeypatch.setattr("ads_agent_bridge.cli.request", fake_request)
+    _, code = run(args)
+
+    assert code == 0
+    assert calls == [
+        (
+            "runtime_snapshot",
+            {"detail": "compact", "since_revision": "rev-7"},
+            "candidate",
+            "de",
+        )
+    ]
