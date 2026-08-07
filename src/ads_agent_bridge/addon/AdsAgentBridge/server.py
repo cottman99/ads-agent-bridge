@@ -21,6 +21,11 @@ from pathlib import Path
 from typing import Any, Callable
 
 try:
+    from .context import ContextRegistry
+except ImportError:
+    from context import ContextRegistry
+
+try:
     from PySide6 import QtCore, QtWidgets
 except ImportError:
     try:
@@ -68,17 +73,17 @@ def _session_path(slot: str, profile: str) -> Path:
     return _state_root() / "runtime" / f"session-{slot}-{profile}.json"
 
 
-def _jsonable(value: Any, depth: int = 0) -> Any:
+def _jsonable(value: Any, depth: int = 0, max_depth: int = 3) -> Any:
     if value is None or isinstance(value, (bool, int, float, str)):
         return value
     if isinstance(value, Path):
         return str(value)
-    if depth >= 3:
+    if depth >= max_depth:
         return {"type": type(value).__name__, "repr": _safe_repr(value)}
     if isinstance(value, dict):
-        return {str(key): _jsonable(item, depth + 1) for key, item in value.items()}
+        return {str(key): _jsonable(item, depth + 1, max_depth) for key, item in value.items()}
     if isinstance(value, (list, tuple, set)):
-        return [_jsonable(item, depth + 1) for item in value]
+        return [_jsonable(item, depth + 1, max_depth) for item in value]
     return {"type": type(value).__name__, "module": type(value).__module__, "repr": _safe_repr(value)}
 
 
@@ -142,6 +147,7 @@ class _Runtime:
     def __init__(self, profile: str, slot: str) -> None:
         self.profile = profile
         self.slot = slot
+        self.contexts = ContextRegistry(profile, slot=slot)
         self._shutdown_state: dict[str, Any] = {"state": "idle"}
         self._dialog_action_state: dict[str, Any] = {"state": "idle"}
         self.namespace: dict[str, Any] = {"__builtins__": __builtins__, "Path": Path}
@@ -175,7 +181,14 @@ class _Runtime:
         try:
             with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
                 result = self._dispatch(command, args)
-            return {"ok": True, "result": _jsonable(result), "stdout": out.getvalue(), "stderr": err.getvalue(), "error": None}
+            max_depth = 8 if command.startswith("context_") else 3
+            return {
+                "ok": True,
+                "result": _jsonable(result, max_depth=max_depth),
+                "stdout": out.getvalue(),
+                "stderr": err.getvalue(),
+                "error": None,
+            }
         except Exception as exc:
             return {"ok": False, "result": None, "stdout": out.getvalue(), "stderr": err.getvalue(), "error": str(exc), "traceback": traceback.format_exc()}
 
@@ -184,7 +197,17 @@ class _Runtime:
             return {"status": "ok", "profile": self.profile, "slot": self.slot, "pid": os.getpid()}
         if command == "capabilities":
             return {
-                "safe_commands": ["ping", "status", "capabilities", "dialog_snapshot"],
+                "safe_commands": [
+                    "ping",
+                    "status",
+                    "capabilities",
+                    "dialog_snapshot",
+                    "context_capabilities",
+                    "context_list",
+                    "context_get",
+                    "context_refresh",
+                    "context_drop",
+                ],
                 "bounded_commands": [
                     "dds_readback",
                     "ael_workspace_path",
@@ -199,6 +222,17 @@ class _Runtime:
             }
         if command == "status":
             return self._status()
+        if command == "context_capabilities":
+            return self.contexts.capabilities()
+        if command == "context_list":
+            return self.contexts.list()
+        if command == "context_get":
+            return self.contexts.get(_required_text(args, "context"))
+        if command == "context_refresh":
+            return self.contexts.refresh(_required_text(args, "context"))
+        if command == "context_drop":
+            context = _required_text(args, "context")
+            return {"context": context, "dropped": self.contexts.drop(context)}
         if command == "dialog_snapshot":
             return self._dialog_snapshot(bool(args.get("include_image")))
         if command == "dialog_action":
@@ -703,6 +737,9 @@ class _Runtime:
             "shutdown": self._shutdown_status(),
             "dialog_action": self._dialog_action_status(),
         }
+        contexts = getattr(self, "contexts", None)
+        if contexts is not None:
+            result["contexts"] = contexts.capabilities()
         de = self.namespace.get("de")
         if de is not None:
             for name in ("is_pde_app", "running_automation", "workspace_is_open"):
@@ -805,6 +842,10 @@ class BridgeServer:
         self._port: int | None = None
         self._started_at: str | None = None
 
+    @property
+    def contexts(self) -> ContextRegistry:
+        return self._runtime.contexts
+
     def start(self) -> None:
         self._dispatcher.start()
         self._socket, self._port = self._bind()
@@ -816,6 +857,7 @@ class BridgeServer:
 
     def stop(self) -> None:
         self._stop.set()
+        self._runtime.contexts.stop()
         self._dispatcher.stop()
         sock, self._socket = self._socket, None
         if sock is not None:

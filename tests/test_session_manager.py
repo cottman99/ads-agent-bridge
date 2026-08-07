@@ -98,6 +98,7 @@ def test_launch_records_nonce_bound_ownership_only_after_verification(tmp_path: 
     assert payload["ownership"] == "agent-owned"
     assert calls["kwargs"]["cwd"] == str(workspace.resolve())
     assert calls["kwargs"]["env"]["ADS_AGENT_MANAGED_SESSION_ID"] == "owned-nonce"
+    assert calls["kwargs"]["env"]["ADS_AGENT_INSTANCE_ID"] == instance.instance_id
     assert calls["kwargs"]["env"]["DISPLAY"] == ":4"
     assert calls["kwargs"]["stdin"] == session_manager.subprocess.DEVNULL
     assert calls["kwargs"]["stderr"] == session_manager.subprocess.STDOUT

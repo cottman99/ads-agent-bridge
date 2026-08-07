@@ -42,20 +42,30 @@ def test_addon_install_replaces_own_registration_and_creates_backup(tmp_path: Pa
     assert len(ET.parse(config / "dds_addons.xml").getroot().findall("Addon")) == 1
 
 
-def test_addon_entrypoint_executes_without_dunder_file(tmp_path: Path, monkeypatch) -> None:
+def test_profile_entrypoints_execute_without_dunder_file_and_dds_has_no_de_hook(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("ADS_AGENT_HOME", str(tmp_path / "state"))
-    installed = install_addon(tmp_path / "config", ("de",))
-    entrypoint = Path(installed["entrypoint"])
-    fake_server = types.ModuleType("server")
-    fake_server.BridgeServer = object
-    fake_server.detect_profile = lambda addon: "de"
-    monkeypatch.setitem(sys.modules, "server", fake_server)
-    namespace = {"__name__": "AdsAgentBridge_exec_test"}
+    config = tmp_path / "config"
+    installed = install_addon(config, ("de", "dds"))
+    fake_common = types.ModuleType("entrypoint_common")
+    fake_common.setup_profile = lambda profile, addon: (profile, addon)
+    fake_common.shutdown_profile = lambda addon: addon
+    fake_common.generate_de_menu = lambda addon, win_def: (addon, win_def)
+    monkeypatch.setitem(sys.modules, "entrypoint_common", fake_common)
 
-    exec(compile(entrypoint.read_text(encoding="utf-8"), str(entrypoint), "exec"), namespace)
+    namespaces = {}
+    for profile, filename in installed["entrypoints"].items():
+        entrypoint = Path(filename)
+        namespace = {"__name__": "AdsAgentBridge_{0}_exec_test".format(profile)}
+        exec(compile(entrypoint.read_text(encoding="utf-8"), str(entrypoint), "exec"), namespace)
+        namespaces[profile] = namespace
 
-    assert callable(namespace["setup_addon"])
-    assert "__file__" not in namespace
+    assert callable(namespaces["de"]["setup_addon"])
+    assert callable(namespaces["de"]["generate_menu"])
+    assert callable(namespaces["dds"]["setup_addon"])
+    assert "generate_menu" not in namespaces["dds"]
+    assert "__file__" not in namespaces["de"]
+    assert Path(ET.parse(config / "eesof_addons.xml").getroot().find("Addon").get("FilePath")).name == "de_entrypoint.py"
+    assert Path(ET.parse(config / "dds_addons.xml").getroot().find("Addon").get("FilePath")).name == "dds_entrypoint.py"
 
 
 def test_windows_default_config_prefers_ads_registry_home(tmp_path: Path, monkeypatch) -> None:

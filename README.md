@@ -29,11 +29,11 @@ not modify an externally managed system Python:
 
 ```console
 # Linux
-curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a23/install.sh
+curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a24/install.sh
 sh install.sh
 
 # Windows PowerShell
-Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a23/install.ps1 -OutFile install.ps1
+Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a24/install.ps1 -OutFile install.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
@@ -228,6 +228,8 @@ ads-agent examples run NAME [--ads INSTANCE_ID] [--slot SLOT]
 ads-agent skill status|install|uninstall docs
 ads-agent addon status
 ads-agent bridge sessions
+ads-agent bridge context-list --slot SLOT --profile de
+ads-agent bridge context-get CONTEXT_OR_HANDLE --slot SLOT --profile de
 ```
 
 Documentation queries stay on the local machine:
@@ -255,6 +257,12 @@ preview target; ADS 2023 Update 2 through ADS 2024 Update 1 are experimental.
 Runtime capability probes, rather than version numbers alone, decide which
 features are actually available.
 
+The installed DE and DDS add-ons also expose **Copy ADS Context** in supported
+design, workspace-tree, and DDS menus. The copied handle is a bounded reference
+to the user's exact target or selection; it does not authorize an edit or
+simulation. See the [context interaction contract](docs/CONTEXT_INTERACTION.md)
+for lifecycle, freshness, and DE/DDS boundaries.
+
 ## Remove the integration
 
 ```console
@@ -269,4 +277,6 @@ backups before changing an existing configuration.
 See [CONTRIBUTING.md](CONTRIBUTING.md) and the evidence-backed
 [v0.1 validation record](docs/VALIDATION_2026-08-05.md). The ADS Session Manager
 introduced in `0.1.0a22` has a separate
-[live validation record](docs/VALIDATION_2026-08-06_SESSION_MANAGER.md).
+[live validation record](docs/VALIDATION_2026-08-06_SESSION_MANAGER.md). The
+DE/DDS context interaction introduced in `0.1.0a24` has its own
+[cross-platform live validation record](docs/VALIDATION_2026-08-06_CONTEXT_INTERACTION.md).

@@ -397,6 +397,7 @@ def _launch_environment(instance: AdsInstance, slot: str, managed_session_id: st
     environment.update(
         {
             "HPEESOF_DIR": instance.install_root,
+            "ADS_AGENT_INSTANCE_ID": instance.instance_id,
             "ADS_AGENT_SLOT": slot,
             "ADS_DEBUG_BRIDGE_SLOT": slot,
             "DE_DEBUG_BRIDGE_SLOT": slot,
