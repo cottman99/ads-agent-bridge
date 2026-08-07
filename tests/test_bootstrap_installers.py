@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 
@@ -35,9 +36,13 @@ def test_windows_installer_discovers_supported_python_and_bootstraps_pipx() -> N
 def test_publish_workflow_and_readme_expose_versioned_bootstrap_installers() -> None:
     workflow = (ROOT / ".github" / "workflows" / "publish.yml").read_text(encoding="utf-8")
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    match = re.search(r'^version = "([^"]+)"$', pyproject, flags=re.MULTILINE)
+    assert match is not None
+    tag = "v" + match.group(1)
 
-    assert "default: v0.1.0a23" in workflow
+    assert "default: " + tag in workflow
     assert "cp install.sh install.ps1 dist/" in workflow
     assert "sha256sum *.whl *.tar.gz install.sh install.ps1" in workflow
-    assert "releases/download/v0.1.0a23/install.sh" in readme
-    assert "releases/download/v0.1.0a23/install.ps1" in readme
+    assert "releases/download/{0}/install.sh".format(tag) in readme
+    assert "releases/download/{0}/install.ps1".format(tag) in readme

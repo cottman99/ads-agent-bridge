@@ -15,6 +15,7 @@ from .paths import data_dir
 
 ADDON_NAME = "AdsAgentBridge"
 CONFIG_FILES = {"de": "eesof_addons.xml", "dds": "dds_addons.xml"}
+ENTRYPOINT_FILES = {"de": "de_entrypoint.py", "dds": "dds_entrypoint.py"}
 
 
 def default_ads_config_dir() -> Path:
@@ -87,11 +88,19 @@ def install_addon(config_directory: Path | None = None, profiles: tuple[str, ...
             with item.open("rb") as input_stream, target.open("wb") as output_stream:
                 shutil.copyfileobj(input_stream, output_stream)
             copied.append(str(target))
-    entrypoint = (addon_dir / "__init__.py").resolve()
+    entrypoints = {profile: (addon_dir / ENTRYPOINT_FILES[profile]).resolve() for profile in profiles}
     config_dir = (config_directory or default_ads_config_dir()).expanduser().resolve()
     config_dir.mkdir(parents=True, exist_ok=True)
-    records = [_upsert(config_dir / CONFIG_FILES[profile], entrypoint) for profile in profiles]
-    return {"status": "installed", "addon": ADDON_NAME, "entrypoint": str(entrypoint), "copied": copied, "registrations": records}
+    records = [_upsert(config_dir / CONFIG_FILES[profile], entrypoints[profile]) for profile in profiles]
+    compatibility_entrypoint = entrypoints[profiles[0]] if profiles else (addon_dir / "de_entrypoint.py").resolve()
+    return {
+        "status": "installed",
+        "addon": ADDON_NAME,
+        "entrypoint": str(compatibility_entrypoint),
+        "entrypoints": {profile: str(path) for profile, path in entrypoints.items()},
+        "copied": copied,
+        "registrations": records,
+    }
 
 
 def addon_status(config_directory: Path | None = None) -> dict[str, Any]:

@@ -86,6 +86,8 @@ addons, AEL interoperability, headless automation, or EM routes are available.
 - recoverable, conflict-safe Docs Skill installation;
 - recoverable addon install, upgrade, and uninstall;
 - localhost token-authenticated live bridge;
+- profile-specific DE/DDS context menus with bounded, copyable context handles,
+  explicit freshness, symmetric callback shutdown, and no implicit mutation;
 - cross-platform workspace-bound ADS session launch, ownership, status,
   recoverable startup, per-slot mutation locking, disconnect, UI-blockage
   diagnosis, supervised dialog intervention, and native safe-exit gates;

@@ -8,3 +8,5 @@ build/
 .coverage
 .codex_tmp/
 .ads-agent/
+de_sim.cfg
+hpeesofsim.cfg

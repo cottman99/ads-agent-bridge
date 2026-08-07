@@ -70,6 +70,61 @@ def make_workspace(tmp_path: Path, name: str) -> Path:
     return workspace
 
 
+def test_context_registry_commands_are_safe_and_handle_addressable(monkeypatch) -> None:
+    server = load_server(monkeypatch)
+    runtime = server._Runtime.__new__(server._Runtime)
+    runtime.profile = "de"
+    runtime.slot = "unit"
+    runtime.contexts = server.ContextRegistry("de", slot="unit")
+    captured = runtime.contexts.capture_design(
+        types.SimpleNamespace(
+            lib_name="demo_lib",
+            cell_name="amp",
+            view_name="schematic",
+            selected_objects=[],
+        )
+    )
+
+    capabilities = runtime._dispatch("capabilities", {})
+    fetched = runtime._dispatch("context_get", {"context": captured["context_ref"]["text"]})
+    serialized = runtime.execute("context_get", {"context": captured["context_id"]})
+    dropped = runtime._dispatch("context_drop", {"context": captured["context_id"]})
+
+    assert "context_get" in capabilities["safe_commands"]
+    assert fetched["context_id"] == captured["context_id"]
+    assert serialized["result"]["target"]["identity"] == {
+        "library": "demo_lib",
+        "cell": "amp",
+        "view": "schematic",
+    }
+    assert serialized["result"]["selection"]["items"] == []
+    assert dropped["dropped"] is True
+
+
+def test_context_command_rejects_handle_from_another_session(monkeypatch) -> None:
+    server = load_server(monkeypatch)
+    runtime = server._Runtime.__new__(server._Runtime)
+    runtime.profile = "de"
+    runtime.slot = "unit"
+    runtime.contexts = server.ContextRegistry("de", slot="unit")
+    captured = runtime.contexts.capture_design(
+        types.SimpleNamespace(
+            lib_name="demo_lib",
+            cell_name="amp",
+            view_name="schematic",
+            selected_objects=[],
+        )
+    )
+    wrong_handle = captured["context_ref"]["text"].replace(
+        "ADS_CONTEXT:v1:unit:de:", "ADS_CONTEXT:v1:other:de:"
+    )
+
+    rejected = runtime.execute("context_get", {"context": wrong_handle})
+
+    assert rejected["ok"] is False
+    assert "slot mismatch" in rejected["error"]
+
+
 def test_bounded_open_workspace_never_switches_an_existing_workspace(tmp_path: Path, monkeypatch) -> None:
     server = load_server(monkeypatch)
     current = make_workspace(tmp_path, "Current_wrk")

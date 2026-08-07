@@ -138,3 +138,25 @@ def test_dialog_image_write_is_exclusive_at_actuation_time(tmp_path: Path) -> No
         raise AssertionError("dialog image storage must not overwrite a concurrently created file")
 
     assert image_path.read_bytes() == b"created-by-another-client"
+
+
+def test_context_commands_are_safe_bridge_entrypoints(monkeypatch) -> None:
+    parser = build_parser()
+    listed = parser.parse_args(["bridge", "context-list", "--slot", "candidate", "--profile", "dds"])
+    fetched = parser.parse_args(
+        ["bridge", "context-get", "ADS_CONTEXT:v1:candidate:dds:ctx-0001:report", "--slot", "candidate"]
+    )
+    calls = []
+
+    def fake_request(command, args, slot, profile):
+        calls.append((command, args, slot, profile))
+        return {"ok": True, "result": []}
+
+    monkeypatch.setattr("ads_agent_bridge.cli.request", fake_request)
+    _, list_code = run(listed)
+    _, get_code = run(fetched)
+
+    assert list_code == get_code == 0
+    assert calls[0] == ("context_list", {}, "candidate", "dds")
+    assert calls[1][0] == "context_get"
+    assert calls[1][1]["context"].startswith("ADS_CONTEXT:v1:")

@@ -2,6 +2,24 @@
 
 All notable public changes are documented here.
 
+## 0.1.0a24 - 2026-08-07
+
+- Add bounded `ADS_CONTEXT:v1` handles for exact DE design-window,
+  Folder/Library tree, and live DDS window targets and selections.
+- Validate each handle's encoded slot and profile before resolving its
+  process-local id, and bound generic selection traversal as well as output.
+- Keep live-object ownership inside a 64-entry process-local registry while
+  exposing only bounded, token-free envelopes with freshness generations and
+  explicit authorization requirements.
+- Add safe bridge and CLI operations to list, inspect, refresh, and drop
+  contexts without silently opening or mutating an ADS object.
+- Split DE and DDS add-on entrypoints so DDS never exports the DE
+  `generate_menu` hook, and unregister every callback through its documented
+  profile-specific lifecycle.
+- Add non-modal **Copy ADS Context** actions to supported right-click menus,
+  DE's **Tools > ADS Context** menu, and a DDS-owned top-level menu, including
+  empty-selection DDS pages and multi-item workspace context sets.
+
 ## 0.1.0a23 - 2026-08-06
 
 - Adopt Linux `hpeesofde` and `hpeesofemx` processes only when both the exact

@@ -182,6 +182,15 @@ def build_parser() -> argparse.ArgumentParser:
         item = bridge_commands.add_parser(name)
         item.add_argument("--profile", choices=("de", "dds"), default="de")
         item.add_argument("--slot")
+    for name in ("context-capabilities", "context-list"):
+        item = bridge_commands.add_parser(name)
+        item.add_argument("--profile", choices=("de", "dds"), default="de")
+        item.add_argument("--slot")
+    for name in ("context-get", "context-refresh", "context-drop"):
+        item = bridge_commands.add_parser(name)
+        item.add_argument("context", help="Context id or ADS_CONTEXT handle.")
+        item.add_argument("--profile", choices=("de", "dds"), default="de")
+        item.add_argument("--slot")
     bridge_dialog_snapshot = bridge_commands.add_parser(
         "dialog-snapshot", help="Inspect the active modal dialog through Qt semantics."
     )
@@ -338,6 +347,14 @@ def run(args: argparse.Namespace) -> tuple[Any, int]:
             return {"sessions": list_sessions(args.profile)}, 0
         if args.bridge_command in {"ping", "status", "capabilities"}:
             response = request(args.bridge_command, {}, args.slot, args.profile)
+            return response, 0 if response.get("ok") else 2
+        if args.bridge_command in {"context-capabilities", "context-list"}:
+            command = args.bridge_command.replace("-", "_")
+            response = request(command, {}, args.slot, args.profile)
+            return response, 0 if response.get("ok") else 2
+        if args.bridge_command in {"context-get", "context-refresh", "context-drop"}:
+            command = args.bridge_command.replace("-", "_")
+            response = request(command, {"context": args.context}, args.slot, args.profile)
             return response, 0 if response.get("ok") else 2
         if args.bridge_command == "dialog-snapshot":
             image_path = _dialog_image_path(args.image_out)
