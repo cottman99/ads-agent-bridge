@@ -15,13 +15,14 @@ Use the strongest available observation channel in this order:
    incomplete;
 4. user intervention only when identity, intent, or effect remains uncertain.
 
-The bridge commands in this release implement the first channel and targeted
-Qt image capture. A capable client Agent supplies the host accessibility and
-desktop-vision channel. This host channel is required for license, crash, or
-first-run dialogs that appear before the embedded bridge starts. The live gate
-exercised the connected Qt route on Windows and Linux and a separate-process
-ADS product-selection route on Linux; unit tests alone are not accepted as
-proof of this coverage.
+The connected bridge commands implement the first channel and targeted Qt
+image capture. The Session Manager also implements a bounded host-image/action
+channel for license, crash, or first-run dialogs that appear before the
+embedded bridge starts. A capable client Agent supplies vision and semantic
+judgment; operating-system accessibility remains the preferred extra source
+when the vendor Qt build exposes it. The live gate exercised the connected Qt
+route and the separate-process ADS product-selection route on both Windows and
+Linux; unit tests alone are not accepted as proof of this coverage.
 
 When a nonce-bound Linux ADS process outlives the short `ads` wrapper but no
 authenticated bridge is reachable, `ads-agent status` reports
@@ -33,6 +34,25 @@ orphan and must not be retried as a second launch. The host Agent may inspect
 accessibility or a target-window image, but a license selection remains a
 policy decision: act automatically only when an explicit workflow preference
 identifies the exact product; otherwise request confirmation.
+
+For the targeted host-image lane:
+
+```console
+ads-agent host-ui snapshot --slot SLOT --image-out host-window.png
+ads-agent host-ui action --slot SLOT --window-id WINDOW --fingerprint FINGERPRINT \
+  --click X Y --risk medium --authorization workflow-policy \
+  --reason "Select the explicitly configured product"
+```
+
+The image contains only one nonce-bound candidate window. The click is
+client-relative and is rejected when the session state, candidate PID, window
+identity, geometry, coordinate space, fingerprint, visibility, bounds, risk,
+or authorization no longer matches. On Windows the CLI enters a per-monitor
+DPI-aware context before reading geometry, capturing, or posting input, so
+User32, Pillow, and the target share physical client pixels even on a mixed-DPI
+desktop. There are no product-name, title-to-button, row, or absolute-coordinate
+rules in the package. The Agent must take a new snapshot after every meaningful
+UI transition and verify the expected effect.
 
 ## Two independent lanes
 
@@ -102,10 +122,10 @@ and report the exact snapshot and stop reason.
 
 ## Product boundary
 
-The bridge supplies cross-platform in-process observation, targeted image
-capture, actuation-time fingerprint-bound clicking, and independent watching.
-The client Agent supplies host accessibility/desktop control, vision, workflow context,
-semantic judgment, and authorization. This separation allows Codex Computer
-Use or another capable Agent to interpret opaque and pre-bridge dialogs without
-embedding a model, vendor-specific title list, or fragile click script inside
-the package.
+The bridge supplies cross-platform in-process observation, bounded host-window
+inventory, targeted image capture, actuation-time fingerprint-bound clicking,
+native close, and independent watching. The client Agent supplies optional
+host accessibility, vision, workflow context, semantic judgment, and
+authorization. This separation allows Codex Computer Use or another capable
+Agent to interpret opaque and pre-bridge dialogs without embedding a model,
+vendor-specific title list, or fragile click script inside the package.

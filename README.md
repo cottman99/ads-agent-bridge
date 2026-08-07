@@ -29,11 +29,11 @@ not modify an externally managed system Python:
 
 ```console
 # Linux
-curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a24/install.sh
+curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a25/install.sh
 sh install.sh
 
 # Windows PowerShell
-Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a24/install.ps1 -OutFile install.ps1
+Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a25/install.ps1 -OutFile install.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
@@ -144,6 +144,30 @@ reported candidate processes; separate-process UI helpers are observation-only
 and never establish ADS ownership. The Agent must not guess a license choice or
 start the slot again.
 
+Instead, it can request one PID-bound target image and perform one
+fingerprint-bound action:
+
+```console
+ads-agent host-ui snapshot --slot SLOT --image-out product-selection.png
+ads-agent host-ui action --slot SLOT --window-id 0x... --fingerprint SHA256 \
+  --click X Y --risk medium --authorization workflow-policy \
+  --reason "Select the explicitly configured product"
+```
+
+`X,Y` are client-relative coordinates chosen from that fresh target image; the
+package contains no product title, row, or absolute-screen coordinate rules.
+The action re-reads the slot, nonce-bearing candidate PID, window identity,
+geometry, visibility, and fingerprint before touching the window. A changed or
+ambiguous target is rejected. Linux uses X11 and Windows uses the same contract
+through the native window APIs.
+
+ADS owns the remembered product preference. The validated Linux selector wrote
+it to the user's `.eesoflic`, while Windows used its native per-user preference
+store; the bridge neither invents nor hard-codes vendor bundle ids. Once the
+user or workflow explicitly enables the selector's **Always try to start...**
+option, later launches use that ADS-owned preference and normally bypass the
+host-UI gate.
+
 Session commands deliberately separate client and application lifetime:
 
 ```console
@@ -222,12 +246,15 @@ ads-agent launch --workspace PATH [--ads INSTANCE_ID] [--slot SLOT] [--display D
 ads-agent status [--slot SLOT]
 ads-agent disconnect [--slot SLOT]
 ads-agent shutdown [--slot SLOT]
+ads-agent host-ui snapshot --slot SLOT [--window-id ID] [--image-out PATH]
+ads-agent host-ui action --slot SLOT --window-id ID --fingerprint SHA256 (--click X Y|--close) ...
 ads-agent examples list
 ads-agent examples show NAME
 ads-agent examples run NAME [--ads INSTANCE_ID] [--slot SLOT]
 ads-agent skill status|install|uninstall docs
 ads-agent addon status
 ads-agent bridge sessions
+ads-agent bridge runtime-snapshot --slot SLOT --profile de [--detail compact|full]
 ads-agent bridge context-list --slot SLOT --profile de
 ads-agent bridge context-get CONTEXT_OR_HANDLE --slot SLOT --profile de
 ```
@@ -263,6 +290,10 @@ to the user's exact target or selection; it does not authorize an edit or
 simulation. See the [context interaction contract](docs/CONTEXT_INTERACTION.md)
 for lifecycle, freshness, and DE/DDS boundaries.
 
+For Agent preflight, `runtime-snapshot` returns one compact, revision-aware view
+of the selected `slot + profile`, plus dynamic capability states and bounded
+safe next actions. See the [execution context contract](docs/EXECUTION_CONTEXT_CONTRACT.md).
+
 ## Remove the integration
 
 ```console
@@ -280,3 +311,6 @@ introduced in `0.1.0a22` has a separate
 [live validation record](docs/VALIDATION_2026-08-06_SESSION_MANAGER.md). The
 DE/DDS context interaction introduced in `0.1.0a24` has its own
 [cross-platform live validation record](docs/VALIDATION_2026-08-06_CONTEXT_INTERACTION.md).
+The pre-bridge Host UI lane has a separate
+[cross-platform live validation record](docs/VALIDATION_2026-08-07_HOST_UI.md),
+including first-run product-selection gates on Linux and Windows.

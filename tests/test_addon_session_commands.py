@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import sys
 import types
 from pathlib import Path
@@ -226,6 +227,91 @@ def test_status_reports_visible_windows_without_clicking_or_classifying_them(mon
     assert result["ui"]["active_window"]["title"] == "ADS - Demo_wrk"
     assert result["ui"]["windows"][0]["class_name"] == "FakeWidget"
     assert result["shutdown"] == {"state": "idle"}
+
+
+def test_runtime_snapshot_is_compact_and_revision_aware(monkeypatch, tmp_path: Path) -> None:
+    server = load_server(monkeypatch)
+    workspace = make_workspace(tmp_path, "Snapshot_wrk")
+    runtime = server._Runtime.__new__(server._Runtime)
+    runtime.profile = "de"
+    runtime.slot = "snapshot"
+    runtime.namespace = {"de": FakeDe(workspace)}
+    runtime.contexts = server.ContextRegistry("de", slot="snapshot")
+    runtime.contexts.capture_design(
+        types.SimpleNamespace(
+            lib_name="demo_lib",
+            cell_name="amp",
+            view_name="schematic",
+            selected_objects=[],
+        )
+    )
+    runtime.contexts.list = lambda: (_ for _ in ()).throw(
+        AssertionError("compact snapshot must not copy the full context registry")
+    )
+
+    first = runtime._dispatch("runtime_snapshot", {"detail": "compact"})
+    wire_response = runtime.execute("runtime_snapshot", {"detail": "compact"})
+    unchanged = runtime._dispatch(
+        "runtime_snapshot",
+        {"detail": "compact", "since_revision": first["state_revision"]},
+    )
+
+    assert first["schema_version"] == 1
+    assert first["changed"] is True
+    assert first["identity"] == {
+        "slot": "snapshot",
+        "profile": "de",
+        "pid": first["identity"]["pid"],
+        "hpeesof_dir": None,
+        "display": None,
+    }
+    assert first["state"]["workspace"] == {"is_open": True, "path": str(workspace)}
+    assert first["state"]["contexts"]["count"] == 1
+    assert first["state"]["contexts"]["latest"]["target"]["identity"] == {
+        "library": "demo_lib",
+        "cell": "amp",
+        "view": "schematic",
+    }
+    assert "windows" not in first["state"]["ui"]
+    assert len(json.dumps(first, ensure_ascii=False).encode("utf-8")) < 16 * 1024
+    assert first["capability_states"]["runtime_snapshot"]["available"] is True
+    assert wire_response["ok"] is True
+    assert wire_response["result"]["capability_states"]["runtime_snapshot"]["safe_next_actions"] == []
+    assert unchanged == {
+        "schema_version": 1,
+        "captured_at": unchanged["captured_at"],
+        "state_revision": first["state_revision"],
+        "changed": False,
+        "identity": first["identity"],
+    }
+
+
+def test_capability_descriptors_explain_runtime_and_authorization_state(monkeypatch) -> None:
+    server = load_server(monkeypatch)
+    runtime = server._Runtime.__new__(server._Runtime)
+    runtime.profile = "dds"
+    runtime.slot = "dds-unit"
+    runtime.namespace = {"dds": types.SimpleNamespace(get_dds_files=lambda: [])}
+    runtime.contexts = server.ContextRegistry("dds", slot="dds-unit")
+
+    payload = runtime._dispatch("capabilities", {})
+    descriptors = {item["id"]: item for item in payload["descriptors"]}
+
+    assert payload["descriptor_schema_version"] == 1
+    assert "runtime_snapshot" in payload["safe_commands"]
+    assert descriptors["runtime_snapshot"]["state"] == {
+        "declared": True,
+        "compatible": True,
+        "available": True,
+        "healthy": True,
+        "authorized": True,
+        "reason": None,
+        "safe_next_actions": [],
+    }
+    assert descriptors["open_workspace"]["state"]["reason"] == "profile_not_supported"
+    assert descriptors["eval"]["state"]["available"] is False
+    assert descriptors["eval"]["state"]["authorized"] is False
+    assert descriptors["eval"]["state"]["reason"] == "unsafe_opt_in_required"
 
 
 def test_dialog_snapshot_and_action_use_exact_fingerprint_and_button_id(monkeypatch) -> None:

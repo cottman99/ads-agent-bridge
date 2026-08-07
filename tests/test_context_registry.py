@@ -104,6 +104,23 @@ def test_workspace_multi_selection_becomes_context_set():
     assert captured["selection"]["homogeneous"] is False
 
 
+def test_summary_returns_only_latest_context_and_registry_bounds():
+    registry = context.ContextRegistry("de", slot="candidate", limit=4)
+    registry.capture_design(
+        SimpleNamespace(lib_name="lib", cell_name="first", view_name="schematic", selected_objects=[])
+    )
+    latest = registry.capture_design(
+        SimpleNamespace(lib_name="lib", cell_name="second", view_name="layout", selected_objects=[])
+    )
+
+    summary = registry.summary()
+
+    assert summary["count"] == 2
+    assert summary["max_contexts"] == 4
+    assert summary["latest"]["context_id"] == latest["context_id"]
+    assert summary["latest"]["target"]["identity"]["cell"] == "second"
+
+
 def test_dds_empty_selection_is_valid_and_page_change_marks_context_stale():
     registry = context.ContextRegistry("dds", slot="candidate")
     dds_file = SimpleNamespace(data_path="C:/wrk/demo_wrk/data/", name="report", selected_objects=[])

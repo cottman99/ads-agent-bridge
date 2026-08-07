@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/cottman99/ads-agent-bridge/schemas/bridge-runtime-snapshot-v1.schema.json",
+  "title": "Bridge Runtime Snapshot v1",
+  "type": "object",
+  "required": ["schema_version", "captured_at", "state_revision", "changed", "identity"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "captured_at": {"type": "string", "format": "date-time"},
+    "state_revision": {"type": "string", "minLength": 1},
+    "changed": {"type": "boolean"},
+    "detail": {"enum": ["compact", "full"]},
+    "identity": {
+      "type": "object",
+      "required": ["slot", "profile", "pid"],
+      "properties": {
+        "slot": {"type": "string", "minLength": 1},
+        "profile": {"enum": ["de", "dds"]},
+        "pid": {"type": "integer", "minimum": 1},
+        "hpeesof_dir": {"type": ["string", "null"]},
+        "display": {"type": ["string", "null"]}
+      }
+    },
+    "state": {"type": "object"},
+    "capability_states": {
+      "type": "object",
+      "additionalProperties": {"type": "object"}
+    },
+    "recommended_safe_actions": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"changed": {"const": true}}},
+      "then": {
+        "required": ["detail", "state", "capability_states", "recommended_safe_actions"]
+      }
+    }
+  ]
+}
