@@ -72,8 +72,21 @@ if ($Check) {
 }
 
 $pipxPython = $pythonExecutable
-& $pipxPython -m pipx --version *> $null
-if ($LASTEXITCODE -ne 0) {
+$previousErrorActionPreference = $ErrorActionPreference
+$pipxAvailable = $false
+try {
+    # Windows PowerShell can promote native stderr to a terminating error when
+    # ErrorActionPreference is Stop. A missing pipx module is an expected probe
+    # result here, not an installer failure.
+    $ErrorActionPreference = "Continue"
+    & $pipxPython -m pipx --version *> $null
+    $pipxAvailable = $LASTEXITCODE -eq 0
+} catch {
+    $pipxAvailable = $false
+} finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+}
+if (-not $pipxAvailable) {
     $bootstrapDir = if ($env:ADS_AGENT_BRIDGE_BOOTSTRAP_DIR) {
         $env:ADS_AGENT_BRIDGE_BOOTSTRAP_DIR
     } else {
@@ -89,7 +102,9 @@ if ($LASTEXITCODE -ne 0) {
 
 & $pipxPython -m pipx ensurepath
 if ($LASTEXITCODE -ne 0) { throw "pipx could not configure the user PATH." }
-& $pipxPython -m pipx install --force --python $pythonExecutable $Package
+$pipxInstallHelp = (& $pipxPython -m pipx install --help 2>&1 | Out-String)
+$pipxBackendArguments = if ($pipxInstallHelp -match "--backend") { @("--backend", "pip") } else { @() }
+& $pipxPython -m pipx install @pipxBackendArguments --force --python $pythonExecutable $Package
 if ($LASTEXITCODE -ne 0) { throw "Could not install ADS Agent Bridge with pipx." }
 
 $binDir = (& $pipxPython -m pipx environment --value PIPX_BIN_DIR).Trim()

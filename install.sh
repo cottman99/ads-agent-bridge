@@ -85,7 +85,13 @@ if ! "$pipx_python" -m pipx --version >/dev/null 2>&1; then
 fi
 
 "$pipx_python" -m pipx ensurepath
-"$pipx_python" -m pipx install --force --python "$python_executable" "$package"
+pipx_backend_args=
+if "$pipx_python" -m pipx install --help 2>&1 | grep -q -- '--backend'; then
+    pipx_backend_args='--backend pip'
+fi
+# Intentional word splitting: the optional value contains two pipx arguments.
+# shellcheck disable=SC2086
+"$pipx_python" -m pipx install $pipx_backend_args --force --python "$python_executable" "$package"
 
 bin_dir=$("$pipx_python" -m pipx environment --value PIPX_BIN_DIR 2>/dev/null || printf '%s/.local/bin' "$HOME")
 printf '%s\n' 'ADS Agent Bridge installation completed.'

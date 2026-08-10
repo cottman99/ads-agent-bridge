@@ -29,11 +29,11 @@ not modify an externally managed system Python:
 
 ```console
 # Linux
-curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a26/install.sh
+curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a27/install.sh
 sh install.sh
 
 # Windows PowerShell
-Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a26/install.ps1 -OutFile install.ps1
+Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a27/install.ps1 -OutFile install.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
