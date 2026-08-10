@@ -116,29 +116,54 @@ def quickstart(
         if environment.get("LD_LIBRARY_PATH"):
             linux_libraries.append(environment["LD_LIBRARY_PATH"])
         environment["LD_LIBRARY_PATH"] = os.pathsep.join(linux_libraries)
-    completed = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        env=environment,
-        cwd=str(quickstart_root),
-    )
-    simulation: dict[str, object] = {
-        "ok": False,
-        "command": command,
-        "returncode": completed.returncode,
-        "stdout_tail": completed.stdout[-4000:],
-        "stderr_tail": completed.stderr[-4000:],
-    }
-    for line in reversed(completed.stdout.splitlines()):
-        try:
-            candidate = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(candidate, dict) and "ok" in candidate:
-            simulation.update(candidate)
-            break
+    timed_out = False
+    try:
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=environment,
+            cwd=str(quickstart_root),
+        )
+        stdout = completed.stdout or ""
+        stderr = completed.stderr or ""
+        simulation: dict[str, object] = {
+            "ok": False,
+            "command": command,
+            "returncode": completed.returncode,
+            "stdout_tail": stdout[-4000:],
+            "stderr_tail": stderr[-4000:],
+        }
+    except subprocess.TimeoutExpired as exc:
+        timed_out = True
+
+        def _tail(value: str | bytes | None) -> str:
+            if isinstance(value, bytes):
+                value = value.decode("utf-8", errors="replace")
+            return (value or "")[-4000:]
+
+        stdout = _tail(exc.stdout)
+        simulation = {
+            "ok": False,
+            "command": command,
+            "returncode": None,
+            "timed_out": True,
+            "timeout_seconds": timeout,
+            "partial_workspace_path": str(selected_workspace) if selected_workspace.exists() else None,
+            "stdout_tail": stdout,
+            "stderr_tail": _tail(exc.stderr),
+            "error": f"ADS quickstart exceeded the {timeout:g}-second timeout.",
+        }
+    if not timed_out:
+        for line in reversed(stdout.splitlines()):
+            try:
+                candidate = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(candidate, dict) and "ok" in candidate:
+                simulation.update(candidate)
+                break
     documentation_available = docs.get("status") != "not_available"
     addon = addon_status(config_dir)
     addon_installed = any(item["registrations"] for item in addon["profiles"])

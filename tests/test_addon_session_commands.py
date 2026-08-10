@@ -230,6 +230,7 @@ def test_status_reports_visible_windows_without_clicking_or_classifying_them(mon
 
 
 def test_runtime_snapshot_is_compact_and_revision_aware(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.delenv("HPEESOF_DIR", raising=False)
     server = load_server(monkeypatch)
     workspace = make_workspace(tmp_path, "Snapshot_wrk")
     runtime = server._Runtime.__new__(server._Runtime)
