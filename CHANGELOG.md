@@ -2,8 +2,14 @@
 
 All notable public changes are documented here.
 
-## Unreleased
+## 0.1.0a28 - 2026-08-11
 
+- Redesign the public README as a concise bilingual product entry point, add a
+  light editorial hero and generated architecture illustration that distinguishes
+  bidirectional local documentation retrieval, the packaged DE/DDS plug-in,
+  bounded live control, and separate no-GUI automation; document SSH command
+  execution as the current remote path and move the full command surface into a
+  dedicated reference page.
 - Preserve the real Linux ADS user profile during isolated Bridge acceptance,
   document `ADS_AGENT_HOME` as the isolation boundary, and add a non-blocking
   doctor warning when the usual ADS per-user preference file is not visible.

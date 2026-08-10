@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="660" viewBox="0 0 1120 660" role="img" aria-labelledby="title desc">
+  <title id="title">ADS Agent Bridge execution architecture</title>
+  <desc id="desc">An Agent invokes the ads-agent CLI directly or through an optional portable documentation skill. The CLI queries a version-scoped local documentation knowledge base, manages a bounded live ADS DE or DDS process through an authenticated loopback add-on, or launches a separate external ADS Python subprocess for no-GUI simulation and dataset readback.</desc>
+
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#263238" flood-opacity="0.08"/>
+    </filter>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#527f93"/>
+    </marker>
+    <marker id="arrow-violet" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#7d6ca5"/>
+    </marker>
+    <style>
+      .node-title { font: 600 19px Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #24292c; }
+      .node-copy { font: 400 15.5px Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #687074; }
+      .section { font: 650 12.5px Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: 1.5px; fill: #758086; }
+      .edge-label { font: 550 12.8px Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #697277; }
+      .guardrail { font: 500 12.8px Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #5f7069; }
+      .inner-title { font: 600 15.5px Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #24292c; }
+      .inner-copy { font: 400 12.5px Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #687074; }
+      .blue-line { fill: none; stroke: #527f93; stroke-width: 2.3; stroke-linecap: round; stroke-linejoin: round; }
+      .violet-line { fill: none; stroke: #7d6ca5; stroke-width: 2.3; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+
+  <rect width="1120" height="660" fill="#fbfaf7"/>
+
+  <!-- Client -->
+  <g filter="url(#shadow)">
+    <rect x="25" y="265" width="165" height="116" rx="22" fill="#ffffff" stroke="#d8d6d0" stroke-width="1.5"/>
+    <circle cx="57" cy="303" r="12" fill="#7d6ca5" opacity="0.16"/>
+    <circle cx="57" cy="303" r="5" fill="#7d6ca5"/>
+    <text x="80" y="309" class="node-title">AI Agent</text>
+    <text x="51" y="341" class="node-copy">Codex, OpenCode,</text>
+    <text x="51" y="364" class="node-copy">or another tool client</text>
+  </g>
+
+  <!-- Optional knowledge adapter -->
+  <text x="208" y="37" class="section">OPTIONAL AGENT ADAPTER</text>
+  <g filter="url(#shadow)">
+    <rect x="208" y="54" width="235" height="98" rx="21" fill="#f4f1f8" stroke="#b8accd" stroke-width="1.5"/>
+    <text x="234" y="94" class="node-title">Portable Docs Skill</text>
+    <text x="234" y="124" class="node-copy">Lightweight Agent routing</text>
+  </g>
+
+  <!-- CLI router -->
+  <g filter="url(#shadow)">
+    <rect x="265" y="265" width="210" height="116" rx="22" fill="#f3f0f8" stroke="#9d8cbc" stroke-width="1.7"/>
+    <text x="291" y="309" class="node-title">ads-agent CLI</text>
+    <text x="291" y="340" class="node-copy">Selected ADS instance</text>
+    <text x="291" y="363" class="node-copy">and command routing</text>
+  </g>
+
+  <!-- Agent entry paths -->
+  <path d="M190 323 H257" class="blue-line" marker-end="url(#arrow-blue)"/>
+  <text x="194" y="307" class="edge-label">local / SSH</text>
+  <path d="M107 265 C112 166 156 104 200 104" class="violet-line" stroke-dasharray="6 6" marker-end="url(#arrow-violet)"/>
+  <text x="123" y="186" class="edge-label">optional</text>
+  <path d="M326 152 C326 204 348 225 365 257" class="violet-line" marker-end="url(#arrow-violet)"/>
+  <text x="350" y="213" class="edge-label">invokes CLI</text>
+
+  <!-- Local knowledge -->
+  <text x="560" y="37" class="section">LOCAL KNOWLEDGE</text>
+  <g filter="url(#shadow)">
+    <rect x="560" y="54" width="260" height="110" rx="21" fill="#f1f6f3" stroke="#9fb9aa" stroke-width="1.5"/>
+    <text x="586" y="94" class="node-title">Local Docs KB</text>
+    <text x="586" y="124" class="node-copy">Version-scoped fast index</text>
+    <text x="586" y="147" class="node-copy">Optional Markdown build</text>
+  </g>
+  <path d="M435 265 C468 202 510 109 552 109" class="blue-line" marker-start="url(#arrow-blue)" marker-end="url(#arrow-blue)"/>
+  <text x="475" y="188" class="edge-label">query / results</text>
+
+  <!-- Bounded live interaction region -->
+  <rect x="500" y="205" width="590" height="300" rx="30" fill="#f1f6f4"/>
+  <text x="525" y="233" class="section">BOUNDED LIVE INTERACTION</text>
+
+  <g filter="url(#shadow)">
+    <rect x="525" y="265" width="215" height="145" rx="21" fill="#ffffff" stroke="#b6c3bc" stroke-width="1.5"/>
+    <text x="551" y="306" class="node-title">Session Manager</text>
+    <text x="551" y="337" class="node-copy">Instance · workspace</text>
+    <text x="551" y="361" class="node-copy">Display · slot · profile</text>
+    <text x="551" y="385" class="node-copy">Ownership · safe exit</text>
+  </g>
+
+  <!-- Live ADS process contains its embedded add-on -->
+  <g filter="url(#shadow)">
+    <rect x="780" y="250" width="290" height="210" rx="23" fill="#ffffff" stroke="#9eb7c1" stroke-width="1.6"/>
+    <text x="802" y="283" class="node-title">Live ADS DE / DDS process</text>
+
+    <rect x="802" y="302" width="246" height="60" rx="14" fill="#eef5f7" stroke="#b8cbd2"/>
+    <text x="822" y="327" class="inner-title">ADS Agent Bridge plug-in</text>
+    <text x="822" y="349" class="inner-copy">installed in DE / DDS</text>
+
+    <rect x="802" y="393" width="246" height="50" rx="14" fill="#f4f6f2" stroke="#c2ccbf"/>
+    <text x="822" y="414" class="inner-title">Native UI + exact context</text>
+    <text x="822" y="433" class="inner-copy">workspace · DE · DDS · dataset</text>
+
+    <path d="M919 384 V371" class="blue-line" marker-end="url(#arrow-blue)"/>
+    <path d="M931 371 V384" class="blue-line" marker-end="url(#arrow-blue)"/>
+  </g>
+
+  <!-- CLI, process launch, and request/response -->
+  <path d="M475 323 H517" class="violet-line" marker-end="url(#arrow-violet)"/>
+
+  <path d="M740 292 C754 276 763 269 772 269" class="violet-line" marker-end="url(#arrow-violet)"/>
+  <text x="741" y="252" class="edge-label">launch / reuse</text>
+
+  <path d="M740 340 H772" class="blue-line" marker-start="url(#arrow-blue)" marker-end="url(#arrow-blue)"/>
+
+  <!-- Cross-cutting live safety contract, integrated into the lane -->
+  <circle cx="525" cy="476" r="3" fill="#709183"/>
+  <text x="537" y="481" class="guardrail">exact context handles</text>
+  <circle cx="720" cy="476" r="3" fill="#709183"/>
+  <text x="732" y="481" class="guardrail">workspace + ownership gates</text>
+  <circle cx="525" cy="496" r="3" fill="#709183"/>
+  <text x="537" y="501" class="guardrail">fresh dialog fingerprints</text>
+  <circle cx="720" cy="496" r="3" fill="#709183"/>
+  <text x="732" y="501" class="guardrail">evidence before success</text>
+
+  <!-- Independent no-GUI lane -->
+  <text x="525" y="552" class="section">NO-GUI AUTOMATION</text>
+  <g filter="url(#shadow)">
+    <rect x="525" y="568" width="230" height="78" rx="19" fill="#f5f2f8" stroke="#b7acc8" stroke-width="1.5"/>
+    <text x="551" y="600" class="node-title">External ADS Python</text>
+    <text x="551" y="626" class="node-copy">separate no-GUI process</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="810" y="568" width="250" height="78" rx="19" fill="#f2f6f3" stroke="#afc2b5" stroke-width="1.5"/>
+    <text x="836" y="600" class="node-title">Disposable workspace</text>
+    <text x="836" y="626" class="node-copy">netlist → simulator → dataset</text>
+  </g>
+
+  <path d="M385 381 C402 493 450 607 517 607" class="violet-line" marker-end="url(#arrow-violet)"/>
+  <text x="410" y="526" class="edge-label">quickstart</text>
+  <path d="M755 607 H802" class="blue-line" marker-end="url(#arrow-blue)"/>
+</svg>
