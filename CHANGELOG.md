@@ -2,6 +2,20 @@
 
 All notable public changes are documented here.
 
+## 0.1.0a27 - 2026-08-10
+
+- Fix the Windows bootstrap installer when the selected Python does not already
+  provide pipx: treat the failed module probe as the expected signal to create
+  the isolated pipx bootstrap environment instead of terminating under
+  PowerShell's strict error policy.
+- Prefer pipx's explicit `pip` backend when supported on Windows and Linux so an
+  unrelated, incompatible `uv` executable on the user's PATH cannot break the
+  one-package installation path; retain compatibility with older pipx versions
+  that do not expose backend selection.
+- Add a Windows integration gate that starts from a clean Python environment
+  without pipx, installs the local package through the public installer, and
+  verifies the resulting `ads-agent` CLI.
+
 ## 0.1.0a26 - 2026-08-10
 
 - Reduce private documentation token cost by extracting the maintained page
