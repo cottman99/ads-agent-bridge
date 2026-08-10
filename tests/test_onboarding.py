@@ -56,6 +56,48 @@ def test_quickstart_runs_ads_python_and_requires_dataset_readback(tmp_path: Path
     assert payload["simulation"]["rows"] == 31
 
 
+def test_quickstart_returns_structured_failure_on_timeout(tmp_path: Path, monkeypatch) -> None:
+    selected = instance(tmp_path)
+    monkeypatch.setenv("ADS_AGENT_HOME", str(tmp_path / "state"))
+    monkeypatch.setattr(onboarding, "select_instance", lambda _: selected)
+    monkeypatch.setattr(onboarding, "ensure_fast_index", lambda _: {"status": "ready"})
+    monkeypatch.setattr(onboarding, "query", lambda *_args, **_kwargs: {"results": [{"title": "Python"}]})
+    monkeypatch.setattr(
+        onboarding,
+        "addon_status",
+        lambda _config=None: {"profiles": [{"registrations": [{"Name": "AdsAgentBridge"}]}]},
+    )
+
+    def timeout(command, **_kwargs):
+        Path(command[-1]).mkdir()
+        late_success = json.dumps({"ok": True, "workspace": command[-1], "rows": 31})
+        raise subprocess.TimeoutExpired(
+            command,
+            12.5,
+            output="partial ADS output\n" + late_success,
+            stderr=b"partial error",
+        )
+
+    monkeypatch.setattr(onboarding.subprocess, "run", timeout)
+
+    payload, code = onboarding.quickstart(
+        workspace=tmp_path / "timed-out-quickstart",
+        timeout=12.5,
+        config_dir=tmp_path / "config",
+    )
+
+    assert code == 2
+    assert payload["status"] == "failed"
+    assert payload["simulation"]["timed_out"] is True
+    assert payload["simulation"]["timeout_seconds"] == 12.5
+    assert payload["simulation"]["stdout_tail"].startswith("partial ADS output")
+    assert payload["simulation"]["stderr_tail"] == "partial error"
+    assert payload["simulation"]["partial_workspace_path"].endswith("timed-out-quickstart")
+    assert "workspace" not in payload["simulation"]
+    assert payload["gates"]["workspace_creation"] == "failed"
+    assert payload["gates"]["circuit_simulation"] == "failed"
+
+
 def test_quickstart_refuses_existing_workspace(tmp_path: Path, monkeypatch) -> None:
     selected = instance(tmp_path)
     monkeypatch.setattr(onboarding, "select_instance", lambda _: selected)

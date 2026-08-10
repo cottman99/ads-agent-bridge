@@ -22,11 +22,13 @@ from .paths import docs_cache
 from .processes import pid_running
 
 
-INDEX_SCHEMA_VERSION = 2
+INDEX_SCHEMA_VERSION = 3
 BATCH_SIZE = 100
 SOURCE_FALLBACK_MAX_FILES = 200
 SOURCE_FALLBACK_MAX_BYTES = 64 * 1024
 SOURCE_FALLBACK_MAX_SECONDS = 1.0
+MAIN_CONTENT_SELECTORS = ("#ks-content", "#mc-main-content", "main", '[role="main"]', "article")
+DOCUMENT_DOMAINS = {"ads", "ael", "python", "dds"}
 
 
 def _iter_html(instance: AdsInstance) -> Iterator[tuple[str, Path, Path]]:
@@ -76,19 +78,57 @@ def _page_record(domain: str, root: Path, path: Path) -> tuple[str, str, str, st
     return domain, str(root), path.relative_to(root).as_posix(), title, headings + " " + text, stat.st_mtime_ns, stat.st_size
 
 
+def _normalized_title(soup: BeautifulSoup, path: Path, content=None) -> str:
+    # The visible page heading is the canonical document title. ADS Sphinx
+    # packages append product/build branding to <title>, which is useful in a
+    # browser tab but becomes duplicated retrieval noise in Markdown.
+    first_heading = content.find("h1") if content is not None else None
+    if first_heading is not None:
+        heading = " ".join(first_heading.get_text(" ", strip=True).split())
+        if heading:
+            return heading
+    title = " ".join((soup.title.get_text(" ", strip=True) if soup.title else path.stem).split())
+    title = re.sub(r"\s+[—–-]\s+.*?\s+documentation\s*$", "", title, flags=re.IGNORECASE)
+    return title or path.stem
+
+
+def _main_content(soup: BeautifulSoup):
+    content = next((node for selector in MAIN_CONTENT_SELECTORS if (node := soup.select_one(selector))), None)
+    if content is None:
+        content = soup.body or soup
+    removable = content.select(
+        "script, style, noscript, template, nav, aside, form, header, footer, "
+        "#buildmetadata, a.headerlink, .rst-footer-buttons, .wy-breadcrumbs"
+    )
+    for node in reversed(removable):
+        node.decompose()
+    return content
+
+
+def _clean_markdown(markdown: str, title: str) -> str:
+    markdown = re.sub(r"[\ue000-\uf8ff\ufeff]", "", markdown).strip()
+    markdown = re.sub(r"[ \t]+\n", "\n", markdown)
+    markdown = re.sub(r"\n{3,}", "\n\n", markdown)
+    first_heading = re.match(r"^#\s+([^\n]+)(?:\n+|$)", markdown)
+    if first_heading and _plain_fragment(first_heading.group(1)).casefold() == title.casefold():
+        markdown = markdown[first_heading.end() :].lstrip()
+    return markdown
+
+
 def _markdown_record(domain: str, root: Path, path: Path) -> tuple[str, str]:
     raw = path.read_text(encoding="utf-8", errors="ignore")
     soup = BeautifulSoup(raw, "html.parser")
-    title = " ".join((soup.title.get_text(" ", strip=True) if soup.title else path.stem).split())
+    content = _main_content(soup)
+    title = _normalized_title(soup, path, content)
     converter = html2text.HTML2Text()
     converter.body_width = 0
     converter.ignore_images = True
     converter.ignore_emphasis = False
     converter.ignore_links = False
     converter.skip_internal_links = True
-    markdown = converter.handle(raw).strip()
+    markdown = _clean_markdown(converter.handle(str(content)), title)
     header = f"# {title}\n\nSource: `{path}`\n\n"
-    return title, header + markdown + "\n"
+    return title, header + markdown + ("\n" if markdown else "")
 
 
 def _markdown_path(cache: Path, root: Path, relative_path: str) -> Path:
@@ -266,6 +306,17 @@ def build_full_index(instance: AdsInstance, *, force: bool = False, max_pages: i
     }
 
 
+def _database_progress(db_path: Path) -> tuple[int, int] | None:
+    try:
+        with sqlite3.connect(db_path, timeout=0.25) as connection:
+            row = connection.execute(
+                "SELECT count(*), sum(CASE WHEN enriched = 1 THEN 1 ELSE 0 END) FROM pages"
+            ).fetchone()
+    except (OSError, sqlite3.Error):
+        return None
+    return (int(row[1] or 0), int(row[0] or 0)) if row else None
+
+
 def start_background_build(instance: AdsInstance, *, force: bool = False) -> dict[str, object]:
     ensure_fast_index(instance)
     cache = docs_cache(instance.instance_id)
@@ -308,6 +359,14 @@ def status(instance: AdsInstance) -> dict[str, object]:
     if not manifest_path.is_file() or not db_path.is_file():
         return {"instance_id": instance.instance_id, "status": "missing"}
     payload = _load_manifest(manifest_path) or {}
+    if payload.get("schema_version") != INDEX_SCHEMA_VERSION:
+        return {
+            **payload,
+            "status": "stale",
+            "stale_reason": "schema_version",
+            "db_path": str(db_path),
+            "background_build": None,
+        }
     build_state = _load_manifest(cache / "build-state.json") or {}
     if build_state and build_state.get("status") == "running" and not pid_running(int(build_state.get("pid") or 0)):
         updated_at = str(payload.get("enrichment_updated_at") or "")
@@ -316,7 +375,117 @@ def status(instance: AdsInstance) -> dict[str, object]:
             build_state["status"] = "completed" if payload.get("enrichment_status") == "ready" else "partial"
         else:
             build_state["status"] = "interrupted"
+    if build_state.get("status") == "running":
+        progress = _database_progress(db_path)
+        if progress is not None:
+            enriched, total = progress
+            payload["enriched_file_count"] = enriched
+            payload["source_file_count"] = total
+            payload["enrichment_status"] = "running"
+            build_state["enriched_file_count"] = enriched
+            build_state["source_file_count"] = total
     return {**payload, "status": "ready", "db_path": str(db_path), "background_build": build_state or None}
+
+
+def _context_excerpt(content: str, terms: list[str], *, width: int = 800) -> str:
+    body = re.sub(r"\A# [^\n]+\n\nSource: `[^\n]+`\n\n", "", content, count=1)
+    body = "\n".join(line.rstrip() for line in body.splitlines())
+    body = re.sub(r"\n{3,}", "\n\n", body).strip("\n")
+    if len(body) <= width:
+        return body
+    lowered = body.lower()
+    phrase = " ".join(terms)
+    positions = {match.start() for term in terms for match in re.finditer(re.escape(term), lowered)}
+    if phrase:
+        positions.update(match.start() for match in re.finditer(re.escape(phrase), lowered))
+    positions = sorted(positions)
+    if not positions:
+        return body[:width].rstrip() + " …"
+    best_position = positions[0]
+    best_score = -1
+    for position in positions:
+        start = max(0, position - width // 3)
+        end = min(len(body), start + width)
+        window = lowered[start:end]
+        line_start = body.rfind("\n", 0, position) + 1
+        line_end = body.find("\n", position)
+        line_end = len(body) if line_end < 0 else line_end
+        line = body[line_start:line_end]
+        stripped = line.lstrip()
+        offset = position - line_start
+        matched_term = next((term for term in terms if lowered.startswith(term, position)), "")
+        after_match = line[offset + len(matched_term) :].lstrip() if matched_term else ""
+        score = 100 * sum(term in window for term in set(terms))
+        score += 30 if stripped.startswith(("#", "def ", "class ")) else 0
+        score += 20 if "|" not in line else -20
+        score += 15 if offset <= len(line) - len(stripped) + 4 else 0
+        score += 10 if after_match.startswith("(") else 0
+        score -= 15 if "`" in line else 0
+        if score > best_score:
+            best_position, best_score = position, score
+    start = max(0, best_position - width // 3)
+    end = min(len(body), start + width)
+    if end - start < width:
+        start = max(0, end - width)
+    if start:
+        next_line = body.find("\n", start, best_position)
+        if next_line >= 0:
+            start = next_line + 1
+    if end < len(body):
+        previous_line = body.rfind("\n", best_position, end)
+        if previous_line > best_position:
+            end = previous_line
+    excerpt = body[start:end].strip("\n")
+    return ("…\n\n" if start else "") + excerpt + ("\n\n…" if end < len(body) else "")
+
+
+def _query_index(
+    db_path: Path,
+    terms: list[str],
+    limit: int,
+    *,
+    require_all: bool,
+    domains: list[str],
+) -> list[dict[str, object]]:
+    title = "lower(title)"
+    relative_path = "lower(relative_path)"
+    content = "lower(content)"
+    searchable = f"lower(title || ' ' || relative_path || ' ' || content)"
+    score_parts: list[str] = []
+    score_params: list[str] = []
+    for term in terms:
+        score_parts.extend(
+            [
+                f"CASE WHEN {title} = ? THEN 30 ELSE 0 END",
+                f"CASE WHEN instr({title}, ?) > 0 THEN 8 ELSE 0 END",
+                f"CASE WHEN instr({relative_path}, ?) > 0 THEN 5 ELSE 0 END",
+                f"CASE WHEN instr({content}, ?) > 0 THEN 1 ELSE 0 END",
+            ]
+        )
+        score_params.extend([term, term, term, term])
+    score_parts.append(
+        "CASE WHEN lower(relative_path) LIKE '%/reference/%' "
+        "OR lower(relative_path) LIKE '%/_autosummary/%' THEN 3 "
+        "WHEN lower(relative_path) LIKE '%/examples/%' THEN 2 ELSE 0 END"
+    )
+    operator = " AND " if require_all else " OR "
+    term_where = operator.join(f"instr({searchable}, ?) > 0" for _ in terms)
+    domain_where = f"lower(domain) IN ({', '.join('?' for _ in domains)})" if domains else ""
+    where = f"({term_where}) AND {domain_where}" if domain_where else term_where
+    where_params = terms
+    sql = (
+        "SELECT rowid, domain, source_root, relative_path, title, markdown_path, "
+        f"({' + '.join(score_parts)}) AS relevance FROM pages WHERE {where} "
+        "ORDER BY relevance DESC, title, relative_path LIMIT ?"
+    )
+    with sqlite3.connect(db_path) as connection:
+        connection.row_factory = sqlite3.Row
+        rows = [dict(row) for row in connection.execute(sql, [*score_params, *where_params, *domains, limit])]
+        for row in rows:
+            stored = connection.execute("SELECT content FROM pages WHERE rowid = ?", (row.pop("rowid"),)).fetchone()
+            row["snippet"] = _context_excerpt(str(stored[0]), terms) if stored else ""
+            row.pop("relevance", None)
+    return rows
 
 
 def query(instance: AdsInstance, text: str, limit: int = 10) -> dict[str, object]:
@@ -327,32 +496,19 @@ def query(instance: AdsInstance, text: str, limit: int = 10) -> dict[str, object
     terms = [term.lower() for term in re.findall(r"[\w.:-]+", text, flags=re.UNICODE) if len(term) > 1]
     if not terms:
         raise ValueError("Query must contain at least one searchable term.")
-    searchable = "lower(domain || ' ' || title || ' ' || content)"
-    where = " AND ".join(f"{searchable} LIKE ?" for _ in terms)
-    params = [f"%{term}%" for term in terms]
-    sql = (
-        "SELECT domain, source_root, relative_path, title, markdown_path, "
-        f"substr(content, 1, 500) AS snippet FROM pages WHERE {where} LIMIT ?"
-    )
-    with sqlite3.connect(db_path) as connection:
-        connection.row_factory = sqlite3.Row
-        rows = [dict(row) for row in connection.execute(sql, [*params, limit])]
+    domains = [term for term in terms if term in DOCUMENT_DOMAINS]
+    search_terms = [term for term in terms if term not in DOCUMENT_DOMAINS]
+    if not search_terms:
+        search_terms = terms
+        domains = []
+    rows = _query_index(db_path, search_terms, limit, require_all=True, domains=domains)
     search_mode = "bootstrap_index"
-    if not rows and len(terms) > 1:
-        score = " + ".join(f"CASE WHEN {searchable} LIKE ? THEN 1 ELSE 0 END" for _ in terms)
-        relaxed_where = " OR ".join(f"{searchable} LIKE ?" for _ in terms)
-        relaxed_sql = (
-            "SELECT domain, source_root, relative_path, title, markdown_path, "
-            f"substr(content, 1, 500) AS snippet FROM pages WHERE {relaxed_where} "
-            f"ORDER BY ({score}) DESC, title LIMIT ?"
-        )
-        with sqlite3.connect(db_path) as connection:
-            connection.row_factory = sqlite3.Row
-            rows = [dict(row) for row in connection.execute(relaxed_sql, [*params, *params, limit])]
+    if not rows and len(search_terms) > 1:
+        rows = _query_index(db_path, search_terms, limit, require_all=False, domains=domains)
         if rows:
             search_mode = "bootstrap_index_relaxed"
     if not rows:
-        rows = _query_source_fallback(instance, terms, limit)
+        rows = _query_source_fallback(instance, search_terms, limit, domains=domains)
         search_mode = "source_fallback_bounded"
     for row in rows:
         source_root = row.pop("source_root", None)
@@ -370,12 +526,20 @@ def query(instance: AdsInstance, text: str, limit: int = 10) -> dict[str, object
     }
 
 
-def _query_source_fallback(instance: AdsInstance, terms: list[str], limit: int) -> list[dict[str, object]]:
+def _query_source_fallback(
+    instance: AdsInstance,
+    terms: list[str],
+    limit: int,
+    *,
+    domains: list[str] | None = None,
+) -> list[dict[str, object]]:
     encoded_terms = [term.encode("utf-8", errors="ignore") for term in terms]
     results: list[dict[str, object]] = []
     started = time.monotonic()
     scanned = 0
     for domain, root, path in _iter_html(instance):
+        if domains and domain.lower() not in domains:
+            continue
         if scanned >= SOURCE_FALLBACK_MAX_FILES or time.monotonic() - started >= SOURCE_FALLBACK_MAX_SECONDS:
             break
         scanned += 1
@@ -393,7 +557,7 @@ def _query_source_fallback(instance: AdsInstance, terms: list[str], limit: int) 
                 "domain": record[0],
                 "relative_path": record[2],
                 "title": record[3],
-                "snippet": record[4][:500],
+                "snippet": _context_excerpt(record[4], terms),
                 "source_path": str(path),
             }
         )

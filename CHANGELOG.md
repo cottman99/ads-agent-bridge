@@ -2,6 +2,27 @@
 
 All notable public changes are documented here.
 
+## 0.1.0a26 - 2026-08-10
+
+- Reduce private documentation token cost by extracting the maintained page
+  body, removing navigation/build chrome and private-use glyphs, preferring the
+  visible H1 over browser-title branding, and eliminating duplicate headings.
+- Rebuild version-scoped documentation indexes under schema 3 and expose live,
+  committed enrichment progress while a background build is still running.
+- Improve documentation retrieval by treating explicit ADS/Python/AEL/DDS
+  terms as domain filters, ranking API reference and runnable examples ahead of
+  generic pages, and centering bounded snippets on the best matching signature
+  without destroying Python indentation.
+- Return a structured nonzero Quickstart result when ADS automation exceeds its
+  timeout, retaining bounded output and any partial-workspace path without
+  accepting a late success record from the terminated process.
+- Isolate runtime snapshot tests from a host's global ADS installation variable
+  so the same wheel suite runs unchanged on developer machines and EDA servers.
+- Validate the six-gate Quickstart with licensed ADS 2026 Update 2 on Windows,
+  complete a 9,422-page private documentation rebuild with zero conversion
+  errors, and pass clean package checks on Windows Python 3.10/3.12 and Linux
+  Python 3.11/3.13.
+
 ## 0.1.0a25 - 2026-08-07
 
 - Add the first `bridge-runtime-snapshot/v1` and
