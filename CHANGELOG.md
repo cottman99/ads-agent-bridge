@@ -2,6 +2,15 @@
 
 All notable public changes are documented here.
 
+## Unreleased
+
+- Remove private development paths and infrastructure addresses from the
+  maintained validation records.
+- Pin every GitHub Actions dependency to an immutable commit and add regression
+  checks for action pins, release references, and changelog version alignment.
+- Accurately describe the accepted manual-publish release tag without claiming
+  that lightweight tags are signed.
+
 ## 0.1.0a27 - 2026-08-10
 
 - Fix the Windows bootstrap installer when the selected Python does not already

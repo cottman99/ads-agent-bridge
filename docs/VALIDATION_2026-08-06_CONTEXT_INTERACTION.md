@@ -33,7 +33,7 @@ to open, edit, simulate, or close ADS objects.
 
 Environment:
 
-- edaserver `100.65.249.95`;
+- a private Linux EDA server reached through SSH;
 - ADS 2026 Update 2.1;
 - isolated slot `a24_context_d4`, candidate HOME/state/workspace, and
   `DISPLAY=:4`;

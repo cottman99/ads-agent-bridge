@@ -45,7 +45,8 @@ session at `DISPLAY=:4`.
 Only the exact test-owned Windows process tree was terminated. The existing
 user DE process (PID 56928) remained alive, its workspace was not modified,
 and the ADS 6.40 registry HOME was restored and verified as
-`F:\pfli\Workspace\ADS`. All 32 unit tests passed after the a21 changes.
+an isolated Windows ADS workspace root. All 32 unit tests passed after the a21
+changes.
 
 ## 0.1.0a20 five-example and Docs Skill candidate
 
