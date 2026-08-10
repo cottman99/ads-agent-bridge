@@ -41,24 +41,26 @@ It passes only when all required gates pass.
 The live session lifecycle is a separate acceptance path:
 
 1. select an explicit configured ADS instance;
-2. validate an existing workspace without modifying it;
-3. launch with both the workspace argument and `cwd=workspace`;
-4. bind slot, display, and a one-time ownership identity before process start;
-5. reserve the managed identity immediately after process creation and retain
+2. preserve the platform's real ADS user profile while isolating Bridge state
+   with `ADS_AGENT_HOME`, unless the test explicitly targets first-user setup;
+3. validate an existing workspace without modifying it;
+4. launch with both the workspace argument and `cwd=workspace`;
+5. bind slot, display, and a one-time ownership identity before process start;
+6. reserve the managed identity immediately after process creation and retain
    actionable `starting` state when bridge startup is delayed;
-6. serialize launch and shutdown mutations for each slot across local clients;
-7. wait for a token-authenticated DE bridge and verify its ownership nonce;
-8. verify that a reused session's bridge-reported ADS installation root matches
+7. serialize launch and shutdown mutations for each slot across local clients;
+8. wait for a token-authenticated DE bridge and verify its ownership nonce;
+9. verify that a reused session's bridge-reported ADS installation root matches
    the selected instance, then verify the exact active workspace through ADS;
-9. report UI readiness, visible windows, modal blocking, structured dialog
+10. report UI readiness, visible windows, modal blocking, structured dialog
    controls, and ownership;
-10. let a client Agent independently watch long operations, request a targeted
+11. let a client Agent independently watch long operations, request a targeted
     dialog image when needed, and perform a fingerprint-bound action, with an
     actuation-time identity recheck, under an explicit risk policy;
-11. use an identity-checked host desktop route for native or separate-process
+12. use an identity-checked host desktop route for native or separate-process
     dialogs that appear before the embedded bridge is reachable;
-12. disconnect without closing ADS;
-13. asynchronously prompt for modified files, expose the shutdown state, and
+13. disconnect without closing ADS;
+14. asynchronously prompt for modified files, expose the shutdown state, and
     exit only a matching agent-owned session.
 
 No default path may force-switch workspaces, discard modified content, close an

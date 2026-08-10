@@ -4,6 +4,9 @@ All notable public changes are documented here.
 
 ## Unreleased
 
+- Preserve the real Linux ADS user profile during isolated Bridge acceptance,
+  document `ADS_AGENT_HOME` as the isolation boundary, and add a non-blocking
+  doctor warning when the usual ADS per-user preference file is not visible.
 - Remove private development paths and infrastructure addresses from the
   maintained validation records.
 - Pin every GitHub Actions dependency to an immutable commit and add regression

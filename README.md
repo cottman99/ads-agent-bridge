@@ -65,6 +65,13 @@ Set `ADS_AGENT_HOME` to place configuration, data, and caches under an explicit
 directory. This is useful for isolated tests, remote servers, and systems where
 the normal user cache location is not appropriate.
 
+On Linux, keep the user's real `HOME` when isolating a Bridge run. ADS uses
+`HOME` for its own per-user state, including product and license preferences;
+replacing it can re-enter first-use selection or hide a working configuration.
+Set only `ADS_AGENT_HOME` to isolate Bridge configuration, caches, add-on
+session files, and runtime records. Use an alternate `HOME` only when the test
+deliberately covers a fresh ADS user profile and its product-selection flow.
+
 ## Install and verify
 
 Prerequisites:
