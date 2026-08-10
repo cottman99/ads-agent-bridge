@@ -1,77 +1,62 @@
+<p align="center">
+  <strong>English</strong> · <a href="README.zh-CN.md">简体中文</a>
+</p>
+
 # ADS Agent Bridge
 
-An unofficial, local-first documentation and automation bridge for Keysight
-Advanced Design System (ADS).
+<p align="center">
+  <strong>Give AI agents a safe, local, and version-aware way to understand and operate Keysight ADS.</strong>
+</p>
+
+<p align="center">
+  <a href="https://pypi.org/project/ads-agent-bridge/"><img alt="PyPI" src="https://img.shields.io/pypi/v/ads-agent-bridge"></a>
+  <a href="https://pypi.org/project/ads-agent-bridge/"><img alt="Python" src="https://img.shields.io/pypi/pyversions/ads-agent-bridge"></a>
+  <a href="https://github.com/cottman99/ads-agent-bridge/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/cottman99/ads-agent-bridge/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/cottman99/ads-agent-bridge"></a>
+</p>
+
+![ADS Agent Bridge connects a general-purpose Agent to a bounded local EDA environment](https://raw.githubusercontent.com/cottman99/ads-agent-bridge/main/docs/assets/readme/ads-agent-bridge-hero.png)
+
+ADS Agent Bridge is an unofficial, local-first documentation and automation
+bridge for Keysight Advanced Design System (ADS). It turns the ADS installation
+already on your machine into a version-aware documentation source, a bounded
+runtime context, and a safely managed automation target for general-purpose
+Agents such as Codex or OpenCode.
+
+The Agent may run on the ADS host or execute `ads-agent` there over SSH. Live
+bridge endpoints remain bound to loopback on the ADS host; the package does not
+open ADS directly to the network.
 
 > [!IMPORTANT]
-> This is a limited public alpha. Use disposable ADS workspaces and review the
-> reported capability gates before relying on automation results.
-> Keysight and ADS are trademarks of Keysight Technologies. This project is
-> not affiliated with or endorsed by Keysight.
+> This project is a public alpha. Use disposable workspaces for first trials
+> and review the reported capability gates before relying on automation
+> results. Keysight and ADS are trademarks of Keysight Technologies. This
+> project is not affiliated with or endorsed by Keysight.
 
-The intended PyPI user path is:
+## What it does
 
-```text
-pipx install ads-agent-bridge
-ads-agent doctor
-ads-agent setup
-ads-agent quickstart
-ads-agent launch --workspace /path/to/MyWorkspace_wrk
-ads-agent status
-ads-agent shutdown
-```
+| Capability | What the Agent gets |
+| --- | --- |
+| ADS discovery | Finds installed ADS versions, selects one explicitly, and probes runtime capabilities instead of assuming the newest version. |
+| Private local docs | Builds a version-scoped index and Markdown cache from documentation already installed on the user's machine. Vendor documentation is never redistributed. |
+| Verified quickstart | Creates a disposable workspace, runs a minimal AC simulation, and reads the resulting dataset through explicit acceptance gates. |
+| Managed GUI sessions | Launches an exact workspace, tracks process and display identity, reports UI state, and distinguishes agent-owned from user-owned ADS sessions. |
+| Exact DE/DDS context | Adds **Copy ADS Context** to supported menus so an Agent can work from the selected workspace, design, cell, cellview, or DDS target without guessing the foreground window. |
+| Bounded UI lifecycle | Observes blocking dialogs, supports identity-checked intervention, disconnects without closing ADS, and requests native safe exit only for a verified agent-owned session. |
 
-If `pipx` is missing or the system `python3` is older than 3.10, use the
-bootstrap installer. It searches installed Python versions instead of assuming
-that the default interpreter is usable, installs `pipx` in an isolated
-bootstrap environment when needed, and reports the exact command path. It does
-not modify an externally managed system Python:
+The initial release is deliberately small, but it is not a dummy wrapper: docs,
+no-GUI automation, live DE/DDS context, dialog supervision, and session
+lifecycle are separate, observable capability lanes.
 
-```console
-# Linux
-curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a27/install.sh
-sh install.sh
-
-# Windows PowerShell
-Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a27/install.ps1 -OutFile install.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
-```
-
-To select a non-default interpreter or install an offline/local wheel:
-
-```console
-sh install.sh --python /path/to/python3.11 --package /path/to/ads_agent_bridge.whl
-.\install.ps1 -Python C:\Path\To\python.exe -Package C:\Path\To\ads_agent_bridge.whl
-```
-
-Use `--check` on Linux or `-Check` on Windows to verify interpreter selection
-without installing or changing PATH.
-
-The current alpha slice implements cross-platform ADS installation discovery,
-capability/support reporting, per-installation local documentation indexing,
-DE/DDS add-on registration, and a headless minimal-AC quickstart with dataset
-readback. Setup also installs the portable `ads-kb-docs` Codex skill when its
-target directory is free and starts private full-text documentation enrichment
-in the background.
-
-It does **not** currently claim a completed Momentum, RFPro, FEM, SIPro, or
-PIPro workflow. Those lanes require separate solver-side acceptance evidence.
-
-Official ADS documentation is never distributed with this package. Indexes
-and Markdown caches are built privately from documentation already installed
-on the user's machine.
-
-Set `ADS_AGENT_HOME` to place configuration, data, and caches under an explicit
-directory. This is useful for isolated tests, remote servers, and systems where
-the normal user cache location is not appropriate.
-
-## Install and verify
+## Quick start
 
 Prerequisites:
 
 - a locally licensed ADS installation;
 - Python 3.10 or later for the `ads-agent` command;
-- `pipx` (recommended) or an isolated virtual environment.
+- Windows or Linux.
+
+Install and prove the local setup:
 
 ```console
 pipx install ads-agent-bridge
@@ -80,237 +65,159 @@ ads-agent setup
 ads-agent quickstart
 ```
 
-When several ADS versions are found, interactive setup asks which one to use.
-For an unattended or version-specific setup:
+`setup` discovers installed ADS versions instead of hard-coding one release.
+`quickstart` passes only after documentation indexing and query, add-on
+registration, disposable workspace creation, circuit simulation, and dataset
+readback all pass.
 
-```console
-ads-agent setup --ads-root /path/to/ADS2026_Update2 --non-interactive
-```
-
-A successful quickstart independently reports documentation, add-on,
-workspace, circuit simulation, and dataset readback gates. It creates a new
-disposable workspace and refuses to overwrite an existing path.
-
-To leave Codex skills unchanged or postpone full-text conversion:
-
-```console
-ads-agent setup --skip-skill --no-background-docs
-```
-
-## Managed ADS sessions
-
-Launch GUI ADS into an existing workspace with a process working directory
-that is bound to the same workspace:
+Launch a real workspace only after that gate succeeds:
 
 ```console
 ads-agent --pretty launch --workspace /path/to/MyWorkspace_wrk
 ads-agent --pretty status
+ads-agent disconnect                 # ADS keeps running
+ads-agent shutdown                   # native exit for an agent-owned session
 ```
 
-On Linux, bind the session to the intended X display explicitly when needed:
+On Linux, bind GUI work to the intended display:
 
 ```console
 ads-agent --pretty launch --workspace /path/to/MyWorkspace_wrk --display :4
 ```
 
-The launcher reserves the slot immediately after process creation, so a slow
-license checkout, first-run dialog, or add-on delay remains observable as
-`starting` instead of losing the process identity. Ownership becomes verified
-only after the packaged add-on returns the one-time launch identity. The exact
-workspace is then verified through ADS. Lifecycle mutations for one slot are
-serialized across local client processes, and an existing slot is never reused
-implicitly. With
-`--reuse-existing`, the bridge accepts the workspace only when no workspace is
-open or the same workspace is already active; it never closes or force-switches
-a different workspace. Reuse also requires the bridge-reported ADS installation
-root to match the explicitly selected instance; an absent or different root is
-rejected before any workspace action.
+<details>
+<summary><strong>Bootstrap installation when pipx or a suitable Python is missing</strong></summary>
 
-`status` reports `starting`, `waiting-for-host-ui`, `bridge-ready`, `workspace-ready`,
-`blocked-by-dialog`, `degraded`, or `orphaned` with the managed log path and
-bounded window diagnostics where relevant. For long GUI tasks, an independent
-`dialog-watch` lane can inspect Qt labels, buttons, accessibility metadata, and
-standard roles. The Agent may request a targeted screenshot for vision, then
-act against the exact dialog fingerprint and button ID. The embedded callback
-re-reads and revalidates both immediately before the Qt click. See the
-[dialog automation contract](docs/DIALOG_AUTOMATION.md).
-
-On Linux, the short-lived `ads` wrapper is provisional. The session manager
-adopts only `hpeesofemx` or `hpeesofde` processes carrying the exact launch
-nonce and slot. If that real ADS process is alive but the embedded bridge has
-not started, status becomes `waiting-for-host-ui` and returns a bounded host-UI
-handoff contract. The client Agent must inspect only windows owned by those
-reported candidate processes; separate-process UI helpers are observation-only
-and never establish ADS ownership. The Agent must not guess a license choice or
-start the slot again.
-
-Instead, it can request one PID-bound target image and perform one
-fingerprint-bound action:
+### Linux
 
 ```console
-ads-agent host-ui snapshot --slot SLOT --image-out product-selection.png
-ads-agent host-ui action --slot SLOT --window-id 0x... --fingerprint SHA256 \
-  --click X Y --risk medium --authorization workflow-policy \
-  --reason "Select the explicitly configured product"
+curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a28/install.sh
+sh install.sh
 ```
 
-`X,Y` are client-relative coordinates chosen from that fresh target image; the
-package contains no product title, row, or absolute-screen coordinate rules.
-The action re-reads the slot, nonce-bearing candidate PID, window identity,
-geometry, visibility, and fingerprint before touching the window. A changed or
-ambiguous target is rejected. Linux uses X11 and Windows uses the same contract
-through the native window APIs.
+### Windows PowerShell
 
-ADS owns the remembered product preference. The validated Linux selector wrote
-it to the user's `.eesoflic`, while Windows used its native per-user preference
-store; the bridge neither invents nor hard-codes vendor bundle ids. Once the
-user or workflow explicitly enables the selector's **Always try to start...**
-option, later launches use that ADS-owned preference and normally bypass the
-host-UI gate.
+```powershell
+Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a28/install.ps1 -OutFile install.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
+```
 
-Session commands deliberately separate client and application lifetime:
+The bootstrap searches installed Python versions, can create an isolated pipx
+environment, and does not modify an externally managed system Python. See the
+[CLI and installation reference](docs/CLI_REFERENCE.md) for interpreter,
+offline-wheel, and check-only options.
+
+</details>
+
+## Remote use over SSH
+
+SSH is the recommended current remote boundary. Run the public CLI on the ADS
+host instead of exposing the embedded Bridge port:
 
 ```console
-ads-agent disconnect                 # ADS keeps running
-ads-agent shutdown                   # exactly one agent-owned session
-ads-agent shutdown --slot SLOT       # explicit agent-owned session
-ads-agent bridge dialog-watch --slot SLOT --timeout 3600
-ads-agent bridge dialog-snapshot --slot SLOT --image-out dialog.png
+ssh ads-host 'ads-agent doctor'
+ssh ads-host 'ads-agent --pretty status'
+ssh ads-host 'ads-agent --pretty launch --workspace /path/to/MyWorkspace_wrk --display :4'
 ```
 
-`shutdown` refuses user-owned sessions, ownership mismatches, and sessions
-blocked by an existing modal dialog. It schedules ADS's native modified-file
-prompt without holding the client request open, then reports `cancelled`,
-`awaiting-user-action`, `closing`, or `exited`. It never calls
-`close_workspace`, discards changes automatically, or force-terminates a
-process.
+This keeps session files, random tokens, process ownership, workspaces, and ADS
+itself on the same host. A direct local-client-to-remote-Bridge protocol and
+multi-client lease model are not yet part of the public contract.
+
+## How it works
+
+![ADS Agent Bridge architecture showing bidirectional local documentation retrieval, the packaged ADS plug-in, bounded live DE/DDS control, and a separate no-GUI ADS Python lane](https://raw.githubusercontent.com/cottman99/ads-agent-bridge/main/docs/assets/readme/how-it-works-image2.png)
+
+The package has three main execution lanes:
+
+1. **Knowledge:** the portable Docs Skill routes questions through the CLI to the
+   selected installation's private, version-scoped local index, which returns
+   matched content and source evidence.
+2. **Live ADS:** the Session Manager coordinates the packaged ADS Agent Bridge
+   plug-in installed inside DE or DDS. Its loopback, token-authenticated endpoint
+   verifies the exact workspace, process, display, slot, profile, and ownership
+   identity.
+3. **No-GUI automation:** the selected ADS Python runtime creates a disposable
+   example, simulates it, and reads the dataset without opening an ADS window.
+
+On Linux, ADS Python can still require an available X display for runtime
+initialization. For isolation, keep the real user `HOME` so ADS can see its
+per-user state, and isolate Bridge state with `ADS_AGENT_HOME`.
+
+## Safety and privacy
+
+- Documentation, indexes, workspaces, session tokens, and automation results
+  remain local unless the user deliberately moves them.
+- Bridge endpoints listen on loopback and use a random token per session.
+- Reusing a session requires the selected ADS instance and exact workspace to
+  match; the Bridge does not silently switch workspaces.
+- Context handles identify a target but do not authorize editing or simulation.
+- Dialog actions are bound to a fresh process/window fingerprint instead of a
+  product title or fixed screen coordinate.
+- `shutdown` refuses unverified or user-owned sessions and never force-kills ADS
+  or silently discards modified work.
+- Arbitrary embedded Python and dynamic AEL calls stay disabled unless both the
+  ADS process and the client explicitly opt into unsafe mode.
+
+See the [dialog automation contract](docs/DIALOG_AUTOMATION.md),
+[context interaction contract](docs/CONTEXT_INTERACTION.md), and
+[execution context contract](docs/EXECUTION_CONTEXT_CONTRACT.md) for the exact
+boundaries.
+
+## Version support
+
+| ADS generation | Public support level |
+| --- | --- |
+| ADS 2025 and later | Stable target, decided by runtime capability probes |
+| ADS 2024 Update 2 | Preview |
+| ADS 2023 Update 2 through ADS 2024 Update 1 | Experimental |
+| Older installations | Documentation-only when local docs can be discovered |
+
+No version is fixed into the portable Docs Skill. Multiple installed versions
+can be discovered and selected explicitly.
 
 ## Five public examples
-
-List the supported examples and their prerequisites before running one:
 
 ```console
 ads-agent --pretty examples list
 ```
 
-The initial catalog is intentionally small:
+The current catalog covers:
 
-1. ADS installation discovery and explicit version selection;
-2. a headless minimal-AC workspace, simulation, and dataset readback;
+1. ADS discovery and explicit version selection;
+2. no-GUI minimal-AC simulation and dataset readback;
 3. read-only live DE workspace context;
 4. bounded DDS dataset readback into a new native DDS file;
-5. a fixed read-only AEL workspace call demonstrating the hybrid boundary.
+5. a fixed read-only AEL workspace call showing the hybrid boundary.
 
-Every runner emits JSON, names its required state, and returns nonzero when its
-acceptance gate is not met. See [the example guide](docs/EXAMPLES.md) for exact
-commands and stop rules.
+Every runner names its prerequisites, state changes, evidence, and stop rule.
+See [EXAMPLES.md](docs/EXAMPLES.md) for exact commands.
 
-## Portable Docs Skill
+## Current boundaries
 
-`setup` installs the `ads-kb-docs` skill without replacing an existing skill.
-It can also be managed explicitly:
+The project does **not** yet claim a completed Momentum, RFPro, FEM, SIPro, or
+PIPro workflow. It also does not provide a public remote Bridge protocol: SSH
+execution is supported, while raw port forwarding is not the documented user
+path. These areas require their own runtime and solver-side acceptance evidence
+before they are promoted as supported capabilities.
 
-```console
-ads-agent skill status docs
-ads-agent skill install docs
-ads-agent skill uninstall docs
-```
+## Documentation
 
-The fast index is immediately queryable. Full enrichment converts installed
-HTML into private per-version Markdown and updates the local SQLite index:
+- [CLI and installation reference](docs/CLI_REFERENCE.md)
+- [Examples and acceptance gates](docs/EXAMPLES.md)
+- [Release contract](docs/RELEASE_CONTRACT.md)
+- [Session and dialog automation](docs/DIALOG_AUTOMATION.md)
+- [DE/DDS context interaction](docs/CONTEXT_INTERACTION.md)
+- [Execution context contract](docs/EXECUTION_CONTEXT_CONTRACT.md)
+- [Changelog](CHANGELOG.md)
 
-```console
-ads-agent docs ensure
-ads-agent docs build --background
-ads-agent docs status
-```
-
-Use `--ads INSTANCE_ID` on any docs command to bind the result to a non-default
-installation. No ADS version is hard-coded into the skill.
-
-## Current commands
-
-```text
-ads-agent doctor [--ads-root PATH] [--search-root PATH] [--no-ping]
-ads-agent instances scan [--ads-root PATH]
-ads-agent instances list
-ads-agent instances use INSTANCE_ID
-ads-agent compatibility explain [--ads INSTANCE_ID]
-ads-agent docs ensure [--ads INSTANCE_ID]
-ads-agent docs build [--ads INSTANCE_ID] [--background]
-ads-agent docs status [--ads INSTANCE_ID]
-ads-agent docs query QUERY [--ads INSTANCE_ID]
-ads-agent setup [--ads-root PATH] [--non-interactive] [--config-dir PATH]
-ads-agent quickstart [--ads INSTANCE_ID] [--workspace PATH] [--config-dir PATH]
-ads-agent launch --workspace PATH [--ads INSTANCE_ID] [--slot SLOT] [--display DISPLAY] [--reuse-existing]
-ads-agent status [--slot SLOT]
-ads-agent disconnect [--slot SLOT]
-ads-agent shutdown [--slot SLOT]
-ads-agent host-ui snapshot --slot SLOT [--window-id ID] [--image-out PATH]
-ads-agent host-ui action --slot SLOT --window-id ID --fingerprint SHA256 (--click X Y|--close) ...
-ads-agent examples list
-ads-agent examples show NAME
-ads-agent examples run NAME [--ads INSTANCE_ID] [--slot SLOT]
-ads-agent skill status|install|uninstall docs
-ads-agent addon status
-ads-agent bridge sessions
-ads-agent bridge runtime-snapshot --slot SLOT --profile de [--detail compact|full]
-ads-agent bridge context-list --slot SLOT --profile de
-ads-agent bridge context-get CONTEXT_OR_HANDLE --slot SLOT --profile de
-```
-
-Documentation queries stay on the local machine:
-
-```console
-ads-agent docs query "keysight.ads.de workspace" --limit 5
-```
-
-The bridge listens only on localhost and uses a random token per session.
-Arbitrary embedded Python and dynamic AEL calls are disabled unless ADS is
-launched with `ADS_AGENT_UNSAFE=1` and the client command also includes
-`--unsafe`.
-
-On Windows, `setup` reads Keysight's per-version `eeenv/HOME` registry values
-to locate the real `hpeesof/config` directory. Use `--config-dir` (or
-`ADS_AGENT_ADS_CONFIG_DIR`) when maintaining separate ADS profiles.
-
-On Linux, ADS Python may still require an available X display even though the
-quickstart opens no ADS window. Set `DISPLAY` to the intended isolated display
-before running it. `setup` edits only the current user's ADS add-on XML files,
-creates timestamped backups, and preserves unrelated add-ons.
-
-Stable support is targeted at ADS 2025 and later. ADS 2024 Update 2 is a
-preview target; ADS 2023 Update 2 through ADS 2024 Update 1 are experimental.
-Runtime capability probes, rather than version numbers alone, decide which
-features are actually available.
-
-The installed DE and DDS add-ons also expose **Copy ADS Context** in supported
-design, workspace-tree, and DDS menus. The copied handle is a bounded reference
-to the user's exact target or selection; it does not authorize an edit or
-simulation. See the [context interaction contract](docs/CONTEXT_INTERACTION.md)
-for lifecycle, freshness, and DE/DDS boundaries.
-
-For Agent preflight, `runtime-snapshot` returns one compact, revision-aware view
-of the selected `slot + profile`, plus dynamic capability states and bounded
-safe next actions. See the [execution context contract](docs/EXECUTION_CONTEXT_CONTRACT.md).
-
-## Remove the integration
+To remove the ADS integration while preserving unrelated add-ons:
 
 ```console
 ads-agent addon uninstall
 ```
 
-The installer preserves unrelated ADS add-ons and creates timestamped XML
-backups before changing an existing configuration.
-
 ## Development
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and the evidence-backed
-[v0.1 validation record](docs/VALIDATION_2026-08-05.md). The ADS Session Manager
-introduced in `0.1.0a22` has a separate
-[live validation record](docs/VALIDATION_2026-08-06_SESSION_MANAGER.md). The
-DE/DDS context interaction introduced in `0.1.0a24` has its own
-[cross-platform live validation record](docs/VALIDATION_2026-08-06_CONTEXT_INTERACTION.md).
-The pre-bridge Host UI lane has a separate
-[cross-platform live validation record](docs/VALIDATION_2026-08-07_HOST_UI.md),
-including first-run product-selection gates on Linux and Windows.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Public claims are accepted only when the
+corresponding test, runtime observation, or validation gate has passed.

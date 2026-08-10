@@ -22,6 +22,45 @@ def _check(name: str, status: str, detail: str, remediation: str | None = None) 
     return payload
 
 
+def _ads_user_home_check(platform_name: str | None = None) -> dict[str, str] | None:
+    """Report whether Linux ADS can see its ordinary per-user state."""
+    if not (platform_name or sys.platform).startswith("linux"):
+        return None
+
+    home_value = os.environ.get("HOME")
+    if not home_value:
+        return _check(
+            "ads_user_home",
+            "warn",
+            "HOME is not set; ADS cannot use its ordinary Linux per-user state.",
+            "Keep the real user HOME and isolate Bridge state with ADS_AGENT_HOME.",
+        )
+
+    home = Path(home_value).expanduser()
+    if not home.is_dir():
+        return _check(
+            "ads_user_home",
+            "warn",
+            "HOME does not identify an existing directory.",
+            "Keep the real user HOME and isolate Bridge state with ADS_AGENT_HOME.",
+        )
+
+    preference = home / ".eesoflic"
+    if preference.is_file() and os.access(preference, os.R_OK):
+        return _check(
+            "ads_user_home",
+            "pass",
+            "Linux HOME exists and .eesoflic is present and readable.",
+        )
+
+    return _check(
+        "ads_user_home",
+        "warn",
+        "Linux HOME exists, but .eesoflic is absent or unreadable; this can be valid before first use or with another license configuration.",
+        "For isolated Bridge tests, keep the real HOME and set ADS_AGENT_HOME instead of replacing HOME.",
+    )
+
+
 def diagnose(
     ads_roots: list[Path] | None = None,
     search_roots: list[Path] | None = None,
@@ -47,6 +86,9 @@ def diagnose(
             None if python_ok else "Install Python 3.10 or later.",
         )
     )
+    ads_user_home = _ads_user_home_check()
+    if ads_user_home:
+        checks.append(ads_user_home)
     checks.append(
         _check(
             "ads_discovery",

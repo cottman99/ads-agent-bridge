@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from ads_agent_bridge.doctor import diagnose
+from ads_agent_bridge.doctor import _ads_user_home_check, diagnose
 
 
 def make_ads_root(tmp_path: Path) -> Path:
@@ -38,3 +38,27 @@ def test_doctor_reports_missing_ads_as_blocked(tmp_path: Path, monkeypatch) -> N
     assert payload["status"] == "blocked"
     assert next(item for item in payload["checks"] if item["name"] == "ads_discovery")["status"] == "fail"
     assert not state.exists()
+
+
+def test_doctor_warns_when_linux_home_has_no_ads_user_state(tmp_path: Path, monkeypatch) -> None:
+    home = tmp_path / "isolated-home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+
+    check = _ads_user_home_check("linux")
+
+    assert check is not None
+    assert check["status"] == "warn"
+    assert "keep the real HOME" in check["remediation"]
+
+
+def test_doctor_accepts_linux_home_with_ads_user_state(tmp_path: Path, monkeypatch) -> None:
+    home = tmp_path / "normal-home"
+    home.mkdir()
+    (home / ".eesoflic").write_text("", encoding="ascii")
+    monkeypatch.setenv("HOME", str(home))
+
+    check = _ads_user_home_check("linux")
+
+    assert check is not None
+    assert check["status"] == "pass"
