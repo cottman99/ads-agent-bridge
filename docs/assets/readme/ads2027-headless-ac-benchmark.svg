@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
+  <title id="title">ADS 2027 headless AC execution benchmark</title>
+  <desc id="desc">Both products completed three of three runs on the first attempt. ADS Agent Bridge used 43.4 percent fewer total tokens and had 21.5 percent lower median wall time in this one-task benchmark.</desc>
+  <defs>
+    <style>
+      .label{font:600 17px Inter,Segoe UI,Arial,sans-serif;fill:#43524d;letter-spacing:.2px}
+      .value{font:700 42px Inter,Segoe UI,Arial,sans-serif;fill:#17221f}
+      .note{font:400 16px Inter,Segoe UI,Arial,sans-serif;fill:#64736e}
+      .legend{font:600 15px Inter,Segoe UI,Arial,sans-serif;fill:#43524d}
+      .footer{font:400 14px Inter,Segoe UI,Arial,sans-serif;fill:#73817c}
+    </style>
+  </defs>
+  <rect width="1200" height="420" rx="28" fill="#f7f9f8"/>
+  <g transform="translate(42 32)">
+    <circle cx="8" cy="9" r="7" fill="#18866b"/>
+    <text x="23" y="15" class="legend">ADS Agent Bridge</text>
+    <circle cx="197" cy="9" r="7" fill="#aeb8b4"/>
+    <text x="212" y="15" class="legend">Official ADS MCP</text>
+  </g>
+
+  <g transform="translate(42 82)">
+    <rect width="350" height="254" rx="20" fill="#ffffff" stroke="#dde4e1"/>
+    <text x="28" y="42" class="label">First-pass completion</text>
+    <text x="28" y="92" class="value">3 / 3</text>
+    <text x="28" y="116" class="note">Bridge · 100%</text>
+    <rect x="28" y="130" width="294" height="10" rx="5" fill="#18866b"/>
+    <text x="28" y="184" class="value" style="font-size:28px">3 / 3</text>
+    <text x="28" y="208" class="note">Official · 100%</text>
+    <rect x="28" y="220" width="294" height="10" rx="5" fill="#aeb8b4"/>
+  </g>
+
+  <g transform="translate(425 82)">
+    <rect width="350" height="254" rx="20" fill="#ffffff" stroke="#dde4e1"/>
+    <text x="28" y="42" class="label">Total tokens</text>
+    <text x="28" y="92" class="value">586k</text>
+    <text x="28" y="116" class="note">Bridge · 585,993</text>
+    <rect x="28" y="130" width="166" height="10" rx="5" fill="#18866b"/>
+    <text x="28" y="184" class="value" style="font-size:28px">1.03M</text>
+    <text x="28" y="208" class="note">Official · Bridge used 43.4% less</text>
+    <rect x="28" y="220" width="294" height="10" rx="5" fill="#aeb8b4"/>
+  </g>
+
+  <g transform="translate(808 82)">
+    <rect width="350" height="254" rx="20" fill="#ffffff" stroke="#dde4e1"/>
+    <text x="28" y="42" class="label">Median wall time</text>
+    <text x="28" y="92" class="value">77.6 s</text>
+    <text x="28" y="116" class="note">Bridge</text>
+    <rect x="28" y="130" width="231" height="10" rx="5" fill="#18866b"/>
+    <text x="28" y="184" class="value" style="font-size:28px">98.9 s</text>
+    <text x="28" y="208" class="note">Official · Bridge was 21.5% lower</text>
+    <rect x="28" y="220" width="294" height="10" rx="5" fill="#aeb8b4"/>
+  </g>
+
+  <text x="42" y="382" class="footer">1 task × 3 repetitions per arm · same model, host, task contract, and acceptance gate · lower is better for tokens and time</text>
+</svg>

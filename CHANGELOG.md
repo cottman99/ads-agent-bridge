@@ -2,6 +2,23 @@
 
 All notable public changes are documented here.
 
+## 0.1.0a30 - 2026-08-11
+
+- Reframe the bilingual README around concrete Agent tasks and make the
+  packaged DE/DDS plug-in, its separate lifecycle, and its bounded
+  `ADS_CONTEXT` interaction model first-class product capabilities.
+- Add a capability–mechanism–evidence matrix that separates validated,
+  narrowly compared, bounded, and deliberately unclaimed behavior while
+  keeping Kit-level memory and governance outside the Bridge product surface.
+- Publish a controlled ADS 2027 headless AC execution microbenchmark: both the
+  Bridge and official MCP completed all three formal repetitions on the first
+  attempt; for this one task, Bridge used 43.4% fewer total tokens and had
+  21.5% lower median wall time.
+- Disclose the benchmark's execution-surface isolation, deterministic runtime
+  and dataset gates, excluded environment-calibration run, sanitized per-run
+  telemetry, and one-task interpretation boundary instead of presenting it as
+  a general product ranking.
+
 ## 0.1.0a29 - 2026-08-11
 
 - Replace filesystem-path-driven documentation lookup with version-bound
