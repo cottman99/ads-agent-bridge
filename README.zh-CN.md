@@ -44,6 +44,30 @@ Agent 可以运行在 ADS 主机上，也可以通过 SSH 在远端执行 `ads-a
 首版能力刻意收敛，但它不是简单的命令包装器：文档、无窗口自动化、DE/DDS
 实时上下文、弹窗监督和会话生命周期是彼此独立且可观测的能力通路。
 
+## ADS 2027 实测知识回归基准
+
+![ADS Agent Bridge 与官方 ADS MCP 的基准结果](https://raw.githubusercontent.com/cottman99/ads-agent-bridge/main/docs/assets/readme/ads2027-knowledge-benchmark.svg)
+
+我们让两条知识通路在同一模型、主机、提示词和严格输出契约下，各自重复完成
+三项 ADS 知识任务三次。每次运行都隔离了全局 Agent 配置、skills、memory、
+rules 和 Shell 启动文件。
+
+| 指标 | ADS Agent Bridge | 官方 ADS MCP |
+| --- | ---: | ---: |
+| 严格完成率 | **9/9（100%）** | 6/9（66.7%） |
+| 总 token | **1,000,338** | 1,116,503 |
+| 中位耗时 | 66.8 秒 | **63.5 秒** |
+| 隔离违规 | 0 | 0 |
+
+Bridge 的总 token 少 10.4%，并完成了全部九次任务；但它并没有在速度上全面
+领先：中位耗时高 5.2%，且一次几何任务形成了明显的均值长尾。在 Python DRC
+任务中，官方 MCP 的三次答案都采用了未经验证的 `create_drc_job` 路径；Bridge
+三次都给出了已验证的能力边界和安全回退方案。
+
+这是一组小规模工程回归测试，不代表普遍优于官方 MCP：早期试验曾用于改进
+Bridge 对这些已知问题的处理。详见[测试方法与结论边界](https://github.com/cottman99/ads-agent-bridge/blob/main/docs/BENCHMARK_ADS2027_KNOWLEDGE.md)
+和[脱敏后的逐次数据](https://github.com/cottman99/ads-agent-bridge/blob/main/docs/benchmarks/ads2027-knowledge-v1-summary.json)。
+
 ## 快速开始
 
 前置条件：
@@ -86,14 +110,14 @@ ads-agent --pretty launch --workspace /path/to/MyWorkspace_wrk --display :4
 ### Linux
 
 ```console
-curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a28/install.sh
+curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a29/install.sh
 sh install.sh
 ```
 
 ### Windows PowerShell
 
 ```powershell
-Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a28/install.ps1 -OutFile install.ps1
+Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a29/install.ps1 -OutFile install.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 

@@ -48,6 +48,32 @@ The initial release is deliberately small, but it is not a dummy wrapper: docs,
 no-GUI automation, live DE/DDS context, dialog supervision, and session
 lifecycle are separate, observable capability lanes.
 
+## Measured ADS 2027 knowledge regression
+
+![ADS Agent Bridge and official ADS MCP benchmark results](https://raw.githubusercontent.com/cottman99/ads-agent-bridge/main/docs/assets/readme/ads2027-knowledge-benchmark.svg)
+
+We ran the same three ADS knowledge tasks three times per arm with the same
+model, host, prompts, and strict output contract. Global Agent configuration,
+skills, memories, rules, and shell startup files were masked for every run.
+
+| Metric | ADS Agent Bridge | Official ADS MCP |
+| --- | ---: | ---: |
+| Strict completion | **9/9 (100%)** | 6/9 (66.7%) |
+| Total tokens | **1,000,338** | 1,116,503 |
+| Median wall time | 66.8 s | **63.5 s** |
+| Isolation violations | 0 | 0 |
+
+Bridge used 10.4% fewer total tokens and closed all nine tasks, but it was not
+faster overall: median latency was 5.2% higher, and one geometry run produced a
+long mean-latency tail. In the Python DRC task, all three official-MCP answers
+used the unverified `create_drc_job` route; Bridge reported the verified
+boundary and safe fallback in all three runs.
+
+This is a small engineering regression suite, not a claim of universal
+superiority: earlier pilots on these cases informed Bridge improvements. See
+the [methodology and interpretation boundary](https://github.com/cottman99/ads-agent-bridge/blob/main/docs/BENCHMARK_ADS2027_KNOWLEDGE.md)
+and [sanitized per-run data](https://github.com/cottman99/ads-agent-bridge/blob/main/docs/benchmarks/ads2027-knowledge-v1-summary.json).
+
 ## Quick start
 
 Prerequisites:
@@ -91,14 +117,14 @@ ads-agent --pretty launch --workspace /path/to/MyWorkspace_wrk --display :4
 ### Linux
 
 ```console
-curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a28/install.sh
+curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a29/install.sh
 sh install.sh
 ```
 
 ### Windows PowerShell
 
 ```powershell
-Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a28/install.ps1 -OutFile install.ps1
+Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a29/install.ps1 -OutFile install.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 

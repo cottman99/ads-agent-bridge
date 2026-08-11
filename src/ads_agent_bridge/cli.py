@@ -14,7 +14,7 @@ from .bridge_client import list_sessions, request
 from .compatibility import explain
 from .config import configured_instances, load_config, select_instance, set_default, update_instances
 from .discovery import discover
-from .docs_kb import build_full_index, ensure_fast_index, query, start_background_build, status
+from .docs_kb import build_full_index, ensure_fast_index, get_document, query, start_background_build, status
 from .doctor import diagnose
 from .examples import run_example, list_examples, show_example
 from .host_ui import action as host_ui_action
@@ -28,7 +28,13 @@ from .skill_installer import install_docs_skill, skill_status, uninstall_docs_sk
 
 
 def _emit(payload: Any, pretty: bool) -> None:
-    print(json.dumps(payload, ensure_ascii=False, indent=2 if pretty else None))
+    serialized = json.dumps(payload, ensure_ascii=False, indent=2 if pretty else None) + "\n"
+    buffer = getattr(sys.stdout, "buffer", None)
+    if buffer is not None:
+        buffer.write(serialized.encode("utf-8"))
+        buffer.flush()
+    else:
+        print(serialized, end="")
 
 
 def _dialog_image_path(value: Path | None) -> Path | None:
@@ -100,7 +106,19 @@ def build_parser() -> argparse.ArgumentParser:
     docs_query = docs_commands.add_parser("query")
     docs_query.add_argument("query")
     docs_query.add_argument("--ads")
-    docs_query.add_argument("--limit", type=int, default=10)
+    docs_query.add_argument("--limit", type=int, default=10, help="Return 1-20 bounded results.")
+    docs_query.add_argument(
+        "--domain",
+        action="append",
+        choices=("ads", "ael", "python", "dds"),
+        default=[],
+        help="Restrict lookup to one or more documentation domains.",
+    )
+    docs_get = docs_commands.add_parser("get")
+    docs_get.add_argument("source_ref")
+    docs_get.add_argument("--ads")
+    docs_get.add_argument("--focus", help="Return bounded sections centered on these symbols or terms.")
+    docs_get.add_argument("--max-chars", type=int, default=4000, help="Total focus budget, from 200 to 12000 characters.")
 
     setup_parser = commands.add_parser("setup")
     setup_parser.add_argument("--ads-root", action="append", type=Path, default=[])
@@ -319,7 +337,9 @@ def run(args: argparse.Namespace) -> tuple[Any, int]:
         if args.docs_command == "status":
             return status(instance), 0
         if args.docs_command == "query":
-            return query(instance, args.query, args.limit), 0
+            return query(instance, args.query, args.limit, domains=args.domain), 0
+        if args.docs_command == "get":
+            return get_document(instance, args.source_ref, focus=args.focus, max_chars=args.max_chars), 0
     if args.command == "setup":
         return setup(
             roots=args.ads_root,

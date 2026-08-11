@@ -1,0 +1,102 @@
+{
+  "schema": "ads-agent-public-benchmark/v1",
+  "benchmark_id": "ads2027-knowledge-regression-20260811",
+  "date": "2026-08-11",
+  "classification": "engineering-regression-not-held-out",
+  "scope": {
+    "ads_version": "ADS 2027",
+    "tasks": ["K1", "K3", "K6"],
+    "repetitions_per_task_per_arm": 3,
+    "run_count": 18,
+    "execution": "serial-counterbalanced",
+    "same_model_host_prompts_and_output_contract": true,
+    "web_external_repositories_and_prior_outputs_excluded": true,
+    "global_agent_config_skills_rules_memories_and_shell_startup_masked": true
+  },
+  "runtime": {
+    "agent": "Codex CLI 0.145.0",
+    "model": "gpt-5.6-terra",
+    "reasoning_effort": "medium"
+  },
+  "artifacts": {
+    "bridge_version": "0.1.0a29",
+    "bridge_wheel_sha256": "5064f70cdb21de57b10a73cd305f4e48467513be700980fd770d3d558bc0fc40",
+    "official_mcp_executable_sha256": "b68afcc4e904fae576a3c139898f877261fe9266a5235313ec46d48a2d0e4783"
+  },
+  "aggregate": {
+    "bridge": {
+      "runs": 9,
+      "passes": 9,
+      "completion_rate": 1.0,
+      "first_passes": 9,
+      "total_tokens": 1000338,
+      "mean_tokens": 111148.667,
+      "median_tokens": 147056,
+      "mean_wall_seconds": 77.196,
+      "median_wall_seconds": 66.795,
+      "isolation_violations": 0
+    },
+    "official": {
+      "runs": 9,
+      "passes": 6,
+      "completion_rate": 0.666667,
+      "first_passes": 6,
+      "total_tokens": 1116503,
+      "mean_tokens": 124055.889,
+      "median_tokens": 133453,
+      "mean_wall_seconds": 60.193,
+      "median_wall_seconds": 63.523,
+      "isolation_violations": 0
+    },
+    "bridge_relative_to_official": {
+      "total_token_reduction_percent": 10.404,
+      "median_wall_time_increase_percent": 5.151,
+      "mean_wall_time_increase_percent": 28.246
+    }
+  },
+  "cases": {
+    "K1": {
+      "description": "Execution-route policy and boundary",
+      "bridge": {"passes": 3, "runs": 3, "mean_tokens": 25907.0, "mean_wall_seconds": 41.434},
+      "official": {"passes": 3, "runs": 3, "mean_tokens": 85290.333, "mean_wall_seconds": 59.728}
+    },
+    "K3": {
+      "description": "ADS 2027 layout geometry API",
+      "bridge": {"passes": 3, "runs": 3, "mean_tokens": 157966.333, "mean_wall_seconds": 107.827},
+      "official": {"passes": 3, "runs": 3, "mean_tokens": 149791.0, "mean_wall_seconds": 62.459}
+    },
+    "K6": {
+      "description": "Python DRC capability boundary",
+      "bridge": {"passes": 3, "runs": 3, "mean_tokens": 149572.667, "mean_wall_seconds": 82.326},
+      "official": {"passes": 0, "runs": 3, "mean_tokens": 137086.333, "mean_wall_seconds": 58.392},
+      "official_failure": "All three answers presented the unverified create_drc_job route instead of a verified boundary and fallback."
+    }
+  },
+  "runs": [
+    {"trial": 1, "case": "K1", "arm": "bridge", "status": "pass", "total_tokens": 15176, "wall_seconds": 37.221},
+    {"trial": 1, "case": "K1", "arm": "official", "status": "pass", "total_tokens": 59963, "wall_seconds": 66.438},
+    {"trial": 1, "case": "K3", "arm": "bridge", "status": "pass", "total_tokens": 179686, "wall_seconds": 183.672},
+    {"trial": 1, "case": "K3", "arm": "official", "status": "pass", "total_tokens": 147367, "wall_seconds": 64.036},
+    {"trial": 1, "case": "K6", "arm": "bridge", "status": "pass", "total_tokens": 149587, "wall_seconds": 72.023},
+    {"trial": 1, "case": "K6", "arm": "official", "status": "fail", "total_tokens": 111711, "wall_seconds": 64.077},
+    {"trial": 2, "case": "K1", "arm": "bridge", "status": "pass", "total_tokens": 30969, "wall_seconds": 33.277},
+    {"trial": 2, "case": "K1", "arm": "official", "status": "pass", "total_tokens": 111330, "wall_seconds": 63.523},
+    {"trial": 2, "case": "K3", "arm": "bridge", "status": "pass", "total_tokens": 147056, "wall_seconds": 73.015},
+    {"trial": 2, "case": "K3", "arm": "official", "status": "pass", "total_tokens": 154298, "wall_seconds": 59.236},
+    {"trial": 2, "case": "K6", "arm": "bridge", "status": "pass", "total_tokens": 138232, "wall_seconds": 112.319},
+    {"trial": 2, "case": "K6", "arm": "official", "status": "fail", "total_tokens": 133453, "wall_seconds": 48.598},
+    {"trial": 3, "case": "K1", "arm": "bridge", "status": "pass", "total_tokens": 31576, "wall_seconds": 53.804},
+    {"trial": 3, "case": "K1", "arm": "official", "status": "pass", "total_tokens": 84578, "wall_seconds": 49.225},
+    {"trial": 3, "case": "K3", "arm": "bridge", "status": "pass", "total_tokens": 147157, "wall_seconds": 66.795},
+    {"trial": 3, "case": "K3", "arm": "official", "status": "pass", "total_tokens": 147708, "wall_seconds": 64.107},
+    {"trial": 3, "case": "K6", "arm": "bridge", "status": "pass", "total_tokens": 160899, "wall_seconds": 62.635},
+    {"trial": 3, "case": "K6", "arm": "official", "status": "fail", "total_tokens": 166095, "wall_seconds": 62.501}
+  ],
+  "evidence": {
+    "telemetry_complete": true,
+    "isolation_failures": 0,
+    "full_bundle_public": false,
+    "reason": "The full bundle contains local paths and vendor documentation; only sanitized metrics and authored contracts are published."
+  },
+  "interpretation_boundary": "Bridge was improved using earlier pilots on these cases. This result demonstrates regression closure on the named tasks, not universal superiority."
+}

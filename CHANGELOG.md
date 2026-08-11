@@ -2,6 +2,26 @@
 
 All notable public changes are documented here.
 
+## 0.1.0a29 - 2026-08-11
+
+- Replace filesystem-path-driven documentation lookup with version-bound
+  opaque source references, typed source quality, bounded per-term evidence,
+  explicit domain filtering, and controlled `docs get` expansion.
+- Make the bootstrap index search API, AEL, and DDS page prefixes before full
+  enrichment, keep private HTML out of the normal Agent path, and emit CLI JSON
+  as UTF-8 on Windows and Linux.
+- Keep a bounded reference/example quota in multi-term search results so a broad
+  guide cannot completely hide higher-authority API or AEL evidence.
+- Tighten the packaged Docs Skill around a three-route Python/AEL/UI decision
+  policy, a three-round retrieval budget with a reserved fallback-route check,
+  stable policy references, and an explicit no-raw-HTML stop rule.
+- Prefer the most specific exact API-symbol title when generic and dependent
+  symbols both match, and require full dependency signatures before runnable
+  code is emitted instead of guessing constructors or argument order.
+- Define one bounded retrieval round as a query plus at most one focused get,
+  so dependent signatures can be verified without making the call budget
+  ambiguous or unbounded.
+
 ## 0.1.0a28 - 2026-08-11
 
 - Redesign the public README as a concise bilingual product entry point, add a

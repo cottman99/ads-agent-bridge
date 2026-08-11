@@ -11,6 +11,15 @@ def test_docs_skill_install_is_idempotent_and_recoverable(tmp_path: Path) -> Non
     installed = install_docs_skill(root=root)
     installed_skill_file = Path(installed["path"], "SKILL.md")
     assert installed_skill_file.is_file()
+    skill_text = installed_skill_file.read_text(encoding="utf-8")
+    assert "ads-agent docs get <source-ref>" in skill_text
+    assert "ads-policy:execution-route/v1" in skill_text
+    assert "Do not open raw ADS HTML" in skill_text
+    assert "reserve one of those three rounds" in skill_text
+    assert "full signature for each required dependency" in skill_text
+    assert "return the boundary instead of guessing code" in skill_text
+    assert "The follow-up `get` belongs to the same" in skill_text
+    assert "source_path" not in skill_text
     reused = install_docs_skill(root=root)
     removed = uninstall_docs_skill(root=root)
 

@@ -22,13 +22,38 @@ from .paths import docs_cache
 from .processes import pid_running
 
 
-INDEX_SCHEMA_VERSION = 3
+INDEX_SCHEMA_VERSION = 4
 BATCH_SIZE = 100
 SOURCE_FALLBACK_MAX_FILES = 200
 SOURCE_FALLBACK_MAX_BYTES = 64 * 1024
 SOURCE_FALLBACK_MAX_SECONDS = 1.0
 MAIN_CONTENT_SELECTORS = ("#ks-content", "#mc-main-content", "main", '[role="main"]', "article")
 DOCUMENT_DOMAINS = {"ads", "ael", "python", "dds"}
+MAX_QUERY_MATCHES = 6
+MAX_QUERY_RESULTS = 20
+MAX_GET_CHARS = 12_000
+BOOTSTRAP_PREFIX_BYTES = 64 * 1024
+BOOTSTRAP_TEXT_CHARS = 12_000
+
+
+def _source_ref(instance: AdsInstance, domain: str, root: Path | str, relative_path: str) -> str:
+    identity = f"{os.path.normcase(str(Path(root).resolve()))}\0{relative_path}"
+    digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16]
+    return f"ads-doc:v1:{instance.instance_id}:{domain}:{digest}"
+
+
+def _source_evidence(domain: str, relative_path: str) -> tuple[str, str]:
+    path = relative_path.casefold().replace("\\", "/")
+    name = Path(path).name
+    if name in {"genindex.html", "search.html", "index.html"}:
+        return "index", "discovery_only"
+    if "/examples/" in path or "/example/" in path:
+        return "official_example", "docs_backed_example"
+    if "/reference/" in path or "/_autosummary/" in path:
+        return "api_reference", "docs_backed_reference"
+    if domain == "ael" or ("(" in name and ")" in name):
+        return "ael_reference", "docs_backed_reference"
+    return "guide", "docs_backed_unverified"
 
 
 def _iter_html(instance: AdsInstance) -> Iterator[tuple[str, Path, Path]]:
@@ -60,20 +85,26 @@ def fingerprint(instance: AdsInstance) -> tuple[str, int]:
 
 
 def _plain_fragment(value: str) -> str:
+    value = re.sub(r"[\ue000-\uf8ff\ufeff]", "", value)
+    value = re.sub(r"<[^>]*$", " ", value)
     value = re.sub(r"(?s)<[^>]+>", " ", value)
     return " ".join(html.unescape(value).split())
+
+
+def _strip_product_branding(title: str) -> str:
+    return re.sub(r"\s+[—–-]\s+.*?\s+documentation\s*$", "", title, flags=re.IGNORECASE).strip()
 
 
 def _page_record(domain: str, root: Path, path: Path) -> tuple[str, str, str, str, str, int, int]:
     # The bootstrap index must become useful quickly even for a large ADS help
     # corpus. Read a bounded prefix instead of parsing every complete page.
     with path.open("rb") as stream:
-        raw = stream.read(32 * 1024).decode("utf-8", errors="ignore")
+        raw = stream.read(BOOTSTRAP_PREFIX_BYTES).decode("utf-8", errors="ignore")
     title_match = re.search(r"(?is)<title\b[^>]*>(.*?)</title>", raw)
-    title = _plain_fragment(title_match.group(1)) if title_match else path.stem
+    title = _strip_product_branding(_plain_fragment(title_match.group(1))) if title_match else path.stem
     heading_matches = re.findall(r"(?is)<h[1-4]\b[^>]*>(.*?)</h[1-4]>", raw)[:30]
     headings = " | ".join(_plain_fragment(item) for item in heading_matches)
-    text = f"{path.stem} {_plain_fragment(raw)[:4000]}"
+    text = f"{path.stem} {_plain_fragment(raw)[:BOOTSTRAP_TEXT_CHARS]}"
     stat = path.stat()
     return domain, str(root), path.relative_to(root).as_posix(), title, headings + " " + text, stat.st_mtime_ns, stat.st_size
 
@@ -88,7 +119,7 @@ def _normalized_title(soup: BeautifulSoup, path: Path, content=None) -> str:
         if heading:
             return heading
     title = " ".join((soup.title.get_text(" ", strip=True) if soup.title else path.stem).split())
-    title = re.sub(r"\s+[—–-]\s+.*?\s+documentation\s*$", "", title, flags=re.IGNORECASE)
+    title = _strip_product_branding(title)
     return title or path.stem
 
 
@@ -187,6 +218,7 @@ def ensure_fast_index(instance: AdsInstance, force: bool = False) -> dict[str, o
                     domain TEXT NOT NULL,
                     source_root TEXT NOT NULL,
                     relative_path TEXT NOT NULL,
+                    source_ref TEXT NOT NULL,
                     title TEXT NOT NULL,
                     content TEXT NOT NULL,
                     mtime_ns INTEGER NOT NULL,
@@ -200,11 +232,28 @@ def ensure_fast_index(instance: AdsInstance, force: bool = False) -> dict[str, o
             )
             for domain, root, path in _iter_html(instance):
                 try:
-                    stat = path.stat()
-                    relative = path.relative_to(root).as_posix()
+                    if domain in {"python", "ael", "dds"}:
+                        record = _page_record(domain, root, path)
+                    else:
+                        stat = path.stat()
+                        relative = path.relative_to(root).as_posix()
+                        record = (domain, str(root), relative, path.stem, relative, stat.st_mtime_ns, stat.st_size)
                     connection.execute(
-                        "INSERT OR REPLACE INTO pages VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                        (domain, str(root), relative, path.stem, relative, stat.st_mtime_ns, stat.st_size, 0, ""),
+                        "INSERT OR REPLACE INTO pages "
+                        "(domain, source_root, relative_path, source_ref, title, content, mtime_ns, size, enriched, markdown_path) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (
+                            record[0],
+                            record[1],
+                            record[2],
+                            _source_ref(instance, record[0], record[1], record[2]),
+                            record[3],
+                            record[4],
+                            record[5],
+                            record[6],
+                            0,
+                            "",
+                        ),
                     )
                     indexed += 1
                 except (OSError, UnicodeError):
@@ -387,10 +436,14 @@ def status(instance: AdsInstance) -> dict[str, object]:
     return {**payload, "status": "ready", "db_path": str(db_path), "background_build": build_state or None}
 
 
-def _context_excerpt(content: str, terms: list[str], *, width: int = 800) -> str:
+def _document_body(content: str) -> str:
     body = re.sub(r"\A# [^\n]+\n\nSource: `[^\n]+`\n\n", "", content, count=1)
     body = "\n".join(line.rstrip() for line in body.splitlines())
-    body = re.sub(r"\n{3,}", "\n\n", body).strip("\n")
+    return re.sub(r"\n{3,}", "\n\n", body).strip("\n")
+
+
+def _context_excerpt(content: str, terms: list[str], *, width: int = 800) -> str:
+    body = _document_body(content)
     if len(body) <= width:
         return body
     lowered = body.lower()
@@ -439,6 +492,78 @@ def _context_excerpt(content: str, terms: list[str], *, width: int = 800) -> str
     return ("…\n\n" if start else "") + excerpt + ("\n\n…" if end < len(body) else "")
 
 
+def _matched_sections(content: str, terms: list[str], *, width: int = 500) -> list[dict[str, str]]:
+    lowered = _document_body(content).casefold()
+    matches: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for term in terms:
+        normalized = term.casefold()
+        if normalized in seen or normalized not in lowered:
+            continue
+        seen.add(normalized)
+        matches.append({"query_term": term, "excerpt": _context_excerpt(content, [normalized], width=width)})
+        if len(matches) >= MAX_QUERY_MATCHES:
+            break
+    return matches
+
+
+def _focus_terms(text: str | None) -> list[str]:
+    terms = [term.casefold() for term in re.findall(r"[\w.:-]+", text or "", flags=re.UNICODE) if len(term) > 1]
+    symbol_terms = [term for term in terms if any(marker in term for marker in ("_", ".", ":"))]
+    return list(dict.fromkeys(symbol_terms or terms))
+
+
+def _decorate_result(row: dict[str, object], terms: list[str]) -> dict[str, object]:
+    content = str(row.pop("_content", ""))
+    source_kind, validation_status = _source_evidence(str(row["domain"]), str(row["relative_path"]))
+    row.pop("source_root", None)
+    row.pop("markdown_path", None)
+    row["source_kind"] = source_kind
+    row["validation_status"] = validation_status
+    row["runtime_verified"] = False
+    matches = _matched_sections(content, terms)
+    if matches:
+        row["matched_sections"] = matches
+    return row
+
+
+def _is_reference_result(row: dict[str, object]) -> bool:
+    source_kind, _ = _source_evidence(str(row["domain"]), str(row["relative_path"]))
+    return source_kind in {"api_reference", "official_example", "ael_reference"}
+
+
+def _merge_reference_candidates(
+    strict_rows: list[dict[str, object]],
+    relaxed_rows: list[dict[str, object]],
+    limit: int,
+) -> tuple[list[dict[str, object]], bool]:
+    if not strict_rows or limit < 2:
+        return strict_rows, False
+    reference_quota = min(3, limit // 2)
+    existing_references = sum(_is_reference_result(row) for row in strict_rows[:limit])
+    needed = max(0, reference_quota - existing_references)
+    existing_refs = {str(row["source_ref"]) for row in strict_rows}
+    supplements = [
+        row
+        for row in relaxed_rows
+        if _is_reference_result(row) and str(row["source_ref"]) not in existing_refs
+    ][:needed]
+    if not supplements:
+        return strict_rows[:limit], False
+    ordered = [strict_rows[0], *supplements, *strict_rows[1:], *relaxed_rows]
+    merged: list[dict[str, object]] = []
+    seen: set[str] = set()
+    for row in ordered:
+        source_ref = str(row["source_ref"])
+        if source_ref in seen:
+            continue
+        seen.add(source_ref)
+        merged.append(row)
+        if len(merged) >= limit:
+            break
+    return merged, True
+
+
 def _query_index(
     db_path: Path,
     terms: list[str],
@@ -454,9 +579,10 @@ def _query_index(
     score_parts: list[str] = []
     score_params: list[str] = []
     for term in terms:
+        exact_title_weight = 60 + min(len(term), 40)
         score_parts.extend(
             [
-                f"CASE WHEN {title} = ? THEN 30 ELSE 0 END",
+                f"CASE WHEN {title} = ? THEN {exact_title_weight} ELSE 0 END",
                 f"CASE WHEN instr({title}, ?) > 0 THEN 8 ELSE 0 END",
                 f"CASE WHEN instr({relative_path}, ?) > 0 THEN 5 ELSE 0 END",
                 f"CASE WHEN instr({content}, ?) > 0 THEN 1 ELSE 0 END",
@@ -470,11 +596,15 @@ def _query_index(
     )
     operator = " AND " if require_all else " OR "
     term_where = operator.join(f"instr({searchable}, ?) > 0" for _ in terms)
+    where_params = list(terms)
+    if require_all and len(terms) > 1:
+        exact_title_where = " OR ".join(f"{title} = ?" for _ in terms)
+        term_where = f"({term_where}) OR ({exact_title_where})"
+        where_params.extend(terms)
     domain_where = f"lower(domain) IN ({', '.join('?' for _ in domains)})" if domains else ""
     where = f"({term_where}) AND {domain_where}" if domain_where else term_where
-    where_params = terms
     sql = (
-        "SELECT rowid, domain, source_root, relative_path, title, markdown_path, "
+        "SELECT domain, source_root, relative_path, source_ref, title, markdown_path, content AS _content, "
         f"({' + '.join(score_parts)}) AS relevance FROM pages WHERE {where} "
         "ORDER BY relevance DESC, title, relative_path LIMIT ?"
     )
@@ -482,13 +612,20 @@ def _query_index(
         connection.row_factory = sqlite3.Row
         rows = [dict(row) for row in connection.execute(sql, [*score_params, *where_params, *domains, limit])]
         for row in rows:
-            stored = connection.execute("SELECT content FROM pages WHERE rowid = ?", (row.pop("rowid"),)).fetchone()
-            row["snippet"] = _context_excerpt(str(stored[0]), terms) if stored else ""
+            row["snippet"] = _context_excerpt(str(row["_content"]), terms)
             row.pop("relevance", None)
     return rows
 
 
-def query(instance: AdsInstance, text: str, limit: int = 10) -> dict[str, object]:
+def query(
+    instance: AdsInstance,
+    text: str,
+    limit: int = 10,
+    *,
+    domains: list[str] | None = None,
+) -> dict[str, object]:
+    if limit < 1 or limit > MAX_QUERY_RESULTS:
+        raise ValueError(f"limit must be between 1 and {MAX_QUERY_RESULTS}.")
     state = status(instance)
     if state.get("status") != "ready":
         state = ensure_fast_index(instance)
@@ -496,33 +633,122 @@ def query(instance: AdsInstance, text: str, limit: int = 10) -> dict[str, object
     terms = [term.lower() for term in re.findall(r"[\w.:-]+", text, flags=re.UNICODE) if len(term) > 1]
     if not terms:
         raise ValueError("Query must contain at least one searchable term.")
-    domains = [term for term in terms if term in DOCUMENT_DOMAINS]
+    explicit_domains = [domain.casefold() for domain in (domains or [])]
+    invalid_domains = sorted(set(explicit_domains) - DOCUMENT_DOMAINS)
+    if invalid_domains:
+        raise ValueError(f"Unsupported documentation domain: {', '.join(invalid_domains)}")
+    implicit_domains = list(dict.fromkeys(term for term in terms if term in DOCUMENT_DOMAINS))
+    selected_domains = list(dict.fromkeys(explicit_domains or (implicit_domains if len(implicit_domains) == 1 else [])))
     search_terms = [term for term in terms if term not in DOCUMENT_DOMAINS]
     if not search_terms:
         search_terms = terms
-        domains = []
-    rows = _query_index(db_path, search_terms, limit, require_all=True, domains=domains)
+        selected_domains = explicit_domains
+    rows = _query_index(db_path, search_terms, limit, require_all=True, domains=selected_domains)
     search_mode = "bootstrap_index"
-    if not rows and len(search_terms) > 1:
-        rows = _query_index(db_path, search_terms, limit, require_all=False, domains=domains)
+    if len(search_terms) > 1:
+        relaxed_rows = _query_index(
+            db_path,
+            search_terms,
+            max(MAX_QUERY_RESULTS, limit * 4),
+            require_all=False,
+            domains=selected_domains,
+        )
         if rows:
-            search_mode = "bootstrap_index_relaxed"
+            rows, supplemented = _merge_reference_candidates(rows, relaxed_rows, limit)
+            if supplemented:
+                search_mode = "bootstrap_index_hybrid"
+        else:
+            rows = relaxed_rows[:limit]
+            if rows:
+                search_mode = "bootstrap_index_relaxed"
     if not rows:
-        rows = _query_source_fallback(instance, search_terms, limit, domains=domains)
+        rows = _query_source_fallback(instance, search_terms, limit, domains=selected_domains)
         search_mode = "source_fallback_bounded"
-    for row in rows:
-        source_root = row.pop("source_root", None)
-        if source_root:
-            row["source_path"] = str(Path(source_root) / row["relative_path"])
-        if not row.get("markdown_path"):
-            row.pop("markdown_path", None)
+    rows = [_decorate_result(row, search_terms) for row in rows]
     return {
         "instance_id": instance.instance_id,
         "product_version": instance.product_version,
         "query": text,
+        "domains": selected_domains,
         "search_mode": search_mode,
         "enrichment_status": state.get("enrichment_status", "not_started"),
+        "coverage": {
+            "path_index": "complete",
+            "content_index": (
+                "complete"
+                if state.get("enrichment_status") == "ready"
+                else "api_prefixes_plus_bounded_fallback"
+            ),
+            "negative_results_are_runtime_proof": False,
+        },
+        "evidence_boundary": "Version-matched local documentation evidence; not runtime verification.",
+        "next_action": "Use docs get <source_ref> --focus <symbol-or-topic> only when returned excerpts are insufficient.",
         "results": rows,
+    }
+
+
+def get_document(
+    instance: AdsInstance,
+    source_ref: str,
+    *,
+    focus: str | None = None,
+    max_chars: int = 4000,
+) -> dict[str, object]:
+    if max_chars < 200 or max_chars > MAX_GET_CHARS:
+        raise ValueError(f"max_chars must be between 200 and {MAX_GET_CHARS}.")
+    state = status(instance)
+    if state.get("status") != "ready":
+        state = ensure_fast_index(instance)
+    db_path = Path(str(state["db_path"]))
+    with sqlite3.connect(db_path) as connection:
+        connection.row_factory = sqlite3.Row
+        stored = connection.execute(
+            "SELECT domain, source_root, relative_path, source_ref, title, content, enriched "
+            "FROM pages WHERE source_ref = ?",
+            (source_ref,),
+        ).fetchone()
+    if stored is None:
+        raise ValueError(f"Unknown documentation source_ref for {instance.instance_id}: {source_ref}")
+    row = dict(stored)
+    retrieval_mode = "enriched_index"
+    if not row["enriched"]:
+        root = Path(str(row["source_root"]))
+        source = root / str(row["relative_path"])
+        title, content = _markdown_record(str(row["domain"]), root, source)
+        row["title"] = title
+        row["content"] = content
+        retrieval_mode = "on_demand_cleaning"
+    terms = _focus_terms(focus)
+    sections: list[dict[str, str]] = []
+    excerpt: str | None = None
+    if terms:
+        section_width = max(200, min(2000, max_chars // len(terms)))
+        sections = _matched_sections(str(row["content"]), terms, width=section_width)
+        matched_terms = {section["query_term"] for section in sections}
+        title_text = str(row["title"]).casefold()
+        for term in terms:
+            if term not in matched_terms and term in title_text:
+                sections.append(
+                    {"query_term": term, "excerpt": _context_excerpt(str(row["content"]), [], width=section_width)}
+                )
+    else:
+        excerpt = _context_excerpt(str(row["content"]), [], width=max_chars)
+    source_kind, validation_status = _source_evidence(str(row["domain"]), str(row["relative_path"]))
+    return {
+        "instance_id": instance.instance_id,
+        "product_version": instance.product_version,
+        "source_ref": row["source_ref"],
+        "domain": row["domain"],
+        "title": row["title"],
+        "relative_path": row["relative_path"],
+        "source_kind": source_kind,
+        "validation_status": validation_status,
+        "runtime_verified": False,
+        "focus": focus,
+        "retrieval_mode": retrieval_mode,
+        **({"sections": sections} if terms else {"excerpt": excerpt}),
+        "content_hash": hashlib.sha256(_document_body(str(row["content"])).encode("utf-8")).hexdigest(),
+        "evidence_boundary": "Version-matched local documentation evidence; not runtime verification.",
     }
 
 
@@ -555,10 +781,12 @@ def _query_source_fallback(
         results.append(
             {
                 "domain": record[0],
+                "source_root": str(root),
                 "relative_path": record[2],
+                "source_ref": _source_ref(instance, record[0], root, record[2]),
                 "title": record[3],
                 "snippet": _context_excerpt(record[4], terms),
-                "source_path": str(path),
+                "_content": record[4],
             }
         )
         if len(results) >= limit:

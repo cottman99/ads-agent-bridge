@@ -56,10 +56,17 @@ index:
 ads-agent docs ensure
 ads-agent docs build --background
 ads-agent docs status
-ads-agent docs query "keysight.ads.de workspace" --limit 5
+ads-agent docs query "create_layer_id add_rectangle" --domain python --limit 5
+ads-agent docs get SOURCE_REF --focus "add_rectangle" --max-chars 4000
 ```
 
 Use `--ads INSTANCE_ID` to bind a docs command to a non-default installation.
+`query` returns version-bound, typed evidence and bounded matched sections; it
+does not expose absolute documentation paths. Use `get` for one controlled
+expansion instead of opening raw installed HTML. API references and official
+examples are stronger executable evidence than unverified guides. Multi-term
+queries keep a small reference/example quota so a broad guide cannot suppress
+all higher-authority evidence, but no documentation result is runtime proof.
 
 ## Portable Docs Skill
 
@@ -112,7 +119,8 @@ ads-agent compatibility explain [--ads INSTANCE_ID]
 ads-agent docs ensure [--ads INSTANCE_ID]
 ads-agent docs build [--ads INSTANCE_ID] [--background]
 ads-agent docs status [--ads INSTANCE_ID]
-ads-agent docs query QUERY [--ads INSTANCE_ID]
+ads-agent docs query QUERY [--ads INSTANCE_ID] [--domain ads|ael|python|dds] [--limit 1..20]
+ads-agent docs get SOURCE_REF [--ads INSTANCE_ID] [--focus TEXT] [--max-chars 200..12000]
 ads-agent setup [--ads-root PATH] [--non-interactive] [--config-dir PATH]
 ads-agent quickstart [--ads INSTANCE_ID] [--workspace PATH] [--config-dir PATH]
 ads-agent launch --workspace PATH [--ads INSTANCE_ID] [--slot SLOT] [--display DISPLAY] [--reuse-existing]

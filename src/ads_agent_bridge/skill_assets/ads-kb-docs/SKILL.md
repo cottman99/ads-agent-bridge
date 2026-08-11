@@ -9,7 +9,9 @@ Use the local `ads-agent` command as the portable documentation backend. It disc
 
 ## Preflight
 
-Run the read-only check first:
+For a conceptual question about how to choose Python, AEL, or UI routes, use the Execution Route Policy below directly; do not call the CLI merely to restate that policy. If a structured answer requires a source reference, use the stable identifier `ads-policy:execution-route/v1`; never expose the installed skill path.
+
+For a version-specific documentation lookup, run the read-only check first:
 
 ```text
 ads-agent doctor --no-ping
@@ -19,15 +21,47 @@ If no default ADS instance is configured, run `ads-agent setup`. When several ve
 
 ## Query
 
-Query the configured default installation:
+Query the configured default installation. Select the documentation domain explicitly for API work:
 
 ```text
-ads-agent docs query "<technical query>" --limit 10
+ads-agent docs query "<technical query>" --domain python --limit 6
 ```
 
 For a non-default installation, obtain its id from `ads-agent instances list`, then add `--ads <instance-id>`.
 
-Treat `product_version`, `instance_id`, `source_path`, and `search_mode` in the JSON result as evidence. Open only the few returned local source files needed to answer the question.
+Treat `product_version`, `instance_id`, `source_ref`, `source_kind`, `validation_status`, and `search_mode` as evidence. Prefer `api_reference` and `official_example` results over `guide` results. A guide marked `docs_backed_unverified` is context, not authority for an executable symbol.
+
+The query response already contains bounded snippets and per-term matched sections. If they are insufficient, expand exactly one result through the Bridge:
+
+```text
+ads-agent docs get <source-ref> --ads <instance-id> --focus "<symbol-or-topic>" --max-chars 4000
+```
+
+For runnable code, treat every constructed or passed API object as a dependency.
+Do not infer a constructor, factory, receiver, or argument order from a class
+name, link label, or summary sentence. Expand an authoritative reference until
+the full signature for each required dependency is visible. If the query budget
+cannot establish that signature, return the boundary instead of guessing code.
+
+One retrieval round is one `docs query` followed, when needed, by at most one
+`docs get` for a result from that query. The follow-up `get` belongs to the same
+round; it is not a second round. Do not open raw ADS HTML, cached Markdown,
+package files, another skill tree, or scan the user's home directory. Do not
+reconstruct a private file path from `relative_path`. Use at most three such
+focused rounds; if the evidence is still insufficient, report the exact
+boundary and next verification step.
+
+For a capability-boundary question that explicitly asks for a fallback, reserve one of those three rounds for the next execution route. After at most two focused Python rounds, query the exact capability or known function name in `--domain ads` for a documented AEL route before proposing UI automation. A missing Python result is not runtime proof.
+
+## Execution Route Policy
+
+For an ADS automation capability, prefer these routes in order:
+
+1. Public Python API, when the selected ADS version's API reference or official example supplies a credible symbol and signature.
+2. AEL bridge, only when the Python route is absent or inadequate and the exact AEL function and calling contract are documented or otherwise verified.
+3. Observable UI automation, only when neither API route can perform the task and the target window, context, action risk, and expected outcome are bounded.
+
+Do not fall back merely because the first attempt failed. First distinguish a wrong symbol/signature, version mismatch, unavailable runtime, missing authorization, and an unsupported capability. Stop instead of acting when target context, callable identity, authorization, or outcome evidence cannot be established.
 
 ## Index Lifecycle
 
