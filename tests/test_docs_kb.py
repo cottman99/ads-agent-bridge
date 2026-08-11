@@ -3,7 +3,17 @@ import os
 import sqlite3
 from pathlib import Path
 
-from ads_agent_bridge.docs_kb import _context_excerpt, _markdown_record, build_full_index, ensure_fast_index, query, status
+import pytest
+
+from ads_agent_bridge.docs_kb import (
+    _context_excerpt,
+    _markdown_record,
+    build_full_index,
+    ensure_fast_index,
+    get_document,
+    query,
+    status,
+)
 from ads_agent_bridge.models import AdsInstance
 
 
@@ -33,7 +43,12 @@ def test_fast_index_and_query(tmp_path: Path, monkeypatch) -> None:
     assert ensure_fast_index(instance)["reused"] is True
     result = query(instance, "create_workspace")
     assert result["results"][0]["title"] == "Create Workspace"
-    assert result["results"][0]["source_path"].endswith("workspace.html")
+    assert result["results"][0]["source_ref"].startswith("ads-doc:v1:ads-2025-test:python:")
+    assert "source_path" not in result["results"][0]
+    assert "markdown_path" not in result["results"][0]
+    assert result["results"][0]["runtime_verified"] is False
+    with pytest.raises(ValueError, match="limit must be between"):
+        query(instance, "create_workspace", limit=21)
 
 
 def test_full_index_writes_private_markdown_and_enriches_query(tmp_path: Path, monkeypatch) -> None:
@@ -62,9 +77,12 @@ def test_full_index_writes_private_markdown_and_enriches_query(tmp_path: Path, m
 
     assert built["status"] == "ready"
     assert built["enriched_file_count"] == 1
-    markdown_path = Path(result["results"][0]["markdown_path"])
-    assert markdown_path.is_file()
-    assert "rare_full_text_token" in markdown_path.read_text(encoding="utf-8")
+    source_ref = result["results"][0]["source_ref"]
+    detail = get_document(instance, source_ref, focus="rare_full_text_token", max_chars=500)
+    assert detail["title"] == "rare_full_text_token"
+    assert "Version-specific detail" in detail["sections"][0]["excerpt"]
+    assert detail["retrieval_mode"] == "enriched_index"
+    assert "source_path" not in detail
     assert status(instance)["enrichment_status"] == "ready"
 
 
@@ -98,7 +116,7 @@ def test_query_rebuilds_stale_index_schema(tmp_path: Path, monkeypatch) -> None:
     result = query(instance, "workspace")
 
     assert result["results"][0]["relative_path"] == "workspace.html"
-    assert status(instance)["schema_version"] == 3
+    assert status(instance)["schema_version"] == 4
     assert status(instance)["status"] == "ready"
 
 
@@ -129,6 +147,39 @@ def test_multi_term_query_does_not_return_domain_only_match(tmp_path: Path, monk
     assert result["results"] == []
     assert fallback_calls == [1]
     assert result["enrichment_status"] == "not_started"
+    assert result["coverage"]["path_index"] == "complete"
+    assert result["coverage"]["negative_results_are_runtime_proof"] is False
+
+
+def test_fast_index_searches_python_page_prefix_without_full_enrichment(tmp_path: Path, monkeypatch) -> None:
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "Design.html").write_text(
+        "<html><head><title>Design</title></head><body><main>"
+        f"<p>{'navigation ' * 600}</p>"
+        "<p>prefix_only_method(layer_id, points) -&gt; Shape</p></main></body></html>",
+        encoding="utf-8",
+    )
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    instance = AdsInstance(
+        instance_id="ads-2027-prefix-test",
+        install_root=str(tmp_path),
+        product_version="ADS 2027",
+        year=2027,
+        update=None,
+        platform="test",
+        support_tier="stable",
+        docs_roots={"python": [str(docs)]},
+    )
+
+    ensure_fast_index(instance)
+    result = query(instance, "prefix_only_method", domains=["python"])
+
+    assert result["search_mode"] == "bootstrap_index"
+    assert result["results"][0]["title"] == "Design"
+    assert "prefix_only_method" in result["results"][0]["snippet"]
 
 
 def test_sphinx_main_content_excludes_navigation_and_private_glyphs(tmp_path: Path) -> None:
@@ -343,6 +394,213 @@ def test_query_prefers_reference_page_over_generic_page(tmp_path: Path, monkeypa
     result = query(instance, "add_rectangle")
 
     assert result["results"][0]["relative_path"] == "python/reference/add_rectangle.html"
+    assert result["results"][0]["source_kind"] == "api_reference"
+    assert result["results"][0]["validation_status"] == "docs_backed_reference"
+
+
+def test_query_can_explicitly_select_python_domain_and_returns_term_evidence(tmp_path: Path, monkeypatch) -> None:
+    docs = tmp_path / "docs"
+    python_docs = docs / "python" / "reference"
+    ael_docs = docs / "ael"
+    python_docs.mkdir(parents=True)
+    ael_docs.mkdir(parents=True)
+    (python_docs / "Design.html").write_text(
+        "<html><title>Design</title><body><main><h1>Design</h1>"
+        "<p>add_rectangle(layer_id, ll_or_box) -&gt; Rect</p>"
+        "<p>add_polygon(layer_id, polygon) -&gt; Polygon</p>"
+        "</main></body></html>",
+        encoding="utf-8",
+    )
+    (ael_docs / "add_rectangle.html").write_text(
+        "<html><title>add_rectangle</title><body><main>AEL add_rectangle command.</main></body></html>",
+        encoding="utf-8",
+    )
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    instance = AdsInstance(
+        instance_id="ads-2027-domain-test",
+        install_root=str(tmp_path),
+        product_version="ADS 2027",
+        year=2027,
+        update=None,
+        platform="test",
+        support_tier="stable",
+        docs_roots={"python": [str(python_docs.parent)], "ael": [str(ael_docs)]},
+    )
+
+    build_full_index(instance)
+    result = query(instance, "add_rectangle add_polygon", domains=["python"])
+
+    assert result["domains"] == ["python"]
+    assert result["results"][0]["domain"] == "python"
+    assert {item["query_term"] for item in result["results"][0]["matched_sections"]} == {
+        "add_rectangle",
+        "add_polygon",
+    }
+
+
+def test_exact_title_is_not_excluded_by_unmatched_generic_terms(tmp_path: Path, monkeypatch) -> None:
+    docs = tmp_path / "docs" / "reference"
+    docs.mkdir(parents=True)
+    (docs / "LayerId.html").write_text(
+        "<html><title>LayerId</title><body><main><p>Layer identifier.</p></main></body></html>",
+        encoding="utf-8",
+    )
+    (docs / "GenericObject.html").write_text(
+        "<html><title>GenericObject</title><body><main>"
+        "LayerId named layer purpose create 2027"
+        "</main></body></html>",
+        encoding="utf-8",
+    )
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    instance = AdsInstance(
+        instance_id="ads-2027-exact-title-test",
+        install_root=str(tmp_path),
+        product_version="ADS 2027",
+        year=2027,
+        update=None,
+        platform="test",
+        support_tier="stable",
+        docs_roots={"python": [str(docs.parent)]},
+    )
+
+    result = query(instance, "LayerId named layer purpose create 2027", domains=["python"])
+
+    assert result["results"][0]["title"] == "LayerId"
+
+
+def test_get_document_cleans_on_demand_and_bounds_output(tmp_path: Path, monkeypatch) -> None:
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "symbol.html").write_text(
+        "<html><head><title>Symbol</title></head><body><nav>navigation noise</nav><main><h1>Symbol</h1>"
+        f"<p>{'intro ' * 200}</p><p>target_symbol(arg: str) -&gt; bool</p><p>{'tail ' * 200}</p>"
+        "</main></body></html>",
+        encoding="utf-8",
+    )
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    instance = AdsInstance(
+        instance_id="ads-2026-get-test",
+        install_root=str(tmp_path),
+        product_version="ADS 2026 Update 2",
+        year=2026,
+        update="2",
+        platform="test",
+        support_tier="stable",
+        docs_roots={"python": [str(docs)]},
+    )
+
+    result = query(instance, "target_symbol")
+    detail = get_document(
+        instance,
+        result["results"][0]["source_ref"],
+        focus="target_symbol signature and examples",
+        max_chars=300,
+    )
+
+    assert detail["retrieval_mode"] == "on_demand_cleaning"
+    excerpt = detail["sections"][0]["excerpt"]
+    assert [section["query_term"] for section in detail["sections"]] == ["target_symbol"]
+    assert "target_symbol(arg: str)" in excerpt
+    assert "navigation noise" not in excerpt
+    assert len(excerpt) <= 308
+
+
+def test_ads_function_page_is_typed_as_ael_reference(tmp_path: Path, monkeypatch) -> None:
+    docs = tmp_path / "docs"
+    function_dir = docs / "Content" / "drc"
+    function_dir.mkdir(parents=True)
+    (function_dir / "dve_create_drc_job().html").write_text(
+        "<html><title>dve_create_drc_job()</title><body><main><h1>dve_create_drc_job()</h1>"
+        "<p>Creates a DRC job for AEL execution.</p></main></body></html>",
+        encoding="utf-8",
+    )
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    instance = AdsInstance(
+        instance_id="ads-2027-ael-reference-test",
+        install_root=str(tmp_path),
+        product_version="ADS 2027",
+        year=2027,
+        update=None,
+        platform="test",
+        support_tier="stable",
+        docs_roots={"ads": [str(docs)]},
+    )
+
+    result = query(instance, "dve_create_drc_job", domains=["ads"])
+
+    assert result["results"][0]["source_kind"] == "ael_reference"
+    assert result["results"][0]["validation_status"] == "docs_backed_reference"
+
+
+def test_multi_term_guide_match_keeps_reference_candidates_visible(tmp_path: Path, monkeypatch) -> None:
+    docs = tmp_path / "docs" / "Content" / "drc"
+    docs.mkdir(parents=True)
+    (docs / "layout_design_rule_check_drc_run.html").write_text(
+        "<html><title>Layout DRC guide</title><body><main>Guide.</main></body></html>",
+        encoding="utf-8",
+    )
+    (docs / "dve_create_drc_job().html").write_text(
+        "<html><title>dve_create_drc_job()</title><body><main>AEL reference.</main></body></html>",
+        encoding="utf-8",
+    )
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    instance = AdsInstance(
+        instance_id="ads-2027-hybrid-rank-test",
+        install_root=str(tmp_path),
+        product_version="ADS 2027",
+        year=2027,
+        update=None,
+        platform="test",
+        support_tier="stable",
+        docs_roots={"ads": [str(docs.parents[1])]},
+    )
+
+    result = query(instance, "layout design rule check DRC run", limit=4, domains=["ads"])
+
+    assert result["search_mode"] == "bootstrap_index_hybrid"
+    assert result["results"][0]["source_kind"] == "guide"
+    assert any(row["source_kind"] == "ael_reference" for row in result["results"][:3])
+
+
+def test_longer_exact_symbol_title_beats_generic_exact_title(tmp_path: Path, monkeypatch) -> None:
+    docs = tmp_path / "docs" / "reference" / "_autosummary"
+    docs.mkdir(parents=True)
+    shared = "named layer purpose technology lookup"
+    (docs / "Layer.html").write_text(
+        f"<html><title>Layer</title><body><main>LayerId {shared}</main></body></html>",
+        encoding="utf-8",
+    )
+    (docs / "LayerId.html").write_text(
+        f"<html><title>LayerId</title><body><main>Layer {shared}</main></body></html>",
+        encoding="utf-8",
+    )
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    instance = AdsInstance(
+        instance_id="ads-2027-exact-symbol-rank-test",
+        install_root=str(tmp_path),
+        product_version="ADS 2027",
+        year=2027,
+        update=None,
+        platform="test",
+        support_tier="stable",
+        docs_roots={"python": [str(docs.parents[1])]},
+    )
+
+    result = query(instance, "LayerId named layer purpose technology lookup", limit=6, domains=["python"])
+
+    assert result["results"][0]["title"] == "LayerId"
 
 
 def test_status_reports_committed_background_progress(tmp_path: Path, monkeypatch) -> None:

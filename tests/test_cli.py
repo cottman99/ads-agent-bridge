@@ -38,10 +38,15 @@ def test_examples_and_skill_commands_are_public_cli_entrypoints() -> None:
     examples = parser.parse_args(["examples", "run", "live-de-context", "--slot", "test"])
     skill = parser.parse_args(["skill", "install", "docs", "--target", "codex"])
     docs = parser.parse_args(["docs", "build", "--ads", "ads-2025-test", "--background"])
+    docs_query = parser.parse_args(["docs", "query", "add_rectangle", "--domain", "python"])
+    docs_get = parser.parse_args(["docs", "get", "ads-doc:v1:test:python:abc", "--focus", "add_rectangle"])
 
     assert examples.examples_command == "run"
     assert skill.skill_command == "install"
     assert docs.docs_command == "build"
+    assert docs_query.domain == ["python"]
+    assert docs_get.docs_command == "get"
+    assert docs_get.focus == "add_rectangle"
 
 
 def test_session_lifecycle_commands_are_public_cli_entrypoints(tmp_path: Path) -> None:
