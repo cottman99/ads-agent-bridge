@@ -89,3 +89,32 @@ def test_bilingual_readmes_share_navigation_and_visual_assets():
     assert "ADS Runtime" not in architecture
     assert "SAFETY RAIL" not in architecture
     assert "Local-first control, version-aware knowledge" not in architecture
+
+
+def test_public_capability_claims_keep_plugin_and_comparison_scope_explicit():
+    root = Path(__file__).parents[1]
+    english = (root / "README.md").read_text(encoding="utf-8")
+    chinese = (root / "README.zh-CN.md").read_text(encoding="utf-8")
+    matrix = (root / "docs" / "CAPABILITY_MATRIX.md").read_text(
+        encoding="utf-8"
+    )
+
+    for readme in (english, chinese):
+        assert "docs/CAPABILITY_MATRIX.md" in readme
+        assert "docs/BENCHMARK_ADS2027_HEADLESS_AC.md" in readme
+        assert "docs/benchmarks/ads2027-headless-ac-v1-summary.json" in readme
+        assert "Copy ADS Context" in readme
+        assert "ADS_CONTEXT" in readme
+
+    assert "not a full-product comparison" in english
+    assert "不是完整产品对比" in chinese
+    assert "**Validated**" in matrix
+    assert "**Compared**" in matrix
+    assert "**Available (bounded)**" in matrix
+    assert "not Bridge capabilities" in matrix
+    assert "BENCHMARK_ADS2027_HEADLESS_AC.md" in matrix
+
+    execution_summary = root / "docs" / "benchmarks" / "ads2027-headless-ac-v1-summary.json"
+    execution_chart = root / "docs" / "assets" / "readme" / "ads2027-headless-ac-benchmark.svg"
+    assert execution_summary.is_file()
+    assert execution_chart.is_file()

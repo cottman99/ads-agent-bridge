@@ -1,0 +1,45 @@
+# Capability, mechanism, and evidence matrix
+
+This matrix separates the public product surface from the evidence that
+supports each claim. It is intentionally narrower than a roadmap.
+
+## Evidence labels
+
+- **Validated**: the maintained gate passed against a real ADS installation.
+- **Compared**: the capability was exercised in a published, isolated
+  Bridge-versus-official-MCP benchmark with an explicitly named lane and task
+  boundary. This label does not imply a full-product comparison.
+- **Available (bounded)**: the public interface exists with the stated safety
+  boundary, but the row does not claim broader unattended correctness.
+- **Not claimed**: the product deliberately stops before this boundary.
+
+Unit tests protect contracts and failure behavior. They complement, but do not
+replace, real ADS validation.
+
+## Public capability matrix
+
+| User task | Bridge mechanism | Public status | Evidence | Boundary / stop rule |
+| --- | --- | --- | --- | --- |
+| Find installed ADS versions and choose the intended one | Installation discovery, stable instance IDs, explicit selection, and runtime capability probes | **Validated** on Windows and Linux | [Core validation](VALIDATION_2026-08-05.md); `tests/test_discovery.py`, `tests/test_compatibility.py`, `tests/test_doctor.py` | Does not silently select the newest installation when user choice is required. |
+| Ask a version-specific ADS question without redistributing vendor docs | Private local HTML discovery, normalized Markdown cache, typed index segments, bounded `docs query` / `docs get`, and the portable `ads-kb-docs` Skill | **Validated**; **Compared** for the published ADS 2027 knowledge cases | [Knowledge benchmark](BENCHMARK_ADS2027_KNOWLEDGE.md); [core validation](VALIDATION_2026-08-05.md); `tests/test_docs_kb.py`, `tests/test_skill_installer.py` | Source material and generated private corpus remain on the ADS host. Retrieval evidence is not runtime execution evidence. |
+| Prove that local no-GUI ADS automation works | `quickstart` and the `headless-minimal-ac` example create a disposable workspace, simulate a minimal AC circuit, and read the dataset | **Validated** on Windows and Linux; **Compared** for the ADS 2027 E3 execution task | [Headless execution benchmark](BENCHMARK_ADS2027_HEADLESS_AC.md); [core validation](VALIDATION_2026-08-05.md); `tests/test_onboarding.py`, `tests/test_examples.py` | A partial docs-only result is a failure. The workspace must be new and disposable. Linux ADS Python may still require an X display for initialization. |
+| Launch ADS on one exact workspace and inspect its state | Session Manager binds ADS instance, workspace, slot, process, display, profile, nonce, and ownership; the plug-in exposes authenticated status and runtime snapshots | **Validated** on Windows and Linux | [Session Manager validation](VALIDATION_2026-08-06_SESSION_MANAGER.md); `tests/test_session_manager.py`, `tests/test_bridge_client.py` | Reuse fails closed when ADS root or workspace identity differs. No implicit workspace switch. |
+| Point an Agent at the schematic, layout, symbol, or workspace-tree object the user selected | Packaged DE plug-in adds **Copy ADS Context** to design-window menus and supported Folder/Library tree selections; it emits an `ADS_CONTEXT:v1` handle | **Validated** on Windows and Linux | [Context interaction validation](VALIDATION_2026-08-06_CONTEXT_INTERACTION.md); [interaction contract](CONTEXT_INTERACTION.md); `tests/test_context_ui.py`, `tests/test_context_registry.py` | The handle identifies context only. It does not authorize edit, open, simulate, close, or any other mutation. |
+| Point an Agent at an open DDS file, page, trace, equation, or empty DDS page | Separate packaged DDS plug-in owns its top-level **ADS Context** menu and right-click action, with an independent callback lifecycle | **Validated** on Windows and Linux | [Context interaction validation](VALIDATION_2026-08-06_CONTEXT_INTERACTION.md); [interaction contract](CONTEXT_INTERACTION.md); `tests/test_context_ui.py` | A `.dds` item selected in the DE tree is only a file reference; live DDS context must be captured from DDS. |
+| Read a known dataset through DDS without arbitrary embedded execution | Bounded DDS readback creates a new native DDS file, adds a dataset alias, evaluates the fixed equation, saves, and returns row evidence | **Validated** on Windows and Linux | [Core validation](VALIDATION_2026-08-05.md); [context interaction validation](VALIDATION_2026-08-06_CONTEXT_INTERACTION.md); `tests/test_examples.py` | Refuses to overwrite the target DDS file and does not enable general DDS scripting. |
+| Observe a long GUI task and deal with a blocking dialog | Embedded Qt dialog watch/snapshot/action plus a host-side startup-dialog lane; actions are bound to fresh process, window, and control fingerprints | **Validated** for maintained Windows/Linux gates; **Available (bounded)** for Agent-supervised use | [Dialog contract](DIALOG_AUTOMATION.md); [Session Manager validation](VALIDATION_2026-08-06_SESSION_MANAGER.md); [host UI validation](VALIDATION_2026-08-07_HOST_UI.md); `tests/test_host_ui.py` | No title-only rule or blind coordinate click. High-risk, stale, opaque, or unverifiable outcomes stop for confirmation. |
+| Disconnect while keeping ADS open, or close a Bridge-owned session safely | `disconnect` removes client attachment only; `shutdown` requests native exit after ownership and identity checks and surfaces modified-design prompts | **Validated** on Windows and Linux | [Session Manager validation](VALIDATION_2026-08-06_SESSION_MANAGER.md); `tests/test_session_manager.py` | Never force-kills ADS, discards edits, or closes a user-owned/unverified session. |
+| Use one retained AEL capability without opening arbitrary evaluation | Fixed allowlisted workspace-path call and the `bounded-ael-workspace` example | **Validated** on Linux; **Available (bounded)** as a public hybrid boundary | [Core validation](VALIDATION_2026-08-05.md); `tests/test_examples.py`, `tests/test_addon_session_commands.py` | Dynamic `ael-call`, embedded `eval`, and `exec` require two-sided explicit unsafe opt-in. |
+| Operate ADS on a remote server | Run `ads-agent` on the ADS host through SSH; all Bridge state, workspaces, tokens, and loopback endpoints stay on that host | **Available (bounded)**; remote Linux acceptance used this topology | [CLI reference](CLI_REFERENCE.md); [core validation](VALIDATION_2026-08-05.md) | The public contract is SSH execution, not a raw remote Bridge protocol or multi-client lease service. |
+| Install, inspect, upgrade, or remove only this product's integration | Recoverable Docs Skill and DE/DDS add-on installers with status/uninstall commands | **Validated** | [Core validation](VALIDATION_2026-08-05.md); `tests/test_addon_installer.py`, `tests/test_skill_installer.py`, `tests/test_onboarding.py` | Preserves unrelated add-ons and refuses unmanaged-content replacement. |
+
+## Deliberately unclaimed
+
+The current release does not claim complete Momentum, RFPro, FEM, SIPro,
+PIPro, arbitrary PDK automation, unattended handling of every possible window,
+or a public local-client-to-remote-ADS transport. Each requires its own
+workflow-specific runtime and solver-side evidence before promotion.
+
+The wider Keysight ADS Agent Kit may add workflow orchestration, engineering
+memory, governance, and project-specific gates above this product. Those are
+not Bridge capabilities and are intentionally excluded from this matrix.

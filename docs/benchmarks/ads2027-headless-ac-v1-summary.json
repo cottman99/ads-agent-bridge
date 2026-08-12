@@ -1,0 +1,100 @@
+{
+  "schema": "ads-agent-public-benchmark/v1",
+  "benchmark_id": "ads2027-headless-ac-execution-20260811",
+  "date": "2026-08-11",
+  "classification": "one-task-execution-microbenchmark",
+  "scope": {
+    "ads_version": "ADS 2027",
+    "task": "E3 disposable minimal headless AC simulation and dataset readback",
+    "repetitions_per_arm": 3,
+    "run_count": 6,
+    "execution": "serial-counterbalanced",
+    "same_model_host_task_contract_and_acceptance_gate": true,
+    "assigned_product_surfaces_differ": true,
+    "web_external_repositories_and_prior_outputs_excluded": true,
+    "global_agent_config_skills_rules_memories_sessions_and_shell_startup_masked": true,
+    "direct_ads_python_or_hpeesofsim_shell_bypass_forbidden": true
+  },
+  "runtime": {
+    "host_os": "Linux",
+    "agent": "Codex CLI 0.145.0",
+    "model": "gpt-5.6-terra",
+    "reasoning_effort": "medium",
+    "display_for_runtime_initialization": ":4",
+    "gui_launched": false
+  },
+  "artifacts": {
+    "bridge_version": "0.1.0a29",
+    "bridge_surface": "public ads-agent headless example or quickstart",
+    "official_mcp_version": "0.7.0",
+    "official_surface": ["start_local_session", "execute_python"],
+    "formal_summary_sha256": "121dd724b1eaf8fefde8be4d0cf3f25ace4d34de1a3f1676a8d918b75565bc38",
+    "preflight_sha256": "2e11ec2ad6ed38b722378f4ee4b912475f98acb0ae5f598abe058f32bffe7d18",
+    "private_evidence_bundle_sha256": "e8caaccf566499aeae53130c24b289b44cb715212dba98edff6edc7e6e8132ce"
+  },
+  "acceptance": {
+    "new_workspace_below_run_directory": true,
+    "running_automation": true,
+    "is_pde_app": false,
+    "simulation_completed": true,
+    "dataset_read_back": true,
+    "finite_numeric_sample": true
+  },
+  "aggregate": {
+    "bridge": {
+      "runs": 3,
+      "passes": 3,
+      "completion_rate": 1.0,
+      "first_passes": 3,
+      "total_tokens": 585993,
+      "total_uncached_input_tokens": 96769,
+      "total_output_tokens": 7176,
+      "mean_tokens": 195331.0,
+      "median_tokens": 211334.0,
+      "mean_wall_seconds": 81.120,
+      "median_wall_seconds": 77.648,
+      "isolation_violations": 0
+    },
+    "official": {
+      "runs": 3,
+      "passes": 3,
+      "completion_rate": 1.0,
+      "first_passes": 3,
+      "total_tokens": 1034887,
+      "total_uncached_input_tokens": 106959,
+      "total_output_tokens": 7608,
+      "mean_tokens": 344962.333,
+      "median_tokens": 327935.0,
+      "mean_wall_seconds": 94.261,
+      "median_wall_seconds": 98.859,
+      "isolation_violations": 0
+    },
+    "bridge_relative_to_official": {
+      "total_token_reduction_percent": 43.376,
+      "uncached_input_token_reduction_percent": 9.527,
+      "output_token_reduction_percent": 5.678,
+      "median_wall_time_reduction_percent": 21.456,
+      "mean_wall_time_reduction_percent": 13.940
+    }
+  },
+  "runs": [
+    {"trial": 1, "arm": "bridge", "status": "pass", "completion_class": "first_pass", "total_tokens": 126145, "uncached_input_tokens": 27015, "output_tokens": 2106, "wall_seconds": 69.448, "tool_event_type": "command_execution", "tool_events": 4, "isolation_violations": 0},
+    {"trial": 1, "arm": "official", "status": "pass", "completion_class": "first_pass", "total_tokens": 388777, "uncached_input_tokens": 33442, "output_tokens": 2567, "wall_seconds": 83.032, "tool_event_type": "mcp_tool_call", "tool_events": 11, "isolation_violations": 0},
+    {"trial": 2, "arm": "official", "status": "pass", "completion_class": "first_pass", "total_tokens": 318175, "uncached_input_tokens": 39209, "output_tokens": 2486, "wall_seconds": 98.859, "tool_event_type": "mcp_tool_call", "tool_events": 11, "isolation_violations": 0},
+    {"trial": 2, "arm": "bridge", "status": "pass", "completion_class": "first_pass", "total_tokens": 211334, "uncached_input_tokens": 19969, "output_tokens": 2437, "wall_seconds": 77.648, "tool_event_type": "command_execution", "tool_events": 8, "isolation_violations": 0},
+    {"trial": 3, "arm": "bridge", "status": "pass", "completion_class": "first_pass", "total_tokens": 248514, "uncached_input_tokens": 49785, "output_tokens": 2633, "wall_seconds": 96.265, "tool_event_type": "command_execution", "tool_events": 10, "isolation_violations": 0},
+    {"trial": 3, "arm": "official", "status": "pass", "completion_class": "first_pass", "total_tokens": 327935, "uncached_input_tokens": 34308, "output_tokens": 2555, "wall_seconds": 100.890, "tool_event_type": "mcp_tool_call", "tool_events": 14, "isolation_violations": 0}
+  ],
+  "calibration": {
+    "excluded_from_score": true,
+    "issue": "The first official-arm calibration used an incomplete Linux ADS runtime library path.",
+    "resolution": "The shared runtime environment was corrected and the official headless context was independently re-probed before a clean pilot and formal run set."
+  },
+  "evidence": {
+    "telemetry_complete": true,
+    "isolation_failures": 0,
+    "full_bundle_public": false,
+    "reason": "The full bundle contains local paths, generated ADS workspaces, simulator artifacts, and complete Agent event streams; only sanitized metrics and evidence are published."
+  },
+  "interpretation": "This result applies only to the named minimal headless AC task, model, host, versions, and protocol. It is not a universal product ranking."
+}
