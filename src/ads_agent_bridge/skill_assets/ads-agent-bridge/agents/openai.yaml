@@ -1,0 +1,4 @@
+interface:
+  display_name: "ADS Agent Bridge"
+  short_description: "Operate local ADS sessions safely through the Bridge."
+  default_prompt: "Use $ads-agent-bridge to inspect or operate my exact local ADS target safely."

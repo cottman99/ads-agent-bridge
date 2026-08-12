@@ -3,7 +3,7 @@
 ## Product promise
 
 A new user can install one package, select the intended local ADS installation,
-install a portable Docs Skill, query that installation's private local
+install mutually routing public Bridge and Docs Skills, query that installation's private local
 documentation, and progress through five explicit examples without learning
 the internal adapter or plugin architecture.
 
@@ -23,7 +23,8 @@ ads-agent quickstart
 
 `setup` must discover installed ADS instances, select one without silently
 preferring the newest version, probe capabilities, install recoverable user
-integration, install the Docs Skill without replacing unmanaged content, make
+integration, install both public Skills without replacing ambiguous unmanaged
+content or overwriting a complete Kit-provided Docs Skill, make
 documentation lookup immediately useful, and start resumable private
 enrichment without blocking the first query.
 
@@ -85,7 +86,8 @@ addons, AEL interoperability, headless automation, or EM routes are available.
 - Windows and Linux setup/docs/bridge gates;
 - resumable private documentation indexing;
 - private HTML-to-Markdown enrichment separated by ADS instance;
-- recoverable, conflict-safe Docs Skill installation;
+- recoverable, conflict-safe Bridge and Docs Skill installation with explicit
+  ownership and Kit coexistence behavior;
 - recoverable addon install, upgrade, and uninstall;
 - localhost token-authenticated live bridge;
 - profile-specific DE/DDS context menus with bounded, copyable context handles,

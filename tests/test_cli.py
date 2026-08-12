@@ -36,17 +36,33 @@ def test_examples_and_skill_commands_are_public_cli_entrypoints() -> None:
     parser = build_parser()
 
     examples = parser.parse_args(["examples", "run", "live-de-context", "--slot", "test"])
-    skill = parser.parse_args(["skill", "install", "docs", "--target", "codex"])
+    skill = parser.parse_args(["skill", "install", "bridge", "--target", "codex"])
+    all_skills = parser.parse_args(["skill", "status"])
     docs = parser.parse_args(["docs", "build", "--ads", "ads-2025-test", "--background"])
     docs_query = parser.parse_args(["docs", "query", "add_rectangle", "--domain", "python"])
     docs_get = parser.parse_args(["docs", "get", "ads-doc:v1:test:python:abc", "--focus", "add_rectangle"])
 
     assert examples.examples_command == "run"
     assert skill.skill_command == "install"
+    assert skill.selection == "bridge"
+    assert all_skills.selection == "all"
     assert docs.docs_command == "build"
     assert docs_query.domain == ["python"]
     assert docs_get.docs_command == "get"
     assert docs_get.focus == "add_rectangle"
+
+
+def test_setup_returns_nonzero_when_public_skill_install_needs_attention(monkeypatch) -> None:
+    args = build_parser().parse_args(["setup", "--non-interactive"])
+    monkeypatch.setattr(
+        "ads_agent_bridge.cli.setup",
+        lambda **_kwargs: {"status": "attention_required", "skills": {"status": "conflict"}},
+    )
+
+    payload, code = run(args)
+
+    assert payload["status"] == "attention_required"
+    assert code == 2
 
 
 def test_session_lifecycle_commands_are_public_cli_entrypoints(tmp_path: Path) -> None:

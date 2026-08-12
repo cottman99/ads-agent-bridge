@@ -13,7 +13,7 @@ from .config import select_instance, update_instances
 from .discovery import discover
 from .docs_kb import ensure_fast_index, query, start_background_build
 from .paths import data_dir
-from .skill_installer import install_docs_skill
+from .skill_installer import install_skills
 
 
 def setup(
@@ -62,15 +62,20 @@ def setup(
             "reason": "This ADS generation does not advertise Python add-on support; headless Python may still be tried.",
         }
     )
-    skill = install_docs_skill() if install_skill else {"status": "skipped", "reason": "Skill installation not requested."}
+    skills = (
+        install_skills("all")
+        if install_skill
+        else {"status": "skipped", "reason": "Skill installation not requested."}
+    )
+    setup_status = "ready" if skills.get("status") in {"ready", "skipped"} else "attention_required"
     return {
-        "status": "ready",
+        "status": setup_status,
         "selected_instance": selected.to_dict(),
         "config": config,
         "docs": docs,
         "docs_build": docs_build,
         "addon": addon,
-        "docs_skill": skill,
+        "skills": skills,
         "bridge": (
             "installed; starts when ADS DE or DDS is launched"
             if addon["status"] == "installed"

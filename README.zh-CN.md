@@ -35,7 +35,7 @@ Agent 可以直接运行在 ADS 主机上，也可以通过 SSH 在远端执行 
 | 用户任务 | Bridge 能力 | 当前证据 |
 | --- | --- | --- |
 | “这台机器安装了哪些 ADS？这个版本具体能做什么？” | 自动发现多个版本、显式选择目标版本，并探测真实运行时能力。 | **Windows/Linux 已验证** |
-| “查找这台机器所装 ADS 版本对应的正确 API。” | 通过 Portable Docs Skill 检索私有、按版本隔离的本地索引，并返回有界来源证据。 | **已验证；已做知识层对比** |
+| “查找这台机器所装 ADS 版本对应的正确 API。” | 通过公开的 `ads-kb-docs` Skill 检索私有、按版本隔离的本地索引，并返回有界来源证据。 | **已验证；已做知识层对比** |
 | “先证明 ADS Python 自动化能运行，不要碰我的工程。” | 创建一次性工作区、运行最小 AC 仿真，并通过独立门槛读取数据集。 | **Windows/Linux 已验证** |
 | “打开这个准确的工作区，并告诉我 ADS 当前状态。” | 管理绑定工作区的 GUI 会话，核验进程、显示器、profile、所有权、UI 和模态状态。 | **Windows/Linux 已验证** |
 | “使用我选中的原理图、版图、cell、cellview、文件夹或 DDS 对象。” | 随包交付的 DE/DDS 插件生成明确的 `ADS_CONTEXT`，无需猜测前台窗口。 | **真实 DE/DDS 会话已验证** |
@@ -69,7 +69,7 @@ DE 与 DDS 使用不同的入口和回调生命周期。复制出的 handle 只�
 
 产品包含三条主要执行通路：
 
-1. **知识通路：**Portable Docs Skill 通过 CLI 将 Agent 的问题路由到所选 ADS
+1. **知识通路：**公开的 `ads-kb-docs` Skill 通过 CLI 将 Agent 的问题路由到所选 ADS
    安装对应的私有、按版本隔离的本地索引，并返回匹配内容和来源证据。
 2. **实时 ADS 通路：**Session Manager 协调安装在 DE/DDS 内部的 ADS Agent
    Bridge 插件；仅绑定回环地址并使用随机 token 的端点会同时核验工作区、进程、
@@ -159,8 +159,12 @@ ads-agent setup
 ads-agent quickstart
 ```
 
-`setup` 会自动发现 ADS 安装，不会固定某个版本。只有当文档索引与查询、插件注册、
-一次性工作区创建、电路仿真和数据集读回全部通过时，`quickstart` 才返回成功。
+`setup` 会自动发现 ADS 安装，不会固定某个版本。它还会安装两个小型、相互路由的
+公开 Skills：`ads-agent-bridge` 负责安装、诊断与有界操作，`ads-kb-docs` 负责
+文档检索。若完整 ADS Agent Kit 已提供完整的
+`ads-kb-docs`，安装器会保留它。
+只有当文档索引与查询、插件注册、一次性工作区创建、电路仿真和数据集读回全部
+通过时，`quickstart` 才返回成功。
 
 通过上述门槛后，再打开真实工作区：
 
@@ -183,14 +187,14 @@ ads-agent --pretty launch --workspace /path/to/MyWorkspace_wrk --display :4
 ### Linux
 
 ```console
-curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a30/install.sh
+curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a31/install.sh
 sh install.sh
 ```
 
 ### Windows PowerShell
 
 ```powershell
-Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a30/install.ps1 -OutFile install.ps1
+Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a31/install.ps1 -OutFile install.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
@@ -238,7 +242,7 @@ ssh ads-host 'ads-agent --pretty launch --workspace /path/to/MyWorkspace_wrk --d
 | ADS 2023 Update 2 至 ADS 2024 Update 1 | Experimental |
 | 更早版本 | 能发现本地文档时仅支持文档能力 |
 
-Portable Docs Skill 不固定任何 ADS 版本；多个已安装版本可以自动发现并由用户显式选择。
+公开 Docs Skill 不固定任何 ADS 版本；多个已安装版本可以自动发现并由用户显式选择。
 
 ## 五个公开示例
 

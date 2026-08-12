@@ -1,11 +1,15 @@
 ---
 name: ads-kb-docs
-description: "Retrieve private local Keysight ADS documentation by automatically selecting a configured ADS installation. Use for ADS API lookup, Python/AEL symbol searches, examples, local help source locations, and version-matched documentation questions. Do not mutate ADS designs or claim that documentation lookup proves a live automation workflow."
+description: "Retrieve private local Keysight ADS documentation by selecting a configured ADS installation. Use for documentation-only ADS API lookup, Python/AEL/DDS symbol searches, examples, local help source locations, execution-route research, and version-matched documentation questions. Route setup, quickstart, live DE/DDS inspection, ADS_CONTEXT, dialogs, session lifecycle, and runtime validation to ads-agent-bridge. Do not mutate ADS designs or claim that documentation lookup proves a live workflow."
 ---
 
 # ADS KB Docs
 
 Use the local `ads-agent` command as the portable documentation backend. It discovers installed ADS versions, keeps each version's index separate, and never uploads or redistributes Keysight documentation.
+
+For setup, a disposable execution proof, live DE/DDS state, an `ADS_CONTEXT`
+handle, dialog handling, or session lifetime, use `$ads-agent-bridge`. A pure
+documentation request stays in this skill and must not launch ADS.
 
 ## Preflight
 
@@ -89,4 +93,4 @@ If `ADS_DOC_REPO` points to a full `keysight-ads-agent-kit` checkout, prefer its
 - Documentation results prove only that a local installed source matched the query.
 - A readable dataset is not interpreted simulation evidence.
 - A documented API is not proof that the selected ADS runtime exposes or successfully executes it.
-- For live DE/DDS, headless simulation, or AEL execution, route to the corresponding control workflow and require its own acceptance gates.
+- For live DE/DDS, headless simulation, or AEL execution, route to `$ads-agent-bridge` and require a separate runtime acceptance gate.
