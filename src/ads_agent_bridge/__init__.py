@@ -1,3 +1,3 @@
 """ADS Agent Bridge public package."""
 
-__version__ = "0.1.0a30"
+__version__ = "0.1.0a31"

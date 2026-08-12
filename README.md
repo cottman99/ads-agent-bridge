@@ -38,7 +38,7 @@ open ADS directly to the network.
 | User task | Bridge capability | Current evidence |
 | --- | --- | --- |
 | “Which ADS installations are available, and what can this one do?” | Discover multiple versions, select one explicitly, and probe its real runtime capabilities. | **Validated** on Windows and Linux |
-| “Find the correct API for the ADS version installed here.” | Search a private, version-scoped local index and return bounded source evidence through the portable Docs Skill. | **Validated** and **knowledge-layer compared** |
+| “Find the correct API for the ADS version installed here.” | Search a private, version-scoped local index and return bounded source evidence through the public `ads-kb-docs` Skill. | **Validated** and **knowledge-layer compared** |
 | “Prove that ADS Python automation works before touching my project.” | Create a disposable workspace, run a minimal AC simulation, and read the dataset through independent gates. | **Validated** on Windows and Linux |
 | “Open this exact workspace and tell me what ADS is doing.” | Manage a workspace-bound GUI session with process, display, profile, ownership, UI, and modal state. | **Validated** on Windows and Linux |
 | “Use the schematic, layout, cell, cellview, folder, or DDS item I selected.” | The packaged DE/DDS plug-in captures an explicit `ADS_CONTEXT` handle instead of guessing the foreground window. | **Validated** in real DE and DDS sessions |
@@ -75,7 +75,7 @@ authorization before editing, simulating, opening, or closing anything. See the
 
 The package has three main execution lanes:
 
-1. **Knowledge:** the portable Docs Skill routes questions through the CLI to the
+1. **Knowledge:** the public `ads-kb-docs` Skill routes questions through the CLI to the
    selected installation's private, version-scoped local index, which returns
    matched content and source evidence.
 2. **Live ADS:** the Session Manager coordinates the packaged ADS Agent Bridge
@@ -175,6 +175,9 @@ ads-agent quickstart
 ```
 
 `setup` discovers installed ADS versions instead of hard-coding one release.
+It also installs two small, mutually routing public Skills: `ads-agent-bridge`
+for setup and bounded operation, and `ads-kb-docs` for documentation lookup.
+An existing complete `ads-kb-docs` from the full ADS Agent Kit is preserved.
 `quickstart` passes only after documentation indexing and query, add-on
 registration, disposable workspace creation, circuit simulation, and dataset
 readback all pass.
@@ -200,14 +203,14 @@ ads-agent --pretty launch --workspace /path/to/MyWorkspace_wrk --display :4
 ### Linux
 
 ```console
-curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a30/install.sh
+curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a31/install.sh
 sh install.sh
 ```
 
 ### Windows PowerShell
 
 ```powershell
-Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a30/install.ps1 -OutFile install.ps1
+Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a31/install.ps1 -OutFile install.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
@@ -262,7 +265,7 @@ boundaries.
 | ADS 2023 Update 2 through ADS 2024 Update 1 | Experimental |
 | Older installations | Documentation-only when local docs can be discovered |
 
-No version is fixed into the portable Docs Skill. Multiple installed versions
+No version is fixed into the public Docs Skill. Multiple installed versions
 can be discovered and selected explicitly.
 
 ## Five public examples

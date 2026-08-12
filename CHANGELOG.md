@@ -2,6 +2,23 @@
 
 All notable public changes are documented here.
 
+## 0.1.0a31 - 2026-08-12
+
+- Add a small public `ads-agent-bridge` operator Skill that teaches an Agent to
+  preserve exact ADS instance, workspace, slot, and profile identity; use
+  bounded context and evidence; and stop before unsafe or ambiguous actions.
+- Keep `ads-kb-docs` as a separate documentation Skill and add symmetric routing
+  between the two Skills so documentation-only work does not launch ADS and
+  runtime work does not guess APIs from memory.
+- Install, inspect, and remove both Skills together by default while retaining
+  explicit `bridge` and `docs` selections, recoverable per-Skill backups, and
+  exact-digest ownership markers.
+- Preserve a complete unmanaged `ads-kb-docs` during the default install so the
+  full ADS Agent Kit can coexist, while treating an unmanaged Bridge operator
+  Skill as a conflict unless the user explicitly requests backed-up replacement.
+- Make `setup` return `attention_required` with a nonzero exit when a Skill
+  conflict remains instead of reporting the whole setup as ready.
+
 ## 0.1.0a30 - 2026-08-11
 
 - Reframe the bilingual README around concrete Agent tasks and make the

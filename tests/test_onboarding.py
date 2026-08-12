@@ -134,3 +134,56 @@ def test_setup_degrades_when_old_install_has_no_docs_or_addons(tmp_path: Path, m
     assert payload["status"] == "ready"
     assert payload["docs"]["status"] == "not_available"
     assert payload["addon"]["status"] == "skipped"
+
+
+def test_setup_installs_both_public_skills_when_requested(tmp_path: Path, monkeypatch) -> None:
+    selected = instance(tmp_path)
+    expected_skills = {
+        "status": "ready",
+        "selection": "all",
+        "skills": [
+            {"skill": "ads-agent-bridge", "status": "ready"},
+            {"skill": "ads-kb-docs", "status": "ready"},
+        ],
+    }
+    monkeypatch.setattr(onboarding, "discover", lambda *_args: [selected])
+    monkeypatch.setattr(onboarding, "update_instances", lambda *_args: {"default_instance_id": selected.instance_id})
+    monkeypatch.setattr(onboarding, "ensure_fast_index", lambda *_args: {"status": "ready"})
+    monkeypatch.setattr(onboarding, "install_addon", lambda _config=None: {"status": "installed"})
+
+    def fake_install(selection: str):
+        assert selection == "all"
+        return expected_skills
+
+    monkeypatch.setattr(onboarding, "install_skills", fake_install)
+
+    payload = onboarding.setup(
+        roots=[],
+        search_roots=[],
+        non_interactive=True,
+        install_skill=True,
+    )
+
+    assert payload["skills"] == expected_skills
+
+
+def test_setup_requires_attention_when_skill_install_conflicts(tmp_path: Path, monkeypatch) -> None:
+    selected = instance(tmp_path)
+    monkeypatch.setattr(onboarding, "discover", lambda *_args: [selected])
+    monkeypatch.setattr(onboarding, "update_instances", lambda *_args: {"default_instance_id": selected.instance_id})
+    monkeypatch.setattr(onboarding, "ensure_fast_index", lambda *_args: {"status": "ready"})
+    monkeypatch.setattr(onboarding, "install_addon", lambda _config=None: {"status": "installed"})
+    monkeypatch.setattr(
+        onboarding,
+        "install_skills",
+        lambda _selection: {"status": "conflict", "selection": "all", "skills": []},
+    )
+
+    payload = onboarding.setup(
+        roots=[],
+        search_roots=[],
+        non_interactive=True,
+        install_skill=True,
+    )
+
+    assert payload["status"] == "attention_required"

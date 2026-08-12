@@ -27,7 +27,7 @@ Select a specific ADS installation without an interactive prompt:
 ads-agent setup --ads-root /path/to/ADS2026_Update2 --non-interactive
 ```
 
-Leave Codex skills unchanged or postpone full-text conversion:
+Leave Codex Skills unchanged or postpone full-text conversion:
 
 ```console
 ads-agent setup --skip-skill --no-background-docs
@@ -68,16 +68,30 @@ examples are stronger executable evidence than unverified guides. Multi-term
 queries keep a small reference/example quota so a broad guide cannot suppress
 all higher-authority evidence, but no documentation result is runtime proof.
 
-## Portable Docs Skill
+## Public Agent Skills
 
-`setup` installs the `ads-kb-docs` skill only when the target directory is
-free. It can also be managed explicitly:
+`setup` installs two small, mutually routing Skills by default:
+
+- `ads-agent-bridge` owns setup, diagnosis, explicit target identity, bounded
+  live/headless operation, context handles, and safe lifecycle control;
+- `ads-kb-docs` owns version-matched documentation, API, Python, AEL, and DDS
+  retrieval without launching ADS.
+
+Manage both together, or select one lane explicitly:
 
 ```console
-ads-agent skill status docs
-ads-agent skill install docs
-ads-agent skill uninstall docs
+ads-agent skill status [all|bridge|docs]
+ads-agent skill install [all|bridge|docs]
+ads-agent skill uninstall [all|bridge|docs]
 ```
+
+The default selection is `all`. The installer never silently replaces
+unmanaged content. During an `all` install it preserves a complete unmanaged
+`ads-kb-docs`, allowing the fuller ADS Agent Kit docs Skill to coexist with the
+public Bridge operator Skill. An unmanaged `ads-agent-bridge` remains a
+conflict because its runtime safety contract cannot be assumed equivalent.
+If either Skill needs conflict resolution, `setup` reports
+`attention_required` and exits nonzero instead of claiming a ready setup.
 
 ## Managed sessions
 
@@ -132,7 +146,7 @@ ads-agent host-ui action --slot SLOT --window-id ID --fingerprint SHA256 (--clic
 ads-agent examples list
 ads-agent examples show NAME
 ads-agent examples run NAME [--ads INSTANCE_ID] [--slot SLOT]
-ads-agent skill status|install|uninstall docs
+ads-agent skill status|install|uninstall [all|bridge|docs]
 ads-agent addon status
 ads-agent bridge sessions
 ads-agent bridge runtime-snapshot --slot SLOT --profile de [--detail compact|full]
@@ -148,7 +162,8 @@ launched with `ADS_AGENT_UNSAFE=1` and the client command also includes
 
 ```console
 ads-agent addon uninstall
+ads-agent skill uninstall all
 ```
 
-The installer preserves unrelated add-ons and creates timestamped XML backups
-before changing an existing ADS configuration.
+The installers preserve unrelated add-ons and unmanaged Skills. They create
+timestamped backups before changing content owned by this package.

@@ -33,6 +33,19 @@ def test_public_release_references_match_package_version():
     assert first_release.group(1) == version
 
 
+def test_public_skills_are_separate_and_route_to_each_other():
+    root = Path(__file__).parents[1] / "src" / "ads_agent_bridge" / "skill_assets"
+    bridge = (root / "ads-agent-bridge" / "SKILL.md").read_text(encoding="utf-8")
+    docs = (root / "ads-kb-docs" / "SKILL.md").read_text(encoding="utf-8")
+
+    assert "name: ads-agent-bridge" in bridge
+    assert "name: ads-kb-docs" in docs
+    assert "$ads-kb-docs" in bridge
+    assert "$ads-agent-bridge" in docs
+    for name in ("ads-agent-bridge", "ads-kb-docs"):
+        assert (root / name / "agents" / "openai.yaml").is_file()
+
+
 def test_github_actions_are_pinned_to_full_commit_shas():
     workflows = Path(__file__).parents[1] / ".github" / "workflows"
 

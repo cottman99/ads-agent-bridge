@@ -24,7 +24,7 @@ from .session_manager import disconnect as disconnect_session
 from .session_manager import launch as launch_session
 from .session_manager import shutdown as shutdown_session
 from .session_manager import status as session_status
-from .skill_installer import install_docs_skill, skill_status, uninstall_docs_skill
+from .skill_installer import install_skills, skill_status, uninstall_skills
 
 
 def _emit(payload: Any, pretty: bool) -> None:
@@ -125,7 +125,11 @@ def build_parser() -> argparse.ArgumentParser:
     setup_parser.add_argument("--search-root", action="append", type=Path, default=[])
     setup_parser.add_argument("--non-interactive", action="store_true")
     setup_parser.add_argument("--config-dir", type=Path, help="Explicit ADS hpeesof/config directory.")
-    setup_parser.add_argument("--skip-skill", action="store_true", help="Do not install the portable Docs Skill for Codex.")
+    setup_parser.add_argument(
+        "--skip-skill",
+        action="store_true",
+        help="Do not install the public Bridge and Docs Skills for Codex.",
+    )
     setup_parser.add_argument("--no-background-docs", action="store_true", help="Do not enrich local docs in the background.")
 
     quickstart_parser = commands.add_parser("quickstart")
@@ -207,7 +211,12 @@ def build_parser() -> argparse.ArgumentParser:
     skill_commands = skill.add_subparsers(dest="skill_command", required=True)
     for name in ("status", "install", "uninstall"):
         item = skill_commands.add_parser(name)
-        item.add_argument("docs", nargs="?", default="docs", choices=("docs",))
+        item.add_argument(
+            "selection",
+            nargs="?",
+            default="all",
+            choices=("all", "bridge", "docs"),
+        )
         item.add_argument("--target", choices=("codex", "agents"), default="codex")
         item.add_argument("--root", type=Path, help="Explicit parent directory for installed skills.")
         if name == "install":
@@ -341,14 +350,15 @@ def run(args: argparse.Namespace) -> tuple[Any, int]:
         if args.docs_command == "get":
             return get_document(instance, args.source_ref, focus=args.focus, max_chars=args.max_chars), 0
     if args.command == "setup":
-        return setup(
+        payload = setup(
             roots=args.ads_root,
             search_roots=args.search_root,
             non_interactive=args.non_interactive,
             config_dir=args.config_dir,
             install_skill=not args.skip_skill,
             start_docs_build=not args.no_background_docs,
-        ), 0
+        )
+        return payload, 0 if payload.get("status") == "ready" else 2
     if args.command == "quickstart":
         return quickstart(args.ads, args.workspace, args.timeout, args.config_dir)
     if args.command == "launch":
@@ -407,12 +417,17 @@ def run(args: argparse.Namespace) -> tuple[Any, int]:
             )
     if args.command == "skill":
         if args.skill_command == "status":
-            return skill_status(target=args.target, root=args.root), 0
+            return skill_status(args.selection, target=args.target, root=args.root), 0
         if args.skill_command == "install":
-            payload = install_docs_skill(target=args.target, root=args.root, force=args.force)
+            payload = install_skills(
+                args.selection,
+                target=args.target,
+                root=args.root,
+                force=args.force,
+            )
             return payload, 0 if payload.get("status") == "ready" else 2
         if args.skill_command == "uninstall":
-            return uninstall_docs_skill(target=args.target, root=args.root), 0
+            return uninstall_skills(args.selection, target=args.target, root=args.root), 0
     if args.command == "addon":
         profiles = ("de", "dds") if getattr(args, "profile", "both") == "both" else (args.profile,)
         if args.addon_command == "install":
