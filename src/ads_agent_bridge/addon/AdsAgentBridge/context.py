@@ -7,6 +7,8 @@ run inside every supported ADS embedded Python environment.
 from __future__ import annotations
 
 import copy
+import base64
+import hashlib
 import datetime as _datetime
 import json
 import os
@@ -24,6 +26,7 @@ MAX_SELECTION_ITEMS = 50
 _HANDLE_RE = re.compile(
     r"^ADS_CONTEXT:v1:(?P<slot>[^:]+):(?P<profile>[^:]+):(?P<context_id>[^:]+):"
 )
+_EDA_CONTEXT_PREFIX = "EDA_CONTEXT:v1:"
 
 
 def _utc_now():
@@ -61,6 +64,27 @@ def context_reference_from(value):
     text = _bounded_text(value, 4096).strip()
     if not text:
         raise ValueError("context id or ADS_CONTEXT handle is required")
+    if text.startswith(_EDA_CONTEXT_PREFIX):
+        encoded = text[len(_EDA_CONTEXT_PREFIX) :]
+        padded = encoded + "=" * (-len(encoded) % 4)
+        try:
+            wrapper = json.loads(base64.urlsafe_b64decode(padded).decode("utf-8"))
+            payload = wrapper["payload"]
+            canonical = json.dumps(
+                payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+            )
+            checksum = hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:24]
+            locator = payload["locator"]
+        except (ValueError, KeyError, TypeError) as exc:
+            raise ValueError("malformed EDA_CONTEXT handle") from exc
+        if checksum != wrapper.get("checksum") or payload.get("eda") != "keysight-ads":
+            raise ValueError("invalid or incompatible EDA_CONTEXT handle")
+        return {
+            "context_id": locator["context_id"],
+            "slot": locator["slot"],
+            "profile": locator["profile"],
+            "is_handle": True,
+        }
     match = _HANDLE_RE.match(text)
     if match is not None:
         return {
@@ -72,6 +96,34 @@ def context_reference_from(value):
     if text.startswith("ADS_CONTEXT:"):
         raise ValueError("unsupported or malformed ADS_CONTEXT handle")
     return {"context_id": text, "slot": None, "profile": None, "is_handle": False}
+
+
+def _eda_context_handle(context_id, slot, profile, target, generation, capabilities):
+    available = tuple(
+        sorted(name for name, state in capabilities.items() if state != "unavailable")
+    )
+    payload = {
+        "eda": "keysight-ads",
+        "target_kind": _bounded_text(target.get("kind")),
+        "locator": {
+            "slot": _bounded_text(slot),
+            "profile": _bounded_text(profile),
+            "context_id": _bounded_text(context_id),
+        },
+        "display_name": _bounded_text(target.get("display_name"), 512),
+        "generation": int(generation),
+        "capabilities_hint": available,
+        "created_at": _utc_now(),
+        "protocol": "eda-context/v1",
+    }
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    wrapper = {
+        "payload": payload,
+        "checksum": hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:24],
+    }
+    data = json.dumps(wrapper, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    encoded = base64.urlsafe_b64encode(data.encode("utf-8")).decode("ascii").rstrip("=")
+    return _EDA_CONTEXT_PREFIX + encoded
 
 
 def context_id_from(value):
@@ -335,6 +387,18 @@ class ContextRegistry:
                 "type": "ADS_CONTEXT",
                 "version": 1,
                 "text": self._handle(context_id, target, generation),
+            }
+            envelope["eda_context_ref"] = {
+                "type": "EDA_CONTEXT",
+                "version": 1,
+                "text": _eda_context_handle(
+                    context_id,
+                    self.slot,
+                    self.profile,
+                    target,
+                    generation,
+                    envelope["capabilities"],
+                ),
             }
             record = {
                 "key": key,

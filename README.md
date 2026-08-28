@@ -233,8 +233,17 @@ ssh ads-host 'ads-agent --pretty launch --workspace /path/to/MyWorkspace_wrk --d
 ```
 
 This keeps session files, random tokens, process ownership, workspaces, and ADS
-itself on the same host. A direct local-client-to-remote-Bridge protocol and
-multi-client lease model are not yet part of the public contract.
+itself on the same host. For one-off administration these commands remain the
+smallest route. For repeated Agent operations, install the optional
+`eda-bridge-runtime` integration and keep one SSH stdio process alive:
+
+```console
+ads-agent runtime serve
+```
+
+The generic Runtime performs the protocol handshake, records purpose and
+observed timings in its append-only ledger, and avoids starting SSH once per
+operation. It never exposes the embedded Bridge port or token.
 
 ## Safety and privacy
 
@@ -288,10 +297,9 @@ See [EXAMPLES.md](docs/EXAMPLES.md) for exact commands.
 ## Current boundaries
 
 The project does **not** yet claim a completed Momentum, RFPro, FEM, SIPro, or
-PIPro workflow. It also does not provide a public remote Bridge protocol: SSH
-execution is supported, while raw port forwarding is not the documented user
-path. These areas require their own runtime and solver-side acceptance evidence
-before they are promoted as supported capabilities.
+PIPro workflow. Remote ADS operations use the generic Runtime over persistent
+SSH stdio; raw port forwarding is not supported. Solver workflows still require
+their own runtime and solver-side acceptance evidence before promotion.
 
 ## Documentation
 

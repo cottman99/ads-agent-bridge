@@ -312,10 +312,31 @@ def build_parser() -> argparse.ArgumentParser:
     bridge_ael.add_argument("--profile", choices=("de", "dds"), default="de")
     bridge_ael.add_argument("--slot")
     bridge_ael.add_argument("--unsafe", action="store_true")
+
+    runtime = commands.add_parser(
+        "runtime",
+        help="Serve the generic EDA Runtime protocol over one persistent stdio channel.",
+    )
+    runtime_commands = runtime.add_subparsers(dest="runtime_command", required=True)
+    runtime_serve = runtime_commands.add_parser(
+        "serve",
+        help="Serve ADS requests for local or persistent SSH transport.",
+    )
+    runtime_serve.add_argument(
+        "--ledger",
+        type=Path,
+        help="Execution ledger path. Defaults to the private ADS Agent runtime directory.",
+    )
     return parser
 
 
 def run(args: argparse.Namespace) -> tuple[Any, int]:
+    if args.command == "runtime":
+        if args.runtime_command == "serve":
+            from .runtime_adapter import default_ledger_path, serve
+
+            serve(args.ledger or default_ledger_path(), sys.stdin, sys.stdout)
+            return {"status": "stopped"}, 0
     if args.command == "doctor":
         return diagnose(args.ads_root, args.search_root, args.config_dir, ping=not args.no_ping)
     if args.command == "instances":

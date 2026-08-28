@@ -75,7 +75,7 @@ workspace. Prefer one compact runtime snapshot over several broad probes. Use
 
 ### Explicit ADS or DDS context
 
-Use a user-copied `ADS_CONTEXT:v1:...` handle instead of guessing the foreground
+Use a user-copied `EDA_CONTEXT:v1:...` handle instead of guessing the foreground
 window or selection:
 
 ```text
@@ -88,6 +88,13 @@ simulating, closing, or replaying selected objects. Stop when the handle is
 stale, belongs to another slot/profile, or cannot establish the exact target.
 Do not launch a replacement session merely to make a copied handle resolve;
 first establish the handle's intended existing slot and profile.
+
+For repeated remote operations, use the generic Runtime's persistent SSH stdio
+transport with `ads-agent runtime serve` on the ADS host. Do not open a new SSH
+process for each Bridge command. Every agent-originated Runtime request must
+carry a concise `purpose`; the Runtime supplies available actor and host metadata
+and records observed timings automatically. Legacy `ADS_CONTEXT:v1` handles
+remain accepted for compatibility, but the Add-on copies `EDA_CONTEXT:v1`.
 
 ### Blocking dialogs
 
