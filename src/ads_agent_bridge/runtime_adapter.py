@@ -8,6 +8,10 @@ from typing import Any
 
 from . import __version__
 from .bridge_client import request as bridge_request
+from .session_manager import launch as launch_session
+from .session_manager import shutdown as shutdown_session
+from .session_manager import status as session_status
+from .workspace_create import create_workspace, resolve_context
 
 
 def _runtime_imports():
@@ -36,12 +40,102 @@ class _AdsAdapterBase:
             tuple[str | None, str], tuple[float, dict[str, Any]]
         ] = {}
 
-    def capabilities(self) -> dict[str, Any]:
+    def capabilities(self, target: dict[str, Any] | None = None) -> dict[str, Any]:
+        target = target or {}
+        slot = target.get("slot")
+        profile = str(target.get("profile") or "de")
+        live_error = None
+        try:
+            live = self._live_capabilities(str(slot) if slot else None, profile)
+        except (ConnectionError, OSError, RuntimeError, ValueError) as exc:
+            live = {"descriptors": []}
+            live_error = str(exc)
+        descriptors = list(live.get("descriptors") or [])
+        descriptors.extend(
+            [
+                {
+                    "id": "workspace.create",
+                    "category": "workspace",
+                    "safety": "bounded",
+                    "mutates": True,
+                    "latency_class": "moderate",
+                    "requires_context": False,
+                    "returns_context": True,
+                    "input_schema": {
+                        "required": ["workspace"],
+                        "optional": [
+                            "library",
+                            "cell",
+                            "instance",
+                            "display",
+                            "timeout_seconds",
+                        ],
+                    },
+                    "state": {"available": profile == "de", "healthy": profile == "de"},
+                },
+                {
+                    "id": "session.launch",
+                    "category": "lifecycle",
+                    "safety": "bounded",
+                    "mutates": True,
+                    "latency_class": "slow",
+                    "requires_context": False,
+                    "returns_context": False,
+                    "input_schema": {
+                        "required": [],
+                        "optional": [
+                            "workspace",
+                            "instance",
+                            "slot",
+                            "display",
+                            "timeout_seconds",
+                            "reuse_existing",
+                        ],
+                        "requires_one_of": ["workspace", "EDA_CONTEXT:workspace"],
+                    },
+                    "state": {"available": profile == "de", "healthy": profile == "de"},
+                },
+                {
+                    "id": "session.status",
+                    "category": "lifecycle",
+                    "safety": "safe",
+                    "mutates": False,
+                    "latency_class": "fast",
+                    "requires_context": False,
+                    "returns_context": False,
+                    "input_schema": {"required": [], "optional": ["slot"]},
+                    "state": {"available": True, "healthy": True},
+                },
+                {
+                    "id": "session.shutdown",
+                    "category": "lifecycle",
+                    "safety": "bounded",
+                    "mutates": True,
+                    "latency_class": "moderate",
+                    "requires_context": False,
+                    "returns_context": False,
+                    "input_schema": {
+                        "required": [],
+                        "optional": ["slot", "timeout_seconds"],
+                        "requires_one_of": ["slot", "EDA_CONTEXT:workspace"],
+                    },
+                    "state": {"available": True, "healthy": True},
+                },
+            ]
+        )
+        operations_by_id = {str(item.get("id")): item for item in descriptors}
         return {
             "eda": "keysight-ads",
+            "execution_host_role": "eda-worker",
+            "run_model": "synchronous",
             "session_model": "interactive",
-            "operations": "reported-by-live-bridge",
+            "operations": list(operations_by_id.values()),
             "escape_lanes": ["typed", "bounded-ui", "unsafe-native-opt-in"],
+            "target": {"slot": slot, "profile": profile},
+            "live_bridge": {
+                "available": live_error is None,
+                "reason": live_error,
+            },
         }
 
     def _live_capabilities(self, slot: str | None, profile: str) -> dict[str, Any]:
@@ -67,10 +161,99 @@ class _AdsAdapterBase:
 
     def execute(self, request, context):
         _, AdapterResult, _, _, _ = _runtime_imports()
+        context_id = request.target.get("context_id")
+        if context_id:
+            from eda_bridge_runtime import EDAContext, RequestEnvelope
+
+            stored = resolve_context(str(context_id))
+            if request.target.get("context"):
+                decoded = EDAContext.decode(str(request.target["context"]))
+                if stored.get("generation") != decoded.generation:
+                    raise ValueError("ADS Runtime context is stale")
+            data = request.to_dict()
+            data["target"] = {
+                **stored["target"],
+                **{
+                    key: value
+                    for key, value in request.target.items()
+                    if key != "context"
+                },
+                "eda": "keysight-ads",
+            }
+            request = RequestEnvelope.from_dict(data)
         slot = request.target.get("slot")
         profile = str(request.target.get("profile") or "de")
         if profile not in {"de", "dds"}:
             raise ValueError("ADS profile must be de or dds")
+        if request.operation == "workspace.create":
+            if not request.is_mutating:
+                raise ValueError("workspace.create requires payload.mutating=true")
+            workspace = request.payload.get("workspace") or request.target.get(
+                "workspace"
+            )
+            if not workspace:
+                raise ValueError("workspace.create requires workspace")
+            started = time.monotonic()
+            result = create_workspace(
+                workspace=workspace,
+                library=str(request.payload.get("library") or "AgentWorkspace_lib"),
+                cell=str(request.payload.get("cell") or "Main"),
+                instance_id=request.payload.get("instance")
+                or request.target.get("instance"),
+                slot=str(slot) if slot else None,
+                profile=profile,
+                connection_id=request.target.get("connection_id"),
+                expected_display=request.payload.get("display")
+                or request.target.get("display"),
+                timeout=float(request.payload.get("timeout_seconds", 120)),
+            )
+            context.emit(
+                "ads.workspace.created",
+                {
+                    "status": result["status"],
+                    "elapsed_ms": round((time.monotonic() - started) * 1000, 3),
+                },
+            )
+            return AdapterResult(status="passed", result={"bridge": result})
+        if request.operation == "session.status":
+            if request.is_mutating:
+                raise ValueError("session.status requires payload.mutating=false")
+            result = session_status(str(slot) if slot else None)
+            return AdapterResult(status="passed", result={"bridge": result})
+        if request.operation == "session.shutdown":
+            if not request.is_mutating:
+                raise ValueError("session.shutdown requires payload.mutating=true")
+            result = shutdown_session(
+                str(slot) if slot else None,
+                wait_seconds=float(request.payload.get("timeout_seconds", 30)),
+            )
+            if result.get("status") != "exited":
+                raise RuntimeError(
+                    f"ADS session shutdown did not complete: {result.get('status')}"
+                )
+            return AdapterResult(status="passed", result={"bridge": result})
+        if request.operation == "session.launch":
+            if not request.is_mutating:
+                raise ValueError("session.launch requires payload.mutating=true")
+            workspace = request.payload.get("workspace") or request.target.get(
+                "workspace"
+            )
+            if not workspace:
+                raise ValueError(
+                    "session.launch requires workspace or a workspace context"
+                )
+            result = launch_session(
+                request.payload.get("instance") or request.target.get("instance"),
+                Path(str(workspace)),
+                slot=str(slot) if slot else None,
+                display=request.payload.get("display") or request.target.get("display"),
+                wait_seconds=float(request.payload.get("timeout_seconds", 120)),
+                reuse_existing=bool(request.payload.get("reuse_existing")),
+            )
+            status = str(result.get("status") or "")
+            if status not in {"ready", "running", "reused"}:
+                raise RuntimeError(f"ADS session launch did not become ready: {status}")
+            return AdapterResult(status="passed", result={"bridge": result})
         capabilities_started = time.monotonic()
         descriptor = self._descriptor(
             self._live_capabilities(str(slot) if slot else None, profile),
@@ -97,7 +280,11 @@ class _AdsAdapterBase:
             )
         args = request.payload.get("args", {})
         if not isinstance(args, dict):
-            raise ValueError("ADS operation args must be an object")
+            raise TypeError("ADS operation args must be an object")
+        if request.operation == "open_workspace" and "workspace" not in args:
+            workspace = request.target.get("workspace")
+            if workspace:
+                args = {**args, "workspace": workspace}
         context.emit(
             "ads.capability.resolved",
             {

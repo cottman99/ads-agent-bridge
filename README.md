@@ -245,6 +245,19 @@ The generic Runtime performs the protocol handshake, records purpose and
 observed timings in its append-only ledger, and avoids starting SSH once per
 operation. It never exposes the embedded Bridge port or token.
 
+The Runtime Skill, MCP server, and connection registry belong on the Agent
+host. `ads-agent runtime serve`, the ADS plug-in, and ADS itself belong on the
+ADS host. If the Agent and ADS share a machine, register the same service as a
+local connection rather than bypassing Runtime. Adapter capabilities identify
+this service as an `eda-worker` with a synchronous Run model.
+
+When no workspace exists, Runtime capability discovery remains available even
+without a live ADS plug-in session. The typed `workspace.create` operation
+creates a non-overwriting minimal workspace and returns an opaque
+`EDA_CONTEXT`; `session.launch`, `session.status`, and `session.shutdown` then
+provide the bounded GUI lifecycle without putting the remote path in the
+context token.
+
 ## Safety and privacy
 
 - Documentation, indexes, workspaces, session tokens, and automation results

@@ -1,5 +1,6 @@
 import io
 import json
+from types import SimpleNamespace
 
 import pytest
 
@@ -97,3 +98,80 @@ def test_runtime_stdio_records_purpose(tmp_path, monkeypatch):
     recorded = ExecutionLedger(ledger).events(run_id=request.run_id)
     assert recorded[0]["payload"]["declared_intent"]["purpose"] == request.purpose
     assert any(event["event_type"] == "ads.bridge.completed" for event in recorded)
+
+
+def test_capabilities_include_greenfield_workspace(monkeypatch):
+    monkeypatch.setattr(
+        runtime_adapter,
+        "bridge_request",
+        lambda *_args, **_kwargs: {"ok": True, "result": {"descriptors": []}},
+    )
+    adapter = runtime_adapter._AdsAdapterBase()
+    result = adapter.capabilities({"slot": "u2", "profile": "de"})
+    assert result["execution_host_role"] == "eda-worker"
+    assert result["run_model"] == "synchronous"
+    create = next(
+        item for item in result["operations"] if item["id"] == "workspace.create"
+    )
+    assert create["returns_context"] is True
+    assert create["state"]["available"] is True
+
+
+def test_capabilities_keep_greenfield_available_without_live_session(monkeypatch):
+    monkeypatch.setattr(
+        runtime_adapter,
+        "bridge_request",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(ConnectionRefusedError()),
+    )
+    result = runtime_adapter._AdsAdapterBase().capabilities(
+        {"slot": "u2", "profile": "de"}
+    )
+    assert result["live_bridge"]["available"] is False
+    assert [item["id"] for item in result["operations"]] == [
+        "workspace.create",
+        "session.launch",
+        "session.status",
+        "session.shutdown",
+    ]
+
+
+def test_session_launch_uses_workspace_from_opaque_context(monkeypatch):
+    from eda_bridge_runtime import RequestEnvelope
+
+    captured = {}
+    monkeypatch.setattr(
+        runtime_adapter,
+        "resolve_context",
+        lambda _context_id: {
+            "generation": 1,
+            "target": {
+                "workspace": "/remote/demo_wrk",
+                "instance": "ads2026",
+                "slot": "greenfield",
+                "profile": "de",
+                "display": ":4.0",
+            },
+        },
+    )
+
+    def fake_launch(instance, workspace, **kwargs):
+        captured.update(instance=instance, workspace=str(workspace), **kwargs)
+        return {"status": "ready", "slot": kwargs["slot"]}
+
+    monkeypatch.setattr(runtime_adapter, "launch_session", fake_launch)
+    request = RequestEnvelope(
+        purpose="Open the newly created workspace",
+        target={
+            "eda": "keysight-ads",
+            "context_id": "ctx_1234567890abcdef1234",
+        },
+        operation="session.launch",
+        payload={"mutating": True},
+        idempotency_key="launch-demo",
+    )
+    result = runtime_adapter._AdsAdapterBase().execute(
+        request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+    )
+    assert result.status == "passed"
+    assert captured["workspace"].replace("\\", "/") == "/remote/demo_wrk"
+    assert captured["display"] == ":4.0"

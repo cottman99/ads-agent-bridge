@@ -10,6 +10,11 @@ tokens, workspaces, and private documentation on the ADS host. When operating
 remotely, run the CLI on that host through SSH; do not expose or forward the
 embedded loopback endpoint.
 
+The Agent-facing Skill and generic Runtime MCP server belong on the Agent host.
+This Bridge and `ads-agent runtime serve` belong on the ADS host. A host that
+runs both roles should use a local Runtime connection, not bypass the common
+request and Run contracts.
+
 ## Route the request
 
 - For a documentation-only question, use `$ads-kb-docs`. Do not launch ADS to
