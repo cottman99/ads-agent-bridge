@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 try:
     from PySide6 import QtWidgets
 except ImportError:
@@ -93,7 +91,7 @@ class ContextUi:
         return wrapped
 
     def _copy(self, envelope):
-        text = envelope["context_ref"]["text"]
+        text = envelope.get("eda_context_ref", envelope["context_ref"])["text"]
         application = QtWidgets.QApplication.instance()
         if application is None:
             raise RuntimeError("Qt application is unavailable")

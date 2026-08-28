@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Add an optional `eda-bridge-runtime` adapter and a persistent JSON-lines stdio
+  service suitable for one long-lived local or SSH connection.
+- Record ADS capability resolution and bridge round-trip timing in the unified
+  execution ledger without exposing the embedded Bridge token.
+- Copy generic `EDA_CONTEXT/v1` handles from ADS while continuing to accept
+  legacy `ADS_CONTEXT/v1` handles.
+
 All notable public changes are documented here.
 
 ## 0.1.0a31 - 2026-08-12
