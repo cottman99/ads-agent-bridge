@@ -33,6 +33,14 @@ def test_generic_context_round_trip():
         "is_handle": True,
     }
     assert envelope["context_ref"]["text"].startswith("ADS_CONTEXT:v1:")
+    from eda_bridge_runtime import EDAContext
+
+    context = EDAContext.decode(envelope["eda_context_ref"]["text"])
+    assert context.protocol == "eda-context/v2"
+    assert context.origin["origin_id"].startswith("origin-")
+    assert context.session["slot"] == "slot-1"
+    assert context.target["identity"]["cell"] == "cell"
+    assert context.capabilities["digest"].startswith("cap-")
 
 
 def test_runtime_adapter_requires_optional_runtime(monkeypatch):
@@ -128,11 +136,55 @@ def test_capabilities_keep_greenfield_available_without_live_session(monkeypatch
     )
     assert result["live_bridge"]["available"] is False
     assert [item["id"] for item in result["operations"]] == [
+        "docs.status",
+        "docs.query",
+        "docs.get",
         "workspace.create",
         "session.launch",
         "session.status",
         "session.shutdown",
     ]
+
+
+def test_runtime_docs_query_does_not_probe_live_ads(monkeypatch):
+    from eda_bridge_runtime import RequestEnvelope
+
+    instance = SimpleNamespace(instance_id="ads2026")
+    monkeypatch.setattr(runtime_adapter, "select_instance", lambda value: instance)
+    monkeypatch.setattr(
+        runtime_adapter,
+        "query_docs",
+        lambda selected, text, limit, domains: {
+            "instance_id": selected.instance_id,
+            "query": text,
+            "limit": limit,
+            "domains": domains,
+            "results": [],
+        },
+    )
+    monkeypatch.setattr(
+        runtime_adapter,
+        "bridge_request",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("documentation lookup must not contact live ADS")
+        ),
+    )
+    request = RequestEnvelope(
+        purpose="Find one ADS Python symbol",
+        target={"eda": "keysight-ads"},
+        operation="docs.query",
+        payload={
+            "mutating": False,
+            "instance": "ads2026",
+            "query": "de open workspace",
+            "domains": ["python"],
+            "limit": 6,
+        },
+    )
+    result = runtime_adapter._AdsAdapterBase().execute(
+        request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+    )
+    assert result.result["bridge"]["instance_id"] == "ads2026"
 
 
 def test_session_launch_uses_workspace_from_opaque_context(monkeypatch):

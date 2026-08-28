@@ -8,6 +8,10 @@ from typing import Any
 
 from . import __version__
 from .bridge_client import request as bridge_request
+from .config import select_instance
+from .docs_kb import get_document
+from .docs_kb import query as query_docs
+from .docs_kb import status as docs_status
 from .session_manager import launch as launch_session
 from .session_manager import shutdown as shutdown_session
 from .session_manager import status as session_status
@@ -53,6 +57,45 @@ class _AdsAdapterBase:
         descriptors = list(live.get("descriptors") or [])
         descriptors.extend(
             [
+                {
+                    "id": "docs.status",
+                    "category": "documentation",
+                    "safety": "safe",
+                    "mutates": False,
+                    "latency_class": "fast",
+                    "requires_context": False,
+                    "returns_context": False,
+                    "input_schema": {"required": [], "optional": ["instance"]},
+                    "state": {"available": True, "healthy": True},
+                },
+                {
+                    "id": "docs.query",
+                    "category": "documentation",
+                    "safety": "safe",
+                    "mutates": False,
+                    "latency_class": "fast",
+                    "requires_context": False,
+                    "returns_context": False,
+                    "input_schema": {
+                        "required": ["query"],
+                        "optional": ["instance", "domains", "limit"],
+                    },
+                    "state": {"available": True, "healthy": True},
+                },
+                {
+                    "id": "docs.get",
+                    "category": "documentation",
+                    "safety": "safe",
+                    "mutates": False,
+                    "latency_class": "fast",
+                    "requires_context": False,
+                    "returns_context": False,
+                    "input_schema": {
+                        "required": ["source_ref"],
+                        "optional": ["instance", "focus", "max_chars"],
+                    },
+                    "state": {"available": True, "healthy": True},
+                },
                 {
                     "id": "workspace.create",
                     "category": "workspace",
@@ -124,8 +167,11 @@ class _AdsAdapterBase:
             ]
         )
         operations_by_id = {str(item.get("id")): item for item in descriptors}
+        from eda_bridge_runtime import stable_origin_id
+
         return {
             "eda": "keysight-ads",
+            "origin_id": stable_origin_id("keysight-ads"),
             "execution_host_role": "eda-worker",
             "run_model": "synchronous",
             "session_model": "interactive",
@@ -185,6 +231,29 @@ class _AdsAdapterBase:
         profile = str(request.target.get("profile") or "de")
         if profile not in {"de", "dds"}:
             raise ValueError("ADS profile must be de or dds")
+        if request.operation.startswith("docs."):
+            if request.is_mutating:
+                raise ValueError("ADS documentation operations require payload.mutating=false")
+            instance = select_instance(
+                request.payload.get("instance") or request.target.get("instance")
+            )
+            if request.operation == "docs.status":
+                result = docs_status(instance)
+            elif request.operation == "docs.query":
+                result = query_docs(
+                    instance,
+                    str(request.payload.get("query") or ""),
+                    int(request.payload.get("limit", 6)),
+                    domains=list(request.payload.get("domains") or []),
+                )
+            else:
+                result = get_document(
+                    instance,
+                    str(request.payload.get("source_ref") or ""),
+                    focus=request.payload.get("focus"),
+                    max_chars=int(request.payload.get("max_chars", 4000)),
+                )
+            return AdapterResult(status="passed", result={"bridge": result})
         if request.operation == "workspace.create":
             if not request.is_mutating:
                 raise ValueError("workspace.create requires payload.mutating=true")

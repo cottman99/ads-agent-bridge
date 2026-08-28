@@ -6,7 +6,6 @@ import types
 from pathlib import Path
 from types import SimpleNamespace
 
-
 ADDON_DIR = (
     Path(__file__).parents[1]
     / "src"
@@ -202,7 +201,7 @@ def test_de_registers_and_removes_callbacks_and_captures_exact_tree_selection(mo
     captured = registry.list()[0]
     assert captured["target"]["kind"] == "dataset-ref"
     assert captured["target"]["identity"]["workspace_path"] == "C:/demo_wrk"
-    assert clipboard.text.startswith("EDA_CONTEXT:v1:")
+    assert clipboard.text.startswith("EDA_CONTEXT:v2:")
 
     ui.stop()
     assert application.popup == {}
@@ -235,7 +234,7 @@ def test_dds_popup_accepts_empty_selection_and_unregisters_returned_handles(monk
     captured = registry.list()[0]
     assert captured["selection"]["count"] == 0
     assert captured["target"]["kind"] == "dds-page"
-    assert clipboard.text.startswith("EDA_CONTEXT:v1:")
+    assert clipboard.text.startswith("EDA_CONTEXT:v2:")
     ui.stop()
     assert ("popup", "popup-token") in unregistered
     assert ("window", "window-token") in unregistered

@@ -2,3 +2,8 @@ interface:
   display_name: "ADS Agent Bridge"
   short_description: "Operate local ADS sessions safely through the Bridge."
   default_prompt: "Use $ads-agent-bridge to inspect or operate my exact local ADS target safely."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "eda-bridge-runtime"
+      description: "Resolve EDA context and execute typed ADS operations through one local or SSH Runtime path."

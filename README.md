@@ -203,14 +203,14 @@ ads-agent --pretty launch --workspace /path/to/MyWorkspace_wrk --display :4
 ### Linux
 
 ```console
-curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a31/install.sh
+curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a32/install.sh
 sh install.sh
 ```
 
 ### Windows PowerShell
 
 ```powershell
-Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a31/install.ps1 -OutFile install.ps1
+Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a32/install.ps1 -OutFile install.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
@@ -251,10 +251,12 @@ ADS host. If the Agent and ADS share a machine, register the same service as a
 local connection rather than bypassing Runtime. Adapter capabilities identify
 this service as an `eda-worker` with a synchronous Run model.
 
-When no workspace exists, Runtime capability discovery remains available even
-without a live ADS plug-in session. The typed `workspace.create` operation
+When no workspace exists, the ADS Skill establishes the typed
+`workspace.create` operation even without a live ADS plug-in session;
+capability discovery remains available only when the contract is unknown or
+stale. The operation
 creates a non-overwriting minimal workspace and returns an opaque
-`EDA_CONTEXT`; `session.launch`, `session.status`, and `session.shutdown` then
+rich `EDA_CONTEXT`; `session.launch`, `session.status`, and `session.shutdown` then
 provide the bounded GUI lifecycle without putting the remote path in the
 context token.
 

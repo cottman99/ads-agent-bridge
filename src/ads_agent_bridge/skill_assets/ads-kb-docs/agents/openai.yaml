@@ -2,3 +2,8 @@ interface:
   display_name: "ADS Local Docs"
   short_description: "Query version-matched private ADS documentation."
   default_prompt: "Use $ads-kb-docs to find version-matched evidence in my locally installed ADS documentation."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "eda-bridge-runtime"
+      description: "Query version-matched ADS documentation through the registered local or SSH ADS adapter."

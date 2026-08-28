@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from datetime import datetime, timezone
 from importlib.resources import files
 from pathlib import Path
 from typing import Any
@@ -44,7 +45,12 @@ def _write_context(target: dict[str, Any]) -> tuple[str, int]:
             )
         except (OSError, ValueError, KeyError, TypeError):
             pass
-    payload = {"schema_version": 1, "generation": generation, "target": target}
+    payload = {
+        "schema_version": 1,
+        "generation": generation,
+        "captured_at": datetime.now(timezone.utc).isoformat(),
+        "target": target,
+    }
     descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
@@ -166,18 +172,36 @@ def create_workspace(
         "display": actual_display,
     }
     context_id, generation = _write_context(target)
-    from eda_bridge_runtime import EDAContext
+    from eda_bridge_runtime import EDAContext, capability_digest, stable_origin_id
 
     locator = {"context_id": context_id, "slot": selected_slot, "profile": profile}
     if connection_id:
         locator["connection_id"] = connection_id
+    capability_states = {name: "available" for name in ("open", "inspect", "edit", "simulate")}
     token = EDAContext(
         eda="keysight-ads",
         target_kind="workspace",
         locator={key: value for key, value in locator.items() if value},
         display_name=f"{workspace_path.name}:{top_design}",
         generation=generation,
-        capabilities_hint=("open", "inspect", "edit", "simulate"),
+        capabilities_hint=tuple(capability_states),
+        origin={"origin_id": stable_origin_id("keysight-ads")},
+        session={
+            "session_id": None,
+            "display": actual_display,
+            "profile": profile,
+            "state": "not-launched",
+        },
+        target={
+            "workspace": workspace_path.name,
+            "top_design": top_design,
+            "instance": instance.instance_id,
+        },
+        capabilities={
+            "states": capability_states,
+            "digest": capability_digest(capability_states),
+        },
+        freshness={"scope": "durable", "generation": generation, "state": "reopenable"},
     ).encode()
     return {
         "status": "passed",
