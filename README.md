@@ -218,14 +218,14 @@ ads-agent --pretty launch --workspace /path/to/MyWorkspace_wrk --display :4
 ### Linux
 
 ```console
-curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a36/install.sh
+curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a37/install.sh
 sh install.sh
 ```
 
 ### Windows PowerShell
 
 ```powershell
-Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a36/install.ps1 -OutFile install.ps1
+Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a37/install.ps1 -OutFile install.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
@@ -283,6 +283,15 @@ instance/parameter/netlist assertions, verifies the source Bundle hash is
 unchanged, and only then atomically commits the output workspace. It rejects
 raw Python/AEL, unknown fields, stale `expected_before` state, and overwrite.
 
+For an existing, generated Momentum simulation-input directory,
+`momentum.run_generated` provides the same bounded Runtime path to a real
+S-parameter result. It fingerprints and preserves the source, solves only a
+new sibling copy with the explicitly selected ADS installation, checks the
+complete finite N-port CITI matrix, and promotes the output only after all
+checks pass. A timeout stops the wrapper and its solver process tree. This
+operation deliberately starts after EM setup/input generation; it does not
+invent substrate, ports, mesh, or sweep settings for a blank layout.
+
 ## Safety and privacy
 
 - Documentation, indexes, workspaces, session tokens, and automation results
@@ -336,10 +345,12 @@ See [EXAMPLES.md](docs/EXAMPLES.md) for exact commands.
 
 ## Current boundaries
 
-The project does **not** yet claim a completed Momentum, RFPro, FEM, SIPro, or
-PIPro workflow. Remote ADS operations use the generic Runtime over persistent
-SSH stdio; raw port forwarding is not supported. Solver workflows still require
-their own runtime and solver-side acceptance evidence before promotion.
+The project does **not** claim blank-layout Momentum setup authoring or a
+completed RFPro, FEM, SIPro, or PIPro workflow. Its bounded Momentum capability
+begins with already-generated simulation inputs. Remote ADS operations use the
+generic Runtime over persistent SSH stdio; raw port forwarding is not
+supported. Other solver workflows still require their own runtime and
+solver-side acceptance evidence before promotion.
 
 ## Documentation
 

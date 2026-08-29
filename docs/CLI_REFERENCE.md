@@ -160,6 +160,17 @@ installed `eda-bridge-runtime` integration. It accepts versioned JSON-lines requ
 stdin, returns normalized responses on stdout, and stores an append-only ledger
 under the private ADS Agent runtime directory unless `--ledger` is supplied.
 
+The advertised `momentum.run_generated` operation accepts the structured
+payload in
+[`ads-momentum-generated-run-v1.schema.json`](schemas/ads-momentum-generated-run-v1.schema.json).
+The source and output must be distinct sibling directories and output must not
+exist. Runtime checks an optional source fingerprint, uses the selected ADS
+instance and exact display, removes only stale result artifacts from staging,
+requires successful S-parameter completion plus finite complete N-port CITI
+data, and then atomically commits output. Failure or timeout leaves no output;
+timeout terminates the owned solver process tree. This is a generated-input
+execution boundary, not an EM setup authoring API.
+
 Arbitrary embedded Python and dynamic AEL calls are disabled unless ADS is
 launched with `ADS_AGENT_UNSAFE=1` and the client command also includes
 `--unsafe`.

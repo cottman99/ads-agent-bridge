@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/cottman99/ads-agent-bridge/docs/schemas/ads-momentum-generated-run-v1.schema.json",
+  "title": "ADS generated Momentum run v1",
+  "description": "Bounded Runtime payload for solving an already-generated Momentum input bundle on a non-overwriting transactional copy.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mutating", "source_directory", "output_directory", "project"],
+  "properties": {
+    "mutating": {"const": true},
+    "source_directory": {"type": "string", "minLength": 1},
+    "output_directory": {"type": "string", "minLength": 1},
+    "project": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"},
+    "instance": {"type": "string", "minLength": 1},
+    "display": {"type": "string", "minLength": 1},
+    "source_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "timeout_seconds": {"type": "number", "minimum": 1, "maximum": 3600}
+  }
+}

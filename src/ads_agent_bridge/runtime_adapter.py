@@ -13,6 +13,7 @@ from .design_plan import execute_design_plan
 from .docs_kb import get_document
 from .docs_kb import query as query_docs
 from .docs_kb import status as docs_status
+from .momentum import run_generated_momentum
 from .session_manager import launch as launch_session
 from .session_manager import shutdown as shutdown_session
 from .session_manager import status as session_status
@@ -130,6 +131,29 @@ class _AdsAdapterBase:
                         "optional": ["instance", "display", "timeout_seconds"],
                     },
                     "state": {"available": profile == "de", "healthy": profile == "de"},
+                },
+                {
+                    "id": "momentum.run_generated",
+                    "category": "simulation",
+                    "safety": "bounded",
+                    "mutates": True,
+                    "latency_class": "slow",
+                    "requires_context": False,
+                    "returns_context": False,
+                    "input_schema": {
+                        "required": [
+                            "source_directory",
+                            "output_directory",
+                            "project",
+                        ],
+                        "optional": [
+                            "instance",
+                            "display",
+                            "source_fingerprint",
+                            "timeout_seconds",
+                        ],
+                    },
+                    "state": {"available": True, "healthy": True},
                 },
                 {
                     "id": "session.launch",
@@ -320,6 +344,23 @@ class _AdsAdapterBase:
                 expected_display=request.payload.get("display")
                 or request.target.get("display"),
                 timeout=float(request.payload.get("timeout_seconds", 180)),
+            )
+            return AdapterResult(status="passed", result={"bridge": result})
+        if request.operation == "momentum.run_generated":
+            if not request.is_mutating:
+                raise ValueError(
+                    "momentum.run_generated requires payload.mutating=true"
+                )
+            result = run_generated_momentum(
+                source_directory=request.payload.get("source_directory", ""),
+                output_directory=request.payload.get("output_directory", ""),
+                project=str(request.payload.get("project") or ""),
+                instance_id=request.payload.get("instance")
+                or request.target.get("instance"),
+                expected_display=request.payload.get("display")
+                or request.target.get("display"),
+                source_fingerprint=request.payload.get("source_fingerprint"),
+                timeout=float(request.payload.get("timeout_seconds", 600)),
             )
             return AdapterResult(status="passed", result={"bridge": result})
         if request.operation == "session.status":

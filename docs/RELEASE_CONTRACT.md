@@ -105,9 +105,11 @@ addons, AEL interoperability, headless automation, or EM routes are available.
 
 ## Non-blocking extensions
 
-Momentum, the full plugin platform, RFPro/FEM completeness, SIPro/PIPro, broad
-PDK automation, AEL debugging, built-in SSH orchestration, and large example
-catalogs do not block the first public beta.
+Blank-layout Momentum setup authoring, the full plugin platform, RFPro/FEM
+completeness, SIPro/PIPro, broad PDK automation, AEL debugging, built-in SSH
+orchestration, and large example catalogs do not block the first public beta.
+The bounded generated-input Momentum runner is an additive capability and does
+not broaden that setup-authoring promise.
 
 Generic non-modal business-window lifecycle automation, forced termination,
 multi-client leases beyond per-slot mutation serialization, and remote

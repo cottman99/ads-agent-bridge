@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0a37 - 2026-08-30
 
 - Build one platform-aware ADS bundled-Python environment for quickstart,
   workspace creation, and structured design transactions instead of maintaining
@@ -8,6 +8,11 @@
 - Include the installed PDE core plug-in directory on Linux so the public
   Python route can import DE, DDS, and `emtools` without hard-coded user paths;
   this remains an API readiness gate and does not claim Momentum completion.
+- Add a typed `momentum.run_generated` Runtime operation for an existing
+  Momentum simulation-input bundle. It preserves the source, solves a staging
+  sibling with the selected ADS installation, validates finite complete
+  S-parameters, commits only verified output, and stops the solver process tree
+  on timeout.
 
 ## 0.1.0a36 - 2026-08-29
 
