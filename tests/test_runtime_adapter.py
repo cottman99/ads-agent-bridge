@@ -141,6 +141,7 @@ def test_capabilities_keep_greenfield_available_without_live_session(monkeypatch
         "docs.get",
         "workspace.create",
         "design.apply",
+        "momentum.run_generated",
         "session.launch",
         "session.status",
         "session.shutdown",
@@ -199,6 +200,40 @@ def test_runtime_design_apply_rejects_dds_profile(monkeypatch):
         runtime_adapter._AdsAdapterBase().execute(
             request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
         )
+
+
+def test_runtime_momentum_accepts_only_bounded_transaction(monkeypatch):
+    from eda_bridge_runtime import RequestEnvelope
+
+    captured = {}
+
+    def fake_run(**kwargs):
+        captured.update(kwargs)
+        return {"status": "passed", "source_preserved": True}
+
+    monkeypatch.setattr(runtime_adapter, "run_generated_momentum", fake_run)
+    request = RequestEnvelope(
+        purpose="Run one copied generated Momentum input",
+        target={"eda": "keysight-ads", "instance": "ads2026", "display": ":4.0"},
+        operation="momentum.run_generated",
+        payload={
+            "mutating": True,
+            "source_directory": "/scratch/source",
+            "output_directory": "/scratch/output",
+            "project": "proj",
+            "timeout_seconds": 30,
+        },
+        idempotency_key="momentum-demo",
+    )
+
+    result = runtime_adapter._AdsAdapterBase().execute(
+        request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+    )
+
+    assert result.status == "passed"
+    assert captured["instance_id"] == "ads2026"
+    assert captured["expected_display"] == ":4.0"
+    assert captured["source_directory"] == "/scratch/source"
 
 
 def test_runtime_docs_query_does_not_probe_live_ads(monkeypatch):
