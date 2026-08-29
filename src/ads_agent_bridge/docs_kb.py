@@ -690,6 +690,7 @@ def query(
         },
         "evidence_boundary": "Version-matched local documentation evidence; not runtime verification.",
         "next_action": "Use docs get <source_ref> --focus <symbol-or-topic> only when returned excerpts are insufficient.",
+        "result_count": len(rows),
         "results": rows,
     }
 
@@ -741,6 +742,11 @@ def get_document(
     else:
         excerpt = _context_excerpt(str(row["content"]), [], width=max_chars)
     source_kind, validation_status = _source_evidence(str(row["domain"]), str(row["relative_path"]))
+    returned_chars = (
+        sum(len(section["excerpt"]) for section in sections)
+        if terms
+        else len(excerpt or "")
+    )
     return {
         "instance_id": instance.instance_id,
         "product_version": instance.product_version,
@@ -753,6 +759,7 @@ def get_document(
         "runtime_verified": False,
         "focus": focus,
         "retrieval_mode": retrieval_mode,
+        "returned_chars": returned_chars,
         **({"sections": sections} if terms else {"excerpt": excerpt}),
         "content_hash": hashlib.sha256(_document_body(str(row["content"])).encode("utf-8")).hexdigest(),
         "evidence_boundary": "Version-matched local documentation evidence; not runtime verification.",

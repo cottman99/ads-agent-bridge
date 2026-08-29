@@ -432,6 +432,7 @@ def test_query_can_explicitly_select_python_domain_and_returns_term_evidence(tmp
     build_full_index(instance)
     result = query(instance, "add_rectangle add_polygon", domains=["python"])
 
+    assert result["result_count"] == len(result["results"])
     assert result["domains"] == ["python"]
     assert result["results"][0]["domain"] == "python"
     assert {item["query_term"] for item in result["results"][0]["matched_sections"]} == {
@@ -507,6 +508,9 @@ def test_get_document_cleans_on_demand_and_bounds_output(tmp_path: Path, monkeyp
 
     assert detail["retrieval_mode"] == "on_demand_cleaning"
     excerpt = detail["sections"][0]["excerpt"]
+    assert detail["returned_chars"] == sum(
+        len(section["excerpt"]) for section in detail["sections"]
+    )
     assert [section["query_term"] for section in detail["sections"]] == ["target_symbol"]
     assert "target_symbol(arg: str)" in excerpt
     assert "navigation noise" not in excerpt
