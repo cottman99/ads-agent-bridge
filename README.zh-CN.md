@@ -159,6 +159,12 @@ ads-agent setup
 ads-agent quickstart
 ```
 
+安装 `ads-agent-bridge` 时会自动安装轻量的 `eda-bridge-runtime` Python 库，
+因此使用 `ads-agent runtime serve` 不需要再选择额外的 Python 包。如果 Agent
+运行在另一台主机上，仍需按照
+[EDA Bridge Runtime](https://github.com/cottman99/eda-bridge-runtime) 的说明，
+在 Agent 主机安装并启用 Runtime MCP/插件；ADS 主机不需要安装 Agent 侧插件。
+
 `setup` 会自动发现 ADS 安装，不会固定某个版本。它还会安装两个小型、相互路由的
 公开 Skills：`ads-agent-bridge` 负责安装、诊断与有界操作，`ads-kb-docs` 负责
 文档检索。若完整 ADS Agent Kit 已提供完整的
@@ -187,14 +193,14 @@ ads-agent --pretty launch --workspace /path/to/MyWorkspace_wrk --display :4
 ### Linux
 
 ```console
-curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a31/install.sh
+curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a32/install.sh
 sh install.sh
 ```
 
 ### Windows PowerShell
 
 ```powershell
-Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a31/install.ps1 -OutFile install.ps1
+Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a32/install.ps1 -OutFile install.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
@@ -216,7 +222,16 @@ ssh ads-host 'ads-agent --pretty launch --workspace /path/to/MyWorkspace_wrk --d
 ```
 
 这样，session 文件、随机 token、进程所有权、工作区和 ADS 本身始终位于同一主机。
-“本地客户端直接连接远端 Bridge”的正式协议和多客户端租约模型目前不属于公开契约。
+一次性管理可以直接使用上述 SSH 命令；重复的 Agent 操作应使用安装 Bridge 时已自动
+带上的 Runtime 集成，让一个 SSH stdio 进程持续工作：
+
+```console
+ads-agent runtime serve
+```
+
+Runtime 负责协议握手、记录简短动机和实际耗时，并避免每个操作都重新启动 SSH。
+Runtime Skill、MCP 和连接表位于 Agent 主机；`ads-agent runtime serve`、ADS
+插件和 ADS 本身位于 ADS 主机。两者为同一台机器时使用 Runtime 的本地连接。
 
 ## 安全与隐私
 
@@ -264,9 +279,8 @@ ads-agent --pretty examples list
 ## 当前边界
 
 本项目目前**没有**宣称已经完成 Momentum、RFPro、FEM、SIPro 或 PIPro 的完整
-工作流，也没有提供公开的远端 Bridge 直连协议。当前支持通过 SSH 在服务器上执行
-CLI；原始端口转发不是文档化的用户路径。这些能力必须通过独立的运行时和求解器侧
-验收后，才能升级为正式支持。
+工作流。远端 ADS 操作通过公共 Runtime 使用持久 SSH stdio；不支持原始端口转发。
+求解器工作流仍需通过独立的运行时和求解器侧验收，才能升级为正式支持。
 
 ## 文档
 

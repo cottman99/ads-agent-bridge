@@ -5,7 +5,11 @@ description: "Retrieve private local Keysight ADS documentation by selecting a c
 
 # ADS KB Docs
 
-Use the local `ads-agent` command as the portable documentation backend. It discovers installed ADS versions, keeps each version's index separate, and never uploads or redistributes Keysight documentation.
+Use Runtime typed operations `docs.status`, `docs.query`, and `docs.get` as the
+normal documentation path. The selected ADS adapter keeps each installed
+version's index separate and never uploads or redistributes Keysight
+documentation. The local `ads-agent docs` commands remain setup and direct
+diagnostic interfaces, not the normal Agent transport.
 
 For setup, a disposable execution proof, live DE/DDS state, an `ADS_CONTEXT`
 handle, dialog handling, or session lifetime, use `$ads-agent-bridge`. A pure
@@ -15,7 +19,7 @@ documentation request stays in this skill and must not launch ADS.
 
 For a conceptual question about how to choose Python, AEL, or UI routes, use the Execution Route Policy below directly; do not call the CLI merely to restate that policy. If a structured answer requires a source reference, use the stable identifier `ads-policy:execution-route/v1`; never expose the installed skill path.
 
-For a version-specific documentation lookup, run the read-only check first:
+For setup or diagnosis, the equivalent read-only CLI check is:
 
 ```text
 ads-agent doctor --no-ping
@@ -25,7 +29,8 @@ If no default ADS instance is configured, run `ads-agent setup`. When several ve
 
 ## Query
 
-Query the configured default installation. Select the documentation domain explicitly for API work:
+Query the configured installation through one Runtime submission. Select the
+documentation domain explicitly for API work. The equivalent direct CLI is:
 
 ```text
 ads-agent docs query "<technical query>" --domain python --limit 6
@@ -35,7 +40,9 @@ For a non-default installation, obtain its id from `ads-agent instances list`, t
 
 Treat `product_version`, `instance_id`, `source_ref`, `source_kind`, `validation_status`, and `search_mode` as evidence. Prefer `api_reference` and `official_example` results over `guide` results. A guide marked `docs_backed_unverified` is context, not authority for an executable symbol.
 
-The query response already contains bounded snippets and per-term matched sections. If they are insufficient, expand exactly one result through the Bridge:
+The query response already contains bounded snippets and per-term matched
+sections. If they are insufficient, expand exactly one result through Runtime
+`docs.get`. The equivalent direct CLI is:
 
 ```text
 ads-agent docs get <source-ref> --ads <instance-id> --focus "<symbol-or-topic>" --max-chars 4000

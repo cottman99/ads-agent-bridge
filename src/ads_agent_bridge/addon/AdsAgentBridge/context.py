@@ -6,19 +6,20 @@ run inside every supported ADS embedded Python environment.
 
 from __future__ import annotations
 
-import copy
 import base64
-import hashlib
+import copy
 import datetime as _datetime
+import hashlib
 import json
 import os
 import re
+import tempfile
 import threading
+import uuid
 from collections import OrderedDict
 from itertools import islice
 from pathlib import Path
 from urllib.parse import quote, unquote
-
 
 SCHEMA_VERSION = 1
 MAX_CONTEXTS = 64
@@ -26,7 +27,7 @@ MAX_SELECTION_ITEMS = 50
 _HANDLE_RE = re.compile(
     r"^ADS_CONTEXT:v1:(?P<slot>[^:]+):(?P<profile>[^:]+):(?P<context_id>[^:]+):"
 )
-_EDA_CONTEXT_PREFIX = "EDA_CONTEXT:v1:"
+_EDA_CONTEXT_PREFIXES = ("EDA_CONTEXT:v2:", "EDA_CONTEXT:v1:")
 
 
 def _utc_now():
@@ -61,11 +62,12 @@ def _enum_name(value):
 def context_reference_from(value):
     """Parse a raw context id or a versioned ADS_CONTEXT handle."""
 
-    text = _bounded_text(value, 4096).strip()
+    text = _bounded_text(value, 32768).strip()
     if not text:
         raise ValueError("context id or ADS_CONTEXT handle is required")
-    if text.startswith(_EDA_CONTEXT_PREFIX):
-        encoded = text[len(_EDA_CONTEXT_PREFIX) :]
+    prefix = next((item for item in _EDA_CONTEXT_PREFIXES if text.startswith(item)), None)
+    if prefix:
+        encoded = text[len(prefix) :]
         padded = encoded + "=" * (-len(encoded) % 4)
         try:
             wrapper = json.loads(base64.urlsafe_b64decode(padded).decode("utf-8"))
@@ -98,23 +100,75 @@ def context_reference_from(value):
     return {"context_id": text, "slot": None, "profile": None, "is_handle": False}
 
 
-def _eda_context_handle(context_id, slot, profile, target, generation, capabilities):
+def _stable_origin_id():
+    configured = _bounded_text(os.environ.get("EDA_BRIDGE_ORIGIN_ID"), 128)
+    if configured:
+        return configured
+    root = Path(os.environ.get("EDA_RUNTIME_HOME") or Path.home() / ".eda-bridge-runtime")
+    eda = "keysight-ads"
+    path = root / "origins" / (hashlib.sha256(eda.encode("utf-8")).hexdigest()[:16] + ".json")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_file():
+        return _bounded_text(json.loads(path.read_text(encoding="utf-8"))["origin_id"], 128)
+    origin_id = "origin-" + uuid.uuid4().hex[:20]
+    descriptor, temporary = tempfile.mkstemp(prefix="origin-", suffix=".json", dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            json.dump({"schema_version": 1, "eda": eda, "origin_id": origin_id}, stream)
+            stream.write("\n")
+        try:
+            os.link(temporary, path)
+        except FileExistsError:
+            return _stable_origin_id()
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+    return origin_id
+
+
+def _capability_digest(capabilities):
+    canonical = json.dumps(capabilities, sort_keys=True, separators=(",", ":"))
+    return "cap-" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
+
+
+def _eda_context_handle(context_id, envelope):
+    capabilities = envelope["capabilities"]
     available = tuple(
         sorted(name for name, state in capabilities.items() if state != "unavailable")
     )
+    selection = copy.deepcopy(envelope.get("selection") or {})
+    items = list(selection.get("items") or [])
+    if len(items) > 12:
+        selection["items"] = items[:12]
+        selection["truncated"] = True
+    session = copy.deepcopy(envelope["session"])
+    session["session_id"] = (
+        os.environ.get("ADS_AGENT_MANAGED_SESSION_ID")
+        or "ads-{0}-{1}-{2}".format(session.get("pid"), session.get("slot"), session.get("profile"))
+    )
+    session["display"] = os.environ.get("DISPLAY")
     payload = {
         "eda": "keysight-ads",
-        "target_kind": _bounded_text(target.get("kind")),
+        "target_kind": _bounded_text(envelope["target"].get("kind")),
         "locator": {
-            "slot": _bounded_text(slot),
-            "profile": _bounded_text(profile),
+            "slot": _bounded_text(session.get("slot")),
+            "profile": _bounded_text(session.get("profile")),
             "context_id": _bounded_text(context_id),
         },
-        "display_name": _bounded_text(target.get("display_name"), 512),
-        "generation": int(generation),
+        "display_name": _bounded_text(envelope["target"].get("display_name"), 512),
+        "generation": int(envelope["freshness"]["generation"]),
         "capabilities_hint": available,
-        "created_at": _utc_now(),
-        "protocol": "eda-context/v1",
+        "created_at": envelope["freshness"]["last_refreshed_at"],
+        "origin": {"origin_id": _stable_origin_id()},
+        "session": session,
+        "target": copy.deepcopy(envelope["target"]),
+        "selection": selection,
+        "capabilities": {
+            "states": copy.deepcopy(capabilities),
+            "digest": _capability_digest(capabilities),
+        },
+        "freshness": copy.deepcopy(envelope["freshness"]),
+        "protocol": "eda-context/v2",
     }
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     wrapper = {
@@ -123,7 +177,7 @@ def _eda_context_handle(context_id, slot, profile, target, generation, capabilit
     }
     data = json.dumps(wrapper, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     encoded = base64.urlsafe_b64encode(data.encode("utf-8")).decode("ascii").rstrip("=")
-    return _EDA_CONTEXT_PREFIX + encoded
+    return _EDA_CONTEXT_PREFIXES[0] + encoded
 
 
 def context_id_from(value):
@@ -390,15 +444,8 @@ class ContextRegistry:
             }
             envelope["eda_context_ref"] = {
                 "type": "EDA_CONTEXT",
-                "version": 1,
-                "text": _eda_context_handle(
-                    context_id,
-                    self.slot,
-                    self.profile,
-                    target,
-                    generation,
-                    envelope["capabilities"],
-                ),
+                "version": 2,
+                "text": _eda_context_handle(context_id, envelope),
             }
             record = {
                 "key": key,

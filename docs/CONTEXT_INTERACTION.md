@@ -16,9 +16,12 @@ After `ads-agent setup` installs the add-on and ADS is restarted:
   when no trace or annotation is selected, and in its top-level **ADS Context**
   menu.
 
-The action copies an `ADS_CONTEXT:v1:...` handle to the system clipboard. It is
-non-modal: success and failure are written to the ADS Python console instead of
-opening another dialog.
+The action copies a bounded `EDA_CONTEXT:v2:...` snapshot to the system
+clipboard. It includes origin, session/Display, target, bounded selection,
+capability digest, and freshness so an Agent can submit a known operation
+without rediscovering them. Legacy `ADS_CONTEXT:v1` remains accepted. The
+action is non-modal: success and failure are written to the ADS Python console
+instead of opening another dialog.
 
 ## Meaning of the handle
 
@@ -32,7 +35,7 @@ public envelope contains:
 - slot, process, profile, and freshness generation;
 - capability states and an explicit `authorization_required` marker.
 
-The handle contains neither the bridge token nor its localhost port. It is a
+The snapshot contains neither the bridge token nor its localhost port. It is a
 durable reference to a captured context, not proof that the live ADS object is
 still open. `context-refresh` rechecks the retained live object; it never opens
 another design, workspace, or DDS file to make a stale reference appear live.

@@ -5,10 +5,18 @@ description: "Operate and inspect local Keysight ADS through the installed ads-a
 
 # ADS Agent Bridge
 
-Use the local `ads-agent` CLI as the stable public interface. Keep ADS, session
-tokens, workspaces, and private documentation on the ADS host. When operating
-remotely, run the CLI on that host through SSH; do not expose or forward the
-embedded loopback endpoint.
+Use the EDA Runtime MCP supplied by this Skill as the normal execution path.
+When a copied `EDA_CONTEXT` and this Skill establish the operation, submit it
+directly with one concise `purpose`; do not routinely precede it with context,
+connection, capability, doctor, or session probes. Keep ADS, session tokens,
+workspaces, and private documentation on the ADS host.
+
+The local `ads-agent` CLI remains the setup, administration, repair, and direct
+diagnostic interface. Do not assemble SSH commands for normal user operations.
+The Agent-facing Skill and generic Runtime MCP server belong on the Agent host.
+This Bridge and `ads-agent runtime serve` belong on the ADS host. A host that
+runs both roles should use a local Runtime connection, not bypass the common
+request and Run contracts.
 
 ## Route the request
 
@@ -21,7 +29,7 @@ embedded loopback endpoint.
 
 ## Establish identity before acting
 
-Start with read-only discovery:
+For setup or diagnosis, use read-only discovery:
 
 ```text
 ads-agent doctor --no-ping
@@ -75,7 +83,7 @@ workspace. Prefer one compact runtime snapshot over several broad probes. Use
 
 ### Explicit ADS or DDS context
 
-Use a user-copied `EDA_CONTEXT:v1:...` handle instead of guessing the foreground
+Use a user-copied `EDA_CONTEXT:v2:...` handle instead of guessing the foreground
 window or selection:
 
 ```text
@@ -89,12 +97,12 @@ stale, belongs to another slot/profile, or cannot establish the exact target.
 Do not launch a replacement session merely to make a copied handle resolve;
 first establish the handle's intended existing slot and profile.
 
-For repeated remote operations, use the generic Runtime's persistent SSH stdio
+The generic Runtime uses persistent SSH stdio
 transport with `ads-agent runtime serve` on the ADS host. Do not open a new SSH
 process for each Bridge command. Every agent-originated Runtime request must
 carry a concise `purpose`; the Runtime supplies available actor and host metadata
 and records observed timings automatically. Legacy `ADS_CONTEXT:v1` handles
-remain accepted for compatibility, but the Add-on copies `EDA_CONTEXT:v1`.
+remain accepted for compatibility, but the Add-on copies a richer `EDA_CONTEXT:v2`.
 
 ### Blocking dialogs
 

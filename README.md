@@ -174,6 +174,13 @@ ads-agent setup
 ads-agent quickstart
 ```
 
+Installing `ads-agent-bridge` also installs the small `eda-bridge-runtime`
+Python library automatically, so `ads-agent runtime serve` works without an
+extra Python package choice. On a separate Agent host, install and enable the
+Runtime MCP/plugin there as described by the
+[EDA Bridge Runtime](https://github.com/cottman99/eda-bridge-runtime); the ADS
+host does not need the Agent-facing plugin.
+
 `setup` discovers installed ADS versions instead of hard-coding one release.
 It also installs two small, mutually routing public Skills: `ads-agent-bridge`
 for setup and bounded operation, and `ads-kb-docs` for documentation lookup.
@@ -203,14 +210,14 @@ ads-agent --pretty launch --workspace /path/to/MyWorkspace_wrk --display :4
 ### Linux
 
 ```console
-curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a31/install.sh
+curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a32/install.sh
 sh install.sh
 ```
 
 ### Windows PowerShell
 
 ```powershell
-Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a31/install.ps1 -OutFile install.ps1
+Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a32/install.ps1 -OutFile install.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
@@ -234,8 +241,8 @@ ssh ads-host 'ads-agent --pretty launch --workspace /path/to/MyWorkspace_wrk --d
 
 This keeps session files, random tokens, process ownership, workspaces, and ADS
 itself on the same host. For one-off administration these commands remain the
-smallest route. For repeated Agent operations, install the optional
-`eda-bridge-runtime` integration and keep one SSH stdio process alive:
+smallest route. For repeated Agent operations, use the automatically installed
+Runtime integration to keep one SSH stdio process alive:
 
 ```console
 ads-agent runtime serve
@@ -244,6 +251,21 @@ ads-agent runtime serve
 The generic Runtime performs the protocol handshake, records purpose and
 observed timings in its append-only ledger, and avoids starting SSH once per
 operation. It never exposes the embedded Bridge port or token.
+
+The Runtime Skill, MCP server, and connection registry belong on the Agent
+host. `ads-agent runtime serve`, the ADS plug-in, and ADS itself belong on the
+ADS host. If the Agent and ADS share a machine, register the same service as a
+local connection rather than bypassing Runtime. Adapter capabilities identify
+this service as an `eda-worker` with a synchronous Run model.
+
+When no workspace exists, the ADS Skill establishes the typed
+`workspace.create` operation even without a live ADS plug-in session;
+capability discovery remains available only when the contract is unknown or
+stale. The operation
+creates a non-overwriting minimal workspace and returns an opaque
+rich `EDA_CONTEXT`; `session.launch`, `session.status`, and `session.shutdown` then
+provide the bounded GUI lifecycle without putting the remote path in the
+context token.
 
 ## Safety and privacy
 
