@@ -155,8 +155,8 @@ ads-agent bridge context-get CONTEXT_OR_HANDLE --slot SLOT --profile de
 ads-agent runtime serve [--ledger PATH]
 ```
 
-`runtime serve` is the persistent local/SSH entry point for the optional
-`eda-bridge-runtime` integration. It accepts versioned JSON-lines requests on
+`runtime serve` is the persistent local/SSH entry point for the automatically
+installed `eda-bridge-runtime` integration. It accepts versioned JSON-lines requests on
 stdin, returns normalized responses on stdout, and stores an append-only ledger
 under the private ADS Agent runtime directory unless `--ledger` is supplied.
 

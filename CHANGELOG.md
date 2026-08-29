@@ -2,8 +2,8 @@
 
 ## 0.1.0a32 - 2026-08-28
 
-- Add an optional `eda-bridge-runtime` adapter and a persistent JSON-lines stdio
-  service suitable for one long-lived local or SSH connection.
+- Add the automatically installed `eda-bridge-runtime` adapter and a persistent
+  JSON-lines stdio service suitable for one long-lived local or SSH connection.
 - Record ADS capability resolution and bridge round-trip timing in the unified
   execution ledger without exposing the embedded Bridge token.
 - Copy rich bounded `EDA_CONTEXT/v2` snapshots with origin, session, target,

@@ -174,6 +174,13 @@ ads-agent setup
 ads-agent quickstart
 ```
 
+Installing `ads-agent-bridge` also installs the small `eda-bridge-runtime`
+Python library automatically, so `ads-agent runtime serve` works without an
+extra Python package choice. On a separate Agent host, install and enable the
+Runtime MCP/plugin there as described by the
+[EDA Bridge Runtime](https://github.com/cottman99/eda-bridge-runtime); the ADS
+host does not need the Agent-facing plugin.
+
 `setup` discovers installed ADS versions instead of hard-coding one release.
 It also installs two small, mutually routing public Skills: `ads-agent-bridge`
 for setup and bounded operation, and `ads-kb-docs` for documentation lookup.
@@ -234,8 +241,8 @@ ssh ads-host 'ads-agent --pretty launch --workspace /path/to/MyWorkspace_wrk --d
 
 This keeps session files, random tokens, process ownership, workspaces, and ADS
 itself on the same host. For one-off administration these commands remain the
-smallest route. For repeated Agent operations, install the optional
-`eda-bridge-runtime` integration and keep one SSH stdio process alive:
+smallest route. For repeated Agent operations, use the automatically installed
+Runtime integration to keep one SSH stdio process alive:
 
 ```console
 ads-agent runtime serve

@@ -24,6 +24,7 @@ classifiers = [
 ]
 dependencies = [
   "beautifulsoup4>=4.12,<5",
+  "eda-bridge-runtime>=0.1.0a5,<0.2",
   "html2text>=2024.2.26,<2027",
   "Pillow>=11.2.1,<13",
   "platformdirs>=4,<5",
@@ -38,7 +39,6 @@ Changelog = "https://github.com/cottman99/ads-agent-bridge/blob/main/CHANGELOG.m
 
 [project.optional-dependencies]
 test = ["pytest>=8,<10"]
-runtime = ["eda-bridge-runtime>=0.1.0a1,<0.2"]
 
 [project.scripts]
 ads-agent = "ads_agent_bridge.cli:main"
