@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0a36 - 2026-08-29
+
+- Add a generic typed `design.apply` Runtime operation for registered ADS
+  schematic instance, parameter, and wire edits without accepting raw code.
+- Preserve the source workspace, execute against a staging copy, freshly reopen
+  and assert the saved design, then atomically promote the verified output.
+- Publish the `ads.design-plan/v1` schema and reject unknown fields, stale
+  expected state, unsafe path topology, overwrite, and unverified output.
+
 ## 0.1.0a35 - 2026-08-29
 
 - Return `result_count` from documentation queries and `returned_chars` from
