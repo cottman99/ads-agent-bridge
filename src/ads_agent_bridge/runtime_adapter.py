@@ -9,6 +9,7 @@ from typing import Any
 from . import __version__
 from .bridge_client import request as bridge_request
 from .config import select_instance
+from .design_plan import execute_design_plan
 from .docs_kb import get_document
 from .docs_kb import query as query_docs
 from .docs_kb import status as docs_status
@@ -113,6 +114,20 @@ class _AdsAdapterBase:
                             "display",
                             "timeout_seconds",
                         ],
+                    },
+                    "state": {"available": profile == "de", "healthy": profile == "de"},
+                },
+                {
+                    "id": "design.apply",
+                    "category": "design",
+                    "safety": "bounded",
+                    "mutates": True,
+                    "latency_class": "slow",
+                    "requires_context": False,
+                    "returns_context": False,
+                    "input_schema": {
+                        "required": ["plan"],
+                        "optional": ["instance", "display", "timeout_seconds"],
                     },
                     "state": {"available": profile == "de", "healthy": profile == "de"},
                 },
@@ -233,7 +248,9 @@ class _AdsAdapterBase:
             raise ValueError("ADS profile must be de or dds")
         if request.operation.startswith("docs."):
             if request.is_mutating:
-                raise ValueError("ADS documentation operations require payload.mutating=false")
+                raise ValueError(
+                    "ADS documentation operations require payload.mutating=false"
+                )
             instance = select_instance(
                 request.payload.get("instance") or request.target.get("instance")
             )
@@ -282,6 +299,25 @@ class _AdsAdapterBase:
                     "status": result["status"],
                     "elapsed_ms": round((time.monotonic() - started) * 1000, 3),
                 },
+            )
+            return AdapterResult(status="passed", result={"bridge": result})
+        if request.operation == "design.apply":
+            if not request.is_mutating:
+                raise ValueError("design.apply requires payload.mutating=true")
+            plan = request.payload.get("plan")
+            if not isinstance(plan, dict):
+                raise TypeError("design.apply requires a structured plan object")
+            plan = dict(plan)
+            selected_instance = request.payload.get("instance") or request.target.get(
+                "instance"
+            )
+            if selected_instance and "instance" not in plan:
+                plan["instance"] = selected_instance
+            result = execute_design_plan(
+                plan,
+                expected_display=request.payload.get("display")
+                or request.target.get("display"),
+                timeout=float(request.payload.get("timeout_seconds", 180)),
             )
             return AdapterResult(status="passed", result={"bridge": result})
         if request.operation == "session.status":

@@ -140,10 +140,42 @@ def test_capabilities_keep_greenfield_available_without_live_session(monkeypatch
         "docs.query",
         "docs.get",
         "workspace.create",
+        "design.apply",
         "session.launch",
         "session.status",
         "session.shutdown",
     ]
+
+
+def test_runtime_design_apply_accepts_only_structured_plan(monkeypatch):
+    from eda_bridge_runtime import RequestEnvelope
+
+    captured = {}
+
+    def fake_execute(plan, **kwargs):
+        captured.update(plan=plan, **kwargs)
+        return {"status": "passed", "fresh_reopen": True}
+
+    monkeypatch.setattr(runtime_adapter, "execute_design_plan", fake_execute)
+    request = RequestEnvelope(
+        purpose="Apply one bounded schematic plan",
+        target={"eda": "keysight-ads", "instance": "ads2026", "display": ":4.0"},
+        operation="design.apply",
+        payload={
+            "mutating": True,
+            "plan": {
+                "schema_version": "ads.design-plan/v1",
+                "operation_id": "demo",
+            },
+        },
+        idempotency_key="design-demo",
+    )
+    result = runtime_adapter._AdsAdapterBase().execute(
+        request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+    )
+    assert result.status == "passed"
+    assert captured["plan"]["instance"] == "ads2026"
+    assert captured["expected_display"] == ":4.0"
 
 
 def test_runtime_docs_query_does_not_probe_live_ads(monkeypatch):
