@@ -438,6 +438,8 @@ def test_query_can_explicitly_select_python_domain_and_returns_term_evidence(tmp
         "add_rectangle",
         "add_polygon",
     }
+    serialized = json.dumps(result["results"][0], ensure_ascii=False)
+    assert len(serialized) < 2500
 
 
 def test_exact_title_is_not_excluded_by_unmatched_generic_terms(tmp_path: Path, monkeypatch) -> None:

@@ -32,6 +32,8 @@ DOCUMENT_DOMAINS = {"ads", "ael", "python", "dds"}
 MAX_QUERY_MATCHES = 6
 MAX_QUERY_RESULTS = 20
 MAX_GET_CHARS = 12_000
+QUERY_SNIPPET_CHARS = 360
+QUERY_MATCHED_SECTIONS_CHARS = 720
 BOOTSTRAP_PREFIX_BYTES = 64 * 1024
 BOOTSTRAP_TEXT_CHARS = 12_000
 
@@ -521,7 +523,12 @@ def _decorate_result(row: dict[str, object], terms: list[str]) -> dict[str, obje
     row["source_kind"] = source_kind
     row["validation_status"] = validation_status
     row["runtime_verified"] = False
-    matches = _matched_sections(content, terms)
+    matched_term_count = min(
+        MAX_QUERY_MATCHES,
+        len({term.casefold() for term in terms if term.casefold() in content.casefold()}),
+    )
+    section_width = max(120, QUERY_MATCHED_SECTIONS_CHARS // max(1, matched_term_count))
+    matches = _matched_sections(content, terms, width=section_width)
     if matches:
         row["matched_sections"] = matches
     return row
@@ -575,7 +582,7 @@ def _query_index(
     title = "lower(title)"
     relative_path = "lower(relative_path)"
     content = "lower(content)"
-    searchable = f"lower(title || ' ' || relative_path || ' ' || content)"
+    searchable = "lower(title || ' ' || relative_path || ' ' || content)"
     score_parts: list[str] = []
     score_params: list[str] = []
     for term in terms:
@@ -612,7 +619,7 @@ def _query_index(
         connection.row_factory = sqlite3.Row
         rows = [dict(row) for row in connection.execute(sql, [*score_params, *where_params, *domains, limit])]
         for row in rows:
-            row["snippet"] = _context_excerpt(str(row["_content"]), terms)
+            row["snippet"] = _context_excerpt(str(row["_content"]), terms, width=QUERY_SNIPPET_CHARS)
             row.pop("relevance", None)
     return rows
 
@@ -785,7 +792,7 @@ def _query_source_fallback(
                 "relative_path": record[2],
                 "source_ref": _source_ref(instance, record[0], root, record[2]),
                 "title": record[3],
-                "snippet": _context_excerpt(record[4], terms),
+                "snippet": _context_excerpt(record[4], terms, width=QUERY_SNIPPET_CHARS),
                 "_content": record[4],
             }
         )
