@@ -5,6 +5,10 @@
 # ADS Agent Bridge
 
 <p align="center">
+  <img src="docs/assets/readme/logo.png" width="150" alt="ADS Agent Bridge 标志">
+</p>
+
+<p align="center">
   <strong>让通用 AI Agent 以本地、安全、版本感知的方式理解并操作 Keysight ADS。</strong>
 </p>
 
@@ -15,7 +19,7 @@
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/cottman99/ads-agent-bridge"></a>
 </p>
 
-![ADS Agent Bridge 将通用 Agent 与有边界的本地 EDA 环境连接起来](https://raw.githubusercontent.com/cottman99/ads-agent-bridge/main/docs/assets/readme/ads-agent-bridge-hero.png)
+![操作人员从多个电路中选中目标，把上下文交给 Bridge，并得到清晰的电路结果和波形](docs/assets/readme/ads-user-value.png)
 
 ADS Agent Bridge 是一个非官方、本地优先的 Keysight Advanced Design
 System（ADS）文档与自动化桥接工具。它把用户机器上已有的 ADS 安装转化为：
@@ -63,9 +67,13 @@ DE 与 DDS 使用不同的入口和回调生命周期。复制出的 handle 只�
 任何对象前，仍必须检查上下文是否新鲜，并获得对应工作流的授权。准确约束见
 [上下文交互契约](docs/CONTEXT_INTERACTION.md)。
 
-## 工作原理
+## 从选中对象到经过检查的结果
 
-![ADS Agent Bridge 架构：双向本地文档检索、随包交付的 ADS 插件、有界实时 DE/DDS 控制，以及独立的无 GUI ADS Python 通路](https://raw.githubusercontent.com/cottman99/ads-agent-bridge/main/docs/assets/readme/how-it-works-image2.png)
+你在 ADS 中选中真正要处理的对象，复制有边界的 Context，然后直接用
+工程语言描述任务。Bridge 会解析这个明确目标，并报告哪些可观察检查
+确实通过。
+
+## 工作原理
 
 产品包含三条主要执行通路：
 
