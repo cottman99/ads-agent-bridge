@@ -218,14 +218,14 @@ ads-agent --pretty launch --workspace /path/to/MyWorkspace_wrk --display :4
 ### Linux
 
 ```console
-curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a33/install.sh
+curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a34/install.sh
 sh install.sh
 ```
 
 ### Windows PowerShell
 
 ```powershell
-Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a33/install.ps1 -OutFile install.ps1
+Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a34/install.ps1 -OutFile install.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 

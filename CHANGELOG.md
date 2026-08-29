@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0a34 - 2026-08-29
+
+- Bound each documentation-query candidate to a compact snippet and one shared
+  per-term evidence budget, reducing top-level Agent context before a focused
+  `docs.get` without removing source identity or matched-term evidence.
+- Preserve the existing bounded document expansion path for the one selected
+  source instead of returning large overlapping excerpts for every candidate.
+
 ## 0.1.0a33 - 2026-08-29
 
 - Require EDA Bridge Runtime `0.1.0a9` and route capability-proven ADS and

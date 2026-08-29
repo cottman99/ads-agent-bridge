@@ -42,8 +42,8 @@ For a non-default installation, obtain its id from `ads-agent instances list`, t
 
 Treat `product_version`, `instance_id`, `source_ref`, `source_kind`, `validation_status`, and `search_mode` as evidence. Prefer `api_reference` and `official_example` results over `guide` results. A guide marked `docs_backed_unverified` is context, not authority for an executable symbol.
 
-The query response already contains bounded snippets and per-term matched
-sections. If they are insufficient, expand exactly one result through Runtime
+The query response already contains compact snippets and a shared bounded budget for per-term
+matched sections. If they are insufficient, expand exactly one result through Runtime
 `docs.get`. The equivalent direct CLI is:
 
 ```text
