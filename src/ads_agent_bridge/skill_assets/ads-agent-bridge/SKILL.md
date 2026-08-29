@@ -6,9 +6,11 @@ description: "Operate and inspect local Keysight ADS through the installed ads-a
 # ADS Agent Bridge
 
 Use the EDA Runtime MCP supplied by this Skill as the normal execution path.
-When a copied `EDA_CONTEXT` and this Skill establish the operation, submit it
-directly with one concise `purpose`; do not routinely precede it with context,
-connection, capability, doctor, or session probes. Keep ADS, session tokens,
+When a copied `EDA_CONTEXT` and this Skill establish the operation, use one
+concise `purpose`. Run a known mutation through `eda.submit`. Run a read through
+`eda.read` when its capability metadata is already cached; otherwise discover
+capabilities once, then keep using the safe read lane. Do not routinely add
+context, connection, doctor, or session probes. Keep ADS, session tokens,
 workspaces, and private documentation on the ADS host.
 
 The local `ads-agent` CLI remains the setup, administration, repair, and direct
