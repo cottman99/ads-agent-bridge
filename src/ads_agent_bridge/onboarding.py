@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import json
-import os
 import subprocess
-import sys
 import time
 from importlib.resources import files
 from pathlib import Path
@@ -13,6 +11,7 @@ from .config import select_instance, update_instances
 from .discovery import discover
 from .docs_kb import ensure_fast_index, query, start_background_build
 from .paths import data_dir
+from .runtime_environment import ads_runtime_environment
 from .skill_installer import install_skills
 
 
@@ -108,19 +107,7 @@ def quickstart(
         probe = {"results": []}
     runner = files("ads_agent_bridge").joinpath("quickstart_circuit.py")
     command = [instance.python_executable, str(runner), "--workspace", str(selected_workspace)]
-    environment = os.environ.copy()
-    environment["HPEESOF_DIR"] = instance.install_root
-    environment["PATH"] = str(Path(instance.install_root) / "bin") + os.pathsep + environment.get("PATH", "")
-    if sys.platform.startswith("linux"):
-        linux_libraries = [
-            str(Path(instance.install_root) / "tools" / "python" / "lib"),
-            str(Path(instance.install_root) / "tools" / "python" / "lib64"),
-            str(Path(instance.install_root) / "lib" / "linux_x86_64"),
-            str(Path(instance.install_root) / "lib" / "linux_x86"),
-        ]
-        if environment.get("LD_LIBRARY_PATH"):
-            linux_libraries.append(environment["LD_LIBRARY_PATH"])
-        environment["LD_LIBRARY_PATH"] = os.pathsep.join(linux_libraries)
+    environment = ads_runtime_environment(instance.install_root)
     timed_out = False
     try:
         completed = subprocess.run(

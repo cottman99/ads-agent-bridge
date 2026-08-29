@@ -9,13 +9,13 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 import uuid
 from importlib.resources import files
 from pathlib import Path
 from typing import Any
 
 from .config import select_instance
+from .runtime_environment import ads_runtime_environment
 
 _IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,127}")
 _LCV = re.compile(
@@ -223,21 +223,7 @@ def workspace_fingerprint(root: Path) -> str:
 
 
 def _environment(install_root: str) -> dict[str, str]:
-    environment = os.environ.copy()
-    root = Path(install_root)
-    environment["HPEESOF_DIR"] = str(root)
-    environment["PATH"] = str(root / "bin") + os.pathsep + environment.get("PATH", "")
-    if sys.platform.startswith("linux"):
-        libraries = [
-            str(root / "tools" / "python" / "lib"),
-            str(root / "tools" / "python" / "lib64"),
-            str(root / "lib" / "linux_x86_64"),
-            str(root / "lib" / "linux_x86"),
-        ]
-        if environment.get("LD_LIBRARY_PATH"):
-            libraries.append(environment["LD_LIBRARY_PATH"])
-        environment["LD_LIBRARY_PATH"] = os.pathsep.join(libraries)
-    return environment
+    return ads_runtime_environment(install_root)
 
 
 def _result(stdout: str) -> dict[str, Any] | None:
