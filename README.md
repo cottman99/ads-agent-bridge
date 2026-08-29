@@ -5,6 +5,10 @@
 # ADS Agent Bridge
 
 <p align="center">
+  <img src="docs/assets/readme/logo.png" width="150" alt="ADS Agent Bridge logo">
+</p>
+
+<p align="center">
   <strong>Give AI agents a safe, local, and version-aware way to understand and operate Keysight ADS.</strong>
 </p>
 
@@ -15,7 +19,7 @@
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/cottman99/ads-agent-bridge"></a>
 </p>
 
-![ADS Agent Bridge connects a general-purpose Agent to a bounded local EDA environment](https://raw.githubusercontent.com/cottman99/ads-agent-bridge/main/docs/assets/readme/ads-agent-bridge-hero.png)
+![An operator selects one intended circuit, passes its context to the Bridge, and receives a clean circuit result and waveform](docs/assets/readme/ads-user-value.png)
 
 ADS Agent Bridge is an unofficial, local-first documentation and automation
 bridge for Keysight Advanced Design System (ADS). It turns the ADS installation
@@ -69,9 +73,13 @@ permission. The Agent must still resolve freshness and obtain workflow
 authorization before editing, simulating, opening, or closing anything. See the
 [interaction contract](docs/CONTEXT_INTERACTION.md).
 
-## How it works
+## From your selection to a checked result
 
-![ADS Agent Bridge architecture showing bidirectional local documentation retrieval, the packaged ADS plug-in, bounded live DE/DDS control, and a separate no-GUI ADS Python lane](https://raw.githubusercontent.com/cottman99/ads-agent-bridge/main/docs/assets/readme/how-it-works-image2.png)
+You select the intended object in ADS, copy its bounded Context, and ask in
+normal engineering language. The Bridge resolves that exact target and reports
+which observable gates actually passed.
+
+## How it works
 
 The package has three main execution lanes:
 

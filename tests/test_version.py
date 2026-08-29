@@ -61,7 +61,7 @@ def test_github_actions_are_pinned_to_full_commit_shas():
             )
 
 
-def test_bilingual_readmes_share_navigation_and_visual_assets():
+def test_bilingual_readmes_share_navigation_and_user_facing_visual_assets():
     root = Path(__file__).parents[1]
     english = (root / "README.md").read_text(encoding="utf-8")
     chinese = (root / "README.zh-CN.md").read_text(encoding="utf-8")
@@ -72,36 +72,14 @@ def test_bilingual_readmes_share_navigation_and_visual_assets():
     assert "docs/CLI_REFERENCE.md" in chinese
 
     for relative_path in (
-        "docs/assets/readme/ads-agent-bridge-hero.png",
-        "docs/assets/readme/how-it-works-image2.png",
+        "docs/assets/readme/logo.png",
+        "docs/assets/readme/ads-user-value.png",
     ):
         assert (root / relative_path).is_file()
-        public_url = f"https://raw.githubusercontent.com/cottman99/ads-agent-bridge/main/{relative_path}"
-        assert public_url in english
-        assert public_url in chinese
+        assert relative_path in english
+        assert relative_path in chinese
 
-    architecture = (root / "docs/assets/readme/how-it-works.svg").read_text(encoding="utf-8")
-    for contract_label in (
-        "OPTIONAL AGENT ADAPTER",
-        "invokes CLI",
-        "query / results",
-        "Version-scoped fast index",
-        "Optional Markdown build",
-        "BOUNDED LIVE INTERACTION",
-        "Live ADS DE / DDS process",
-        "ADS Agent Bridge plug-in",
-        "installed in DE / DDS",
-        "separate no-GUI process",
-        "Disposable workspace",
-    ):
-        assert contract_label in architecture
-
-    assert (root / "docs/assets/readme/how-it-works-image2.png").is_file()
-    assert (root / "docs/assets/readme/how-it-works.svg").is_file()
-    assert "query / build" not in architecture
-    assert "ADS Runtime" not in architecture
-    assert "SAFETY RAIL" not in architecture
-    assert "Local-first control, version-aware knowledge" not in architecture
+    assert (root / "docs/assets/readme/social-preview.png").is_file()
 
 
 def test_public_capability_claims_keep_plugin_and_comparison_scope_explicit():
