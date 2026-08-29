@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0a35 - 2026-08-29
+
+- Return `result_count` from documentation queries and `returned_chars` from
+  focused retrieval so Agents can copy deterministic metadata instead of
+  counting candidates or evidence text themselves.
+
 ## 0.1.0a34 - 2026-08-29
 
 - Bound each documentation-query candidate to a compact snippet and one shared
