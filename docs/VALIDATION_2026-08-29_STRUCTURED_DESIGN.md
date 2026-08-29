@@ -27,8 +27,8 @@ was unchanged, and atomically promoted the output workspace.
 - Output promotion: passed
 - Solve: not run
 
-The normalized evaluation measured 43.409 s end to end. Runtime transport,
-including SSH and Bridge work, totalled 2.640 s (6.082%); 40.769 s remained on
+The final post-review normalized evaluation measured 49.435 s end to end. Runtime transport,
+including SSH and Bridge work, totalled 2.593 s (5.245%); 46.842 s remained on
 the Agent/client side. These figures are one bounded acceptance sample, not a
 latency guarantee.
 
@@ -36,6 +36,8 @@ latency guarantee.
 
 Synthetic tests prove that unknown operations and raw-code-shaped plans are
 rejected, an execution failure leaves no output, staging is removed, and the
-source fingerprint is preserved. The two disposable real workspaces contained
+source fingerprint is preserved. Post-review gates also require the DE profile
+at execution time and at least one material fresh-reopen assertion. The
+disposable real workspaces contained
 no customer data and were removed after their resolved paths were verified
 inside the dedicated evaluation root.
