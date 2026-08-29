@@ -8,7 +8,6 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 import tempfile
 from datetime import datetime, timezone
 from importlib.resources import files
@@ -17,6 +16,7 @@ from typing import Any
 
 from .bridge_client import runtime_dir
 from .config import select_instance
+from .runtime_environment import ads_runtime_environment
 
 _NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,127}")
 
@@ -115,23 +115,7 @@ def create_workspace(
         "--cell",
         cell,
     ]
-    environment = os.environ.copy()
-    environment["HPEESOF_DIR"] = instance.install_root
-    environment["PATH"] = (
-        str(Path(instance.install_root) / "bin")
-        + os.pathsep
-        + environment.get("PATH", "")
-    )
-    if sys.platform.startswith("linux"):
-        libraries = [
-            str(Path(instance.install_root) / "tools" / "python" / "lib"),
-            str(Path(instance.install_root) / "tools" / "python" / "lib64"),
-            str(Path(instance.install_root) / "lib" / "linux_x86_64"),
-            str(Path(instance.install_root) / "lib" / "linux_x86"),
-        ]
-        if environment.get("LD_LIBRARY_PATH"):
-            libraries.append(environment["LD_LIBRARY_PATH"])
-        environment["LD_LIBRARY_PATH"] = os.pathsep.join(libraries)
+    environment = ads_runtime_environment(instance.install_root)
     try:
         completed = subprocess.run(
             command,

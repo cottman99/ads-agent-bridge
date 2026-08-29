@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Build one platform-aware ADS bundled-Python environment for quickstart,
+  workspace creation, and structured design transactions instead of maintaining
+  three divergent loader-path lists.
+- Include the installed PDE core plug-in directory on Linux so the public
+  Python route can import DE, DDS, and `emtools` without hard-coded user paths;
+  this remains an API readiness gate and does not claim Momentum completion.
+
 ## 0.1.0a36 - 2026-08-29
 
 - Add a generic typed `design.apply` Runtime operation for registered ADS
