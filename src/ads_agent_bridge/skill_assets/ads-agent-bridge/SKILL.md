@@ -106,6 +106,17 @@ carry a concise `purpose`; the Runtime supplies available actor and host metadat
 and records observed timings automatically. Legacy `ADS_CONTEXT:v1` handles
 remain accepted for compatibility, but the Add-on copies a richer `EDA_CONTEXT:v2`.
 
+### Structured schematic transaction
+
+For repeatable schematic edits, use Runtime `design.apply` with one
+`ads.design-plan/v1` object. Keep source and output workspaces as distinct
+siblings, provide exact `expected_before` instance names and fresh-reopen
+assertions, and use one stable idempotency key. The Bridge copies the source,
+applies registered `add_instance` and `add_wire` operations, verifies the saved
+copy after a fresh reopen, and promotes only the verified output. Never replace
+this typed plan with `eval`, `exec`, `ael_call`, shell, or GUI gestures. This
+lane does not simulate.
+
 ### Blocking dialogs
 
 Inspect before acting. Use the embedded dialog lane after the Bridge is ready,

@@ -140,10 +140,65 @@ def test_capabilities_keep_greenfield_available_without_live_session(monkeypatch
         "docs.query",
         "docs.get",
         "workspace.create",
+        "design.apply",
         "session.launch",
         "session.status",
         "session.shutdown",
     ]
+
+
+def test_runtime_design_apply_accepts_only_structured_plan(monkeypatch):
+    from eda_bridge_runtime import RequestEnvelope
+
+    captured = {}
+
+    def fake_execute(plan, **kwargs):
+        captured.update(plan=plan, **kwargs)
+        return {"status": "passed", "fresh_reopen": True}
+
+    monkeypatch.setattr(runtime_adapter, "execute_design_plan", fake_execute)
+    request = RequestEnvelope(
+        purpose="Apply one bounded schematic plan",
+        target={"eda": "keysight-ads", "instance": "ads2026", "display": ":4.0"},
+        operation="design.apply",
+        payload={
+            "mutating": True,
+            "plan": {
+                "schema_version": "ads.design-plan/v1",
+                "operation_id": "demo",
+            },
+        },
+        idempotency_key="design-demo",
+    )
+    result = runtime_adapter._AdsAdapterBase().execute(
+        request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+    )
+    assert result.status == "passed"
+    assert captured["plan"]["instance"] == "ads2026"
+    assert captured["expected_display"] == ":4.0"
+
+
+def test_runtime_design_apply_rejects_dds_profile(monkeypatch):
+    from eda_bridge_runtime import RequestEnvelope
+
+    monkeypatch.setattr(
+        runtime_adapter,
+        "execute_design_plan",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("DDS must be rejected before execution")
+        ),
+    )
+    request = RequestEnvelope(
+        purpose="Reject a schematic plan on the DDS profile",
+        target={"eda": "keysight-ads", "profile": "dds"},
+        operation="design.apply",
+        payload={"mutating": True, "plan": {"schema_version": "ads.design-plan/v1"}},
+        idempotency_key="reject-dds-design",
+    )
+    with pytest.raises(ValueError, match="requires the ADS DE profile"):
+        runtime_adapter._AdsAdapterBase().execute(
+            request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+        )
 
 
 def test_runtime_docs_query_does_not_probe_live_ads(monkeypatch):

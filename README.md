@@ -218,14 +218,14 @@ ads-agent --pretty launch --workspace /path/to/MyWorkspace_wrk --display :4
 ### Linux
 
 ```console
-curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a35/install.sh
+curl -fsSLO https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a36/install.sh
 sh install.sh
 ```
 
 ### Windows PowerShell
 
 ```powershell
-Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a35/install.ps1 -OutFile install.ps1
+Invoke-WebRequest https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a36/install.ps1 -OutFile install.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
@@ -275,6 +275,14 @@ rich `EDA_CONTEXT`; `session.launch`, `session.status`, and `session.shutdown` t
 provide the bounded GUI lifecycle without putting the remote path in the
 context token.
 
+For a safe schematic edit, `design.apply` accepts only an
+`ads.design-plan/v1` object containing registered instance and wire operations.
+It copies a closed source workspace to staging, applies one ADS database
+transaction, saves and closes, freshly reopens the copied design, checks exact
+instance/parameter/netlist assertions, verifies the source Bundle hash is
+unchanged, and only then atomically commits the output workspace. It rejects
+raw Python/AEL, unknown fields, stale `expected_before` state, and overwrite.
+
 ## Safety and privacy
 
 - Documentation, indexes, workspaces, session tokens, and automation results
@@ -283,6 +291,8 @@ context token.
 - Reusing a session requires the selected ADS instance and exact workspace to
   match; the Bridge does not silently switch workspaces.
 - Context handles identify a target but do not authorize editing or simulation.
+- Structured `design.apply` plans modify only a non-overwriting output copy and
+  must pass fresh-reopen assertions before promotion.
 - Dialog actions are bound to a fresh process/window fingerprint instead of a
   product title or fixed screen coordinate.
 - `shutdown` refuses unverified or user-owned sessions and never force-kills ADS
