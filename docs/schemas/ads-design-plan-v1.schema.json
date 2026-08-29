@@ -4,7 +4,7 @@
   "title": "ADS structured design plan v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "operation_id", "source_workspace", "output_workspace", "design", "operations"],
+  "required": ["schema_version", "operation_id", "source_workspace", "output_workspace", "design", "expected_before", "operations", "assertions"],
   "properties": {
     "schema_version": {"const": "ads.design-plan/v1"},
     "operation_id": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$"},
@@ -28,6 +28,7 @@
     "assertions": {
       "type": "object",
       "additionalProperties": false,
+      "minProperties": 1,
       "properties": {
         "instance_names": {"$ref": "#/$defs/string_list"},
         "netlist_contains": {"$ref": "#/$defs/string_list"},
@@ -58,6 +59,7 @@
     "name_assertion": {
       "type": "object",
       "additionalProperties": false,
+      "required": ["instance_names"],
       "properties": {"instance_names": {"$ref": "#/$defs/string_list"}}
     },
     "add_instance": {
@@ -85,4 +87,3 @@
     }
   }
 }
-

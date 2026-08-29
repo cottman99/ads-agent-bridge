@@ -40,6 +40,13 @@ def test_validate_design_plan_rejects_raw_or_unknown_operations(tmp_path):
         design_plan.validate_design_plan(value)
 
 
+def test_validate_design_plan_requires_fresh_reopen_assertion(tmp_path):
+    value = plan(tmp_path / "source", tmp_path / "output")
+    value["assertions"] = {"instance_names": []}
+    with pytest.raises(ValueError, match="fresh-reopen assertion"):
+        design_plan.validate_design_plan(value)
+
+
 def test_execute_design_plan_preserves_source_and_promotes_verified_copy(
     tmp_path, monkeypatch
 ):

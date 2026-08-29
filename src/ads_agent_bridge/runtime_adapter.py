@@ -304,6 +304,8 @@ class _AdsAdapterBase:
         if request.operation == "design.apply":
             if not request.is_mutating:
                 raise ValueError("design.apply requires payload.mutating=true")
+            if profile != "de":
+                raise ValueError("design.apply requires the ADS DE profile")
             plan = request.payload.get("plan")
             if not isinstance(plan, dict):
                 raise TypeError("design.apply requires a structured plan object")

@@ -65,6 +65,8 @@ def validate_design_plan(value: Any) -> dict[str, Any]:
         "source_workspace",
         "output_workspace",
         "design",
+        "expected_before",
+        "assertions",
     )
     missing = [name for name in required if not plan.get(name)]
     if missing:
@@ -164,8 +166,8 @@ def validate_design_plan(value: Any) -> dict[str, Any]:
             continue
         raise ValueError(f"unsupported design operation: {kind or '<missing>'}")
 
-    expected = plan.get("expected_before") or {}
-    assertions = plan.get("assertions") or {}
+    expected = plan["expected_before"]
+    assertions = plan["assertions"]
     if not isinstance(expected, dict) or not isinstance(assertions, dict):
         raise TypeError("expected_before and assertions must be objects")
     if set(expected) - {"instance_names"}:
@@ -192,6 +194,12 @@ def validate_design_plan(value: Any) -> dict[str, Any]:
         for item in parameters
     ):
         raise ValueError("assertions.parameters must contain exact parameter triples")
+    if not (
+        assertions.get("instance_names")
+        or parameters
+        or assertions.get("netlist_contains")
+    ):
+        raise ValueError("design plan requires at least one fresh-reopen assertion")
     plan["operations"] = normalized
     plan["expected_before"] = expected
     plan["assertions"] = assertions
