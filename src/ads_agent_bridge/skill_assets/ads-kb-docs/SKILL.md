@@ -29,8 +29,10 @@ If no default ADS instance is configured, run `ads-agent setup`. When several ve
 
 ## Query
 
-Query the configured installation through one Runtime submission. Select the
-documentation domain explicitly for API work. The equivalent direct CLI is:
+Query the configured installation through Runtime's `eda.read` lane. Discover
+capabilities once if this MCP process has not cached the documentation operation
+metadata. Select the documentation domain explicitly for API work. The
+equivalent direct CLI is:
 
 ```text
 ads-agent docs query "<technical query>" --domain python --limit 6

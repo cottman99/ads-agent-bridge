@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0a33 - 2026-08-29
+
+- Require EDA Bridge Runtime `0.1.0a9` and route capability-proven ADS and
+  documentation reads through its statically safe `eda.read` lane.
+- Keep mutations on `eda.submit` and avoid repeated capability discovery after
+  one MCP process has cached the typed operation metadata.
+
 ## 0.1.0a32 - 2026-08-28
 
 - Add the automatically installed `eda-bridge-runtime` adapter and a persistent
