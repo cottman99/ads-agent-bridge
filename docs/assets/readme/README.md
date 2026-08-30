@@ -6,6 +6,7 @@ workspace, proprietary EDA screenshot, private host information, documentation
 extract, or vendor artwork.
 
 The product overview depicts the maintained blank-circuit to simulation-data
-and native-report path. `ads-real-ac-result.png` is derived from the 31 finite
-rows exported by the synthetic public display4 acceptance; it contains no
-customer workspace data and is not a claim about an RF product design.
+and native-report path. `ads-native-schematic.png` and `ads-native-dds.png` are
+application-window captures from the synthetic public display4 acceptance.
+The DDS curve remains native and editable; it was not replotted in Python.
+Neither capture contains customer workspace data or claims an RF product design.
