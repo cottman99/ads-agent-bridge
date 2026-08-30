@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.0a42 - 2026-08-31
+
+- Add governed official ADS Python batch execution for exact workspaces with
+  declared effects, staging, timeout, fresh-process validation, artifact
+  checks, source preservation, and non-overwrite promotion.
+- Ship an advisory Bootstrap Experience Library for the existing certified
+  workflows. Each compiled shortcut is bound to the current asset hash and ADS
+  applicability; drift disables the shortcut without disabling native execution.
+- Classify Bridge infrastructure, generic native execution, certified workflows,
+  and acceptance probes separately so wrapper count is no longer treated as ADS
+  capability coverage.
+
 ## 0.1.0a41 - 2026-08-31
 
 - Extend the bounded native DDS contract with `ads.dds-report/v2`: one accepted

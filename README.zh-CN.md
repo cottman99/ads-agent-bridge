@@ -37,6 +37,11 @@ ADS Agent Bridge 把 Codex 或 Pi Agent 连接到你真正选中的 ADS 安装�
 版本匹配的本地文档、DE/DDS Context 插件、受控实时会话和类型化自动化都留在
 EDA 主机；重复远程工作复用 EDA Bridge Runtime，不为每个动作重新拼 SSH 命令。
 
+新增 ADS 能力不需要再为每个官方 API 写一个 Bridge wrapper。Agent 先查询
+版本匹配的官方文档和随包提供的小型启动经验库，再通过受控 workspace 事务
+执行官方 ADS Python。`design.apply`、`dds.create` 等保留为与经验资产绑定的
+编译快捷方式，用来省 token、减少拼写和转义错误，但不定义 ADS 能力边界。
+
 ## 三步开始
 
 需要一套已授权的 ADS、Windows 或 Linux，以及 Python 3.10 以上环境。
@@ -58,8 +63,8 @@ MCP/插件；只运行 ADS 的主机不需要 Agent 侧插件。
 工作区创建、最小电路仿真和数据集回读分别通过后才会成功。
 
 如果机器上还没有 `pipx` 或合适的 Python，可使用版本化的
-[Linux 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a41/install.sh)
-或 [Windows PowerShell 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a41/install.ps1)。
+[Linux 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a42/install.sh)
+或 [Windows PowerShell 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a42/install.ps1)。
 它会创建隔离环境，不替换外部管理的系统 Python。
 
 之后再打开真实工作区：

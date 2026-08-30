@@ -1,0 +1,40 @@
+{
+  "schema_version": "eda.experience-library/v1",
+  "asset_schema": "eda.experience-asset/v1",
+  "asset_schema_resource": "eda_bridge_runtime/experience_assets/schemas/experience-asset-v1.schema.json",
+  "provider": "ads-agent-bridge",
+  "assets": [
+    {
+      "id": "ads.schematic.apply-transaction",
+      "path": "action_patterns/design-apply.md",
+      "sha256": "d55af949e76a906135369dae0936ea72f60d3ad67a852ff35c17f2fc1eeaf7de",
+      "kind": "action_pattern",
+      "status": "validated",
+      "summary": "Apply a bounded schematic plan to a staged ADS workspace and accept it only after fresh-process readback."
+    },
+    {
+      "id": "ads.circuit.simulate-and-validate",
+      "path": "workflows/circuit-simulate.md",
+      "sha256": "5f913db43afdb7c9ee4da9ad79d2c715426dc0ebe22ad1cc9a8fc893b142f399",
+      "kind": "workflow",
+      "status": "validated",
+      "summary": "Run a bounded ADS circuit simulation and accept the job only when its dataset and declared artifacts validate."
+    },
+    {
+      "id": "ads.dds.create-native-display",
+      "path": "workflows/dds-create.md",
+      "sha256": "d1c507827c0bee3b5411b54f226a28b2c206abc17e9b3c8bdf354f2036f9f2e3",
+      "kind": "workflow",
+      "status": "validated",
+      "summary": "Create an editable native ADS DDS display without overwriting an existing file and verify it in a fresh DDS process."
+    },
+    {
+      "id": "ads.momentum.run-generated",
+      "path": "workflows/momentum-run.md",
+      "sha256": "91ae1438c6aecc6db2e35ac6050300a06ee918df1c1f7f5c4e7bbc6a5bb3fb47",
+      "kind": "workflow",
+      "status": "validated",
+      "summary": "Run a generated Momentum project through a bounded solver lifecycle and validate its CITI output artifacts."
+    }
+  ]
+}

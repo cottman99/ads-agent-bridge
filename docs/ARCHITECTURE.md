@@ -14,7 +14,8 @@ and verification envelope around them.
 ```text
 natural-language task
   -> exact ADS Context and version-matched docs
-  -> matching certified workflow, when one exists
+  -> matching bootstrap experience and anti-pattern assets
+  -> matching asset-bound compiled shortcut, when eligible
      OR governed official Python/AEL batch
   -> workspace staging and lifecycle
   -> readback, artifact validation, and evidence
@@ -35,8 +36,19 @@ validation; it is not an unrestricted shell.
 
 Certified workflows such as schematic construction, circuit simulation, DDS
 creation, and generated-input Momentum solving remain useful, maintained
-shortcuts. They do not define the outer boundary of ADS functionality and must
+shortcuts. Their experience asset is semantic truth; implementation code is a
+compiled command-group cache for lower token cost and fewer transcription
+errors. A shortcut is preferred only while asset id/version/hash,
+applicability, runtime probe, parameters, and validation match. They do not
+define the outer boundary of ADS functionality and must
 not grow into a second ADS API one component or plot type at a time.
+
+The wheel carries the independent Bootstrap Experience Library. The read-only
+`experience.list/get` gateway makes it reachable across local or SSH
+deployments. Missing or corrupt assets lower Agent guidance quality but never
+block docs, Context, sessions, or governed native execution. The Bridge records
+the caller's purpose and execution facts; it does not infer engineering intent,
+learn from receipts, or rewrite experience.
 
 GUI automation is a bounded fallback for genuinely API-inaccessible UI, not the
 primary expansion route.

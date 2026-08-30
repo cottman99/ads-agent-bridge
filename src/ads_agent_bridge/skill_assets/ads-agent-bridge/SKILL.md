@@ -29,6 +29,17 @@ request and Run contracts.
 - For a combined task, use `$ads-kb-docs` to establish a version-matched API or
   AEL route, then use this skill for a separate runtime acceptance gate.
 
+For an engineering operation, resolve exact Context, query version-matched
+official docs, then use read-only `experience.list` and `experience.get` for
+only the closest experience and anti-pattern assets. Choose an existing shortcut
+only when its asset id/version/hash, applicability, runtime state, and parameter
+schema match. Otherwise generate one governed native ADS Python or AEL batch.
+Retain its receipt and independent validation.
+
+Experience assets are advisory, not API, authorization, capability claims, or
+success evidence. Never execute Markdown. A missing or degraded library lowers
+guidance quality but must not block governed native execution.
+
 ## Establish identity before acting
 
 For setup or diagnosis, use read-only discovery:
@@ -108,14 +119,16 @@ remain accepted for compatibility, but the Add-on copies a richer `EDA_CONTEXT:v
 
 ### Structured schematic transaction
 
-For repeatable schematic edits, use Runtime `design.apply` with one
+For repeatable schematic edits that exactly match its bound experience asset,
+use Runtime `design.apply` with one
 `ads.design-plan/v1` object. Keep source and output workspaces as distinct
 siblings, provide exact `expected_before` instance names and fresh-reopen
 assertions, and use one stable idempotency key. The Bridge copies the source,
 applies registered `add_instance` and `add_wire` operations, verifies the saved
-copy after a fresh reopen, and promotes only the verified output. Never replace
-this typed plan with `eval`, `exec`, `ael_call`, shell, or GUI gestures. This
-lane does not simulate.
+copy after a fresh reopen, and promotes only the verified output. For official
+schematic operations outside that asset, use governed native execution; do not
+extend the shortcut one ADS method at a time. Never replace either governed
+route with shell or GUI gestures. This lane does not simulate.
 
 ### Blocking dialogs
 
