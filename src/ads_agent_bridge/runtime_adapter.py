@@ -21,6 +21,26 @@ from .session_manager import shutdown as shutdown_session
 from .session_manager import status as session_status
 from .workspace_create import create_workspace, resolve_context
 
+RESOURCE_PROTOCOL = "eda-runtime.resource/v1"
+
+
+def _launched_session_resource(result: dict[str, Any]) -> dict[str, Any] | None:
+    session = result.get("session")
+    session = session if isinstance(session, dict) else {}
+    resource_id = str(session.get("managed_session_id") or "").strip()
+    slot = str(session.get("slot") or result.get("slot") or "").strip()
+    if result.get("ownership") != "agent-owned" or not resource_id or not slot:
+        return None
+    return {
+        "protocol": RESOURCE_PROTOCOL,
+        "resource_id": resource_id,
+        "kind": "ads-session",
+        "ownership": "runtime-owned",
+        "state": "active",
+        "release_operation": "session.shutdown",
+        "release_payload": {"slot": slot},
+    }
+
 
 def _runtime_imports():
     try:
@@ -206,6 +226,11 @@ class _AdsAdapterBase:
                         "requires_one_of": ["workspace", "EDA_CONTEXT:workspace"],
                     },
                     "state": {"available": profile == "de", "healthy": profile == "de"},
+                    "resource_lifecycle": {
+                        "creates_when": "a new agent-owned ADS session is launched",
+                        "kind": "ads-session",
+                        "release_operation": "session.shutdown",
+                    },
                 },
                 {
                     "id": "session.status",
@@ -477,7 +502,11 @@ class _AdsAdapterBase:
             status = str(result.get("status") or "")
             if status not in {"ready", "running", "reused"}:
                 raise RuntimeError(f"ADS session launch did not become ready: {status}")
-            return AdapterResult(status="passed", result={"bridge": result})
+            resource = _launched_session_resource(result)
+            return AdapterResult(
+                status="passed",
+                result={"bridge": result, **({"resource": resource} if resource else {})},
+            )
         capabilities_started = time.monotonic()
         descriptor = self._descriptor(
             self._live_capabilities(str(slot) if slot else None, profile),
