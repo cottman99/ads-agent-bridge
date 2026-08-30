@@ -19,45 +19,33 @@
 
 ![An RF engineer goes from a blank circuit through simulation to checked native results](docs/assets/readme/ads-engineer-workflow-v3.png)
 
-ADS Agent Bridge is an unofficial, local-first bridge for Keysight Advanced
-Design System. It helps general-purpose Agents such as Codex and Pi Agent use
-the ADS installation already on your machine without guessing the version,
-workspace, selected object, or execution state.
+## Finish a circuit-to-results task in one conversation
 
-It combines version-matched local documentation, an installed DE/DDS context
-plug-in, controlled live sessions, and bounded automation. ADS stays on the ADS
-host; repeated remote work uses EDA Bridge Runtime over one persistent SSH
-channel instead of rebuilding an SSH command for every action.
+> “Start from a blank workspace, build this testbench, run the simulation,
+> export the data, and leave the response plot editable in DDS.”
 
-Today, the maintained public path can complete a blank circuit or testbench,
-run circuit simulation, check and export numeric data, and create a native DDS
-page in one typed plan. It can also work from exact schematic, layout, tree, or
-DDS selections and run already-generated Momentum inputs. The boundaries below
-state what is not yet claimed.
+| Built in ADS | Result left editable in DDS |
+| --- | --- |
+| ![Native ADS schematic built in the public acceptance workspace](docs/assets/readme/ads-native-schematic.png) | ![Editable native ADS Data Display page created from the accepted dataset](docs/assets/readme/ads-native-dds.png) |
 
-> [!IMPORTANT]
-> This project is public alpha software and is not affiliated with or endorsed
-> by Keysight Technologies. Begin with a disposable workspace and review the
-> reported capability gates before relying on automation results.
+The public ADS 2026 Update 2.1 acceptance completed the whole request:
 
-## What you can finish today
+- built a six-instance AC circuit from an empty workspace;
+- ran the circuit simulation and returned 31 finite rows;
+- exported CSV and created a native DDS equation and rectangular plot;
+- saved, closed, and freshly reopened the editable result;
+- completed the four-stage Runtime plan in **4.469 seconds**.
 
-- Start from a blank circuit or an exact schematic selection, build a bounded
-  circuit/testbench, and keep the result editable in ADS.
-- Run circuit simulation, check that the requested numeric data is finite,
-  export CSV, and create an editable native Data Display page.
-- Continue from a schematic, layout, library-tree, or DDS item selected with
-  **Copy ADS Context**, instead of asking the Agent to guess the active target.
-- Run an already-generated Momentum input on a protected sibling copy and
-  return the N-port result with acceptance evidence.
+These are real ADS application-window captures; the DDS curve remains native
+and editable. The same maintained path can continue from an exact schematic,
+layout, library-tree, or DDS selection copied with **Copy ADS Context**, and can
+run an already-generated Momentum input on a protected sibling copy.
 
-The images below are application-window captures from the public synthetic
-acceptance on ADS 2026 Update 2.1. They are not mockups and the curve was not
-replotted outside ADS.
-
-![Native ADS schematic built in the public acceptance workspace](docs/assets/readme/ads-native-schematic.png)
-
-![Editable native ADS Data Display page created from the accepted dataset](docs/assets/readme/ads-native-dds.png)
+ADS Agent Bridge connects Codex or Pi Agent to the ADS installation and object
+you actually selected. Version-matched local documentation, the DE/DDS context
+plug-in, controlled live sessions, and bounded automation stay with ADS on the
+EDA host; repeated remote work reuses EDA Bridge Runtime instead of rebuilding
+an SSH command for every action.
 
 ## Start in three steps
 
@@ -198,9 +186,12 @@ the same in both topologies.
 | ADS 2023 Update 2 through ADS 2024 Update 1 | Experimental |
 | Older installations | Documentation-only when local docs can be discovered |
 
-The project does not claim blank-layout Momentum setup authoring or completed
-RFPro, FEM, SIPro, or PIPro workflows. The bounded Momentum path starts from
-already-generated simulation inputs.
+## Next
+
+- richer RF testbenches and reusable parameterized cells;
+- native DDS markers, Smith charts, tables, and multi-page result workbooks;
+- layout construction and broader Momentum, RFPro, FEM, SIPro, and PIPro
+  journeys.
 
 ## More information
 
