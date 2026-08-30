@@ -29,6 +29,65 @@ def test_dds_plan_accepts_equations_and_plots(tmp_path: Path):
     assert plan["plots"][0]["rect"] == [1, 1, 10, 7]
 
 
+def test_dds_v2_accepts_multiple_pages_and_typed_plots(tmp_path: Path):
+    plan = _plan(tmp_path)
+    plan.pop("page")
+    equations = plan.pop("equations")
+    plots = plan.pop("plots")
+    plan["schema_version"] = "ads.dds-report/v2"
+    plan["pages"] = [
+        {
+            "name": "S parameter magnitude",
+            "equations": equations,
+            "plots": [{**plots[0], "kind": "rectangular"}],
+        },
+        {
+            "name": "Complex response",
+            "plots": [
+                {
+                    "kind": "polar",
+                    "name": "S11 polar",
+                    "traces": ["S(1,1)"],
+                    "rect": [1, 1, 10, 10],
+                }
+            ],
+        },
+    ]
+
+    normalized = dds_report.validate_dds_plan(plan)
+
+    assert [page["name"] for page in normalized["pages"]] == [
+        "S parameter magnitude",
+        "Complex response",
+    ]
+    assert normalized["pages"][1]["plots"][0]["kind"] == "polar"
+
+
+def test_dds_v2_rejects_duplicate_page_names(tmp_path: Path):
+    plan = _plan(tmp_path)
+    plot = {**plan.pop("plots")[0], "kind": "rectangular"}
+    plan.pop("page")
+    plan.pop("equations")
+    plan["schema_version"] = "ads.dds-report/v2"
+    plan["pages"] = [
+        {"name": "Repeated", "plots": [plot]},
+        {"name": "Repeated", "plots": [plot]},
+    ]
+    with pytest.raises(ValueError, match="invalid or duplicated"):
+        dds_report.validate_dds_plan(plan)
+
+
+def test_dds_v2_rejects_unknown_plot_kind(tmp_path: Path):
+    plan = _plan(tmp_path)
+    plot = {**plan.pop("plots")[0], "kind": "smith"}
+    plan.pop("page")
+    plan.pop("equations")
+    plan["schema_version"] = "ads.dds-report/v2"
+    plan["pages"] = [{"name": "RF", "plots": [plot]}]
+    with pytest.raises(ValueError, match=r"pages\[0\]\.plots\[0\] is invalid"):
+        dds_report.validate_dds_plan(plan)
+
+
 def test_dds_plan_rejects_fractional_page_coordinates(tmp_path: Path):
     plan = _plan(tmp_path)
     plan["plots"][0]["rect"] = [1.5, 1, 10, 7]
