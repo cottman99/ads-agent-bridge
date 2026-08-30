@@ -12,40 +12,30 @@
 
 ![射频工程师从空白电路出发，经过仿真得到经过检查的原生结果](docs/assets/readme/ads-engineer-workflow-v3.png)
 
-ADS Agent Bridge 是一个非官方、本地优先的 Keysight ADS 桥接工具。它帮助
-Codex、Pi Agent 等通用 Agent 使用你机器上已经安装的 ADS，而不是猜测
-版本、工作区、选中对象或当前执行状态。
+## 一段对话完成“电路到结果”
 
-它把版本匹配的本地文档、DE/DDS Context 插件、受控实时会话和类型化
-自动化组合在一起。ADS 始终留在 EDA 主机；重复远程工作通过 EDA Bridge
-Runtime 复用一条 SSH 通道，不需要每次重新拼接命令。
+> “从空白工作区开始，搭建这个测试平台，运行仿真，导出数据，并把响应曲线
+> 留在 DDS 中供我继续编辑。”
 
-当前维护中的公开路径已经能够在一个类型化计划里完成空白电路或测试平台、
-电路仿真、数值检查与导出，以及原生 DDS 页面；也能使用明确选中的原理图、
-版图、树或 DDS 对象，并运行已经生成的 Momentum 输入。尚未宣称的能力在
-后文边界中明确列出。
+| ADS 中搭建的电路 | DDS 中留下的可编辑结果 |
+| --- | --- |
+| ![公开验收中搭建的原生 ADS 原理图](docs/assets/readme/ads-native-schematic.png) | ![由验收数据集创建并可继续编辑的原生 ADS Data Display 页面](docs/assets/readme/ads-native-dds.png) |
 
-> [!IMPORTANT]
-> 本项目仍是公开 Alpha，与 Keysight Technologies 无隶属或背书关系。
-> 首次使用请从可丢弃工作区开始，并先查看各能力的验收边界。
+公开的 ADS 2026 Update 2.1 验收完整执行了这条需求：
 
-## 现在可以完成什么
+- 从空白工作区建立6实例 AC 电路；
+- 运行电路仿真并返回31行有限数据；
+- 导出 CSV，创建原生 DDS 方程和矩形图；
+- 保存、关闭并全新重开可编辑结果；
+- 四阶段 Runtime 计划耗时 **4.469秒**。
 
-- 从空白电路或明确选中的原理图出发，搭建受控的电路/测试平台，结果仍可在
-  ADS 中继续编辑。
-- 执行电路仿真，检查目标数据是否为有限值，导出 CSV，并创建可编辑的原生
-  Data Display 页面。
-- 通过 **Copy ADS Context** 从原理图、版图、Library 树或 DDS 对象继续工作，
-  不让 Agent 猜测当前目标。
-- 对已经生成的 Momentum 输入执行受保护的兄弟副本求解，并返回带验收证据的
-  N 端口结果。
+两张图都是真实 ADS 应用窗口，DDS 曲线保持原生、可编辑。相同维护路径也能
+从 **Copy ADS Context** 复制的明确原理图、版图、Library 树或 DDS 选择继续
+工作，并能在受保护兄弟副本上运行已经生成的 Momentum 输入。
 
-下面两张图来自 ADS 2026 Update 2.1 的公开合成验收工程，是 EDA 应用窗口的
-真实截图，不是效果图，曲线也没有在 ADS 之外重绘。
-
-![公开验收中搭建的原生 ADS 原理图](docs/assets/readme/ads-native-schematic.png)
-
-![由验收数据集创建并可继续编辑的原生 ADS Data Display 页面](docs/assets/readme/ads-native-dds.png)
+ADS Agent Bridge 把 Codex 或 Pi Agent 连接到你真正选中的 ADS 安装和对象。
+版本匹配的本地文档、DE/DDS Context 插件、受控实时会话和类型化自动化都留在
+EDA 主机；重复远程工作复用 EDA Bridge Runtime，不为每个动作重新拼 SSH 命令。
 
 ## 三步开始
 
@@ -169,8 +159,11 @@ Runtime 复用一条 SSH 标准输入输出通道，记录每次操作的动机�
 | ADS 2023 Update 2 至 ADS 2024 Update 1 | 实验性 |
 | 更早版本 | 可发现本地文档时仅支持文档查询 |
 
-当前不宣称能从空白版图自动完成 Momentum 设置，也不宣称已完整覆盖
-RFPro、FEM、SIPro 或 PIPro。受控 Momentum 路径从已生成的仿真输入开始。
+## 下一步
+
+- 更丰富的 RF testbench 和可复用参数化单元；
+- 原生 DDS marker、Smith 图、表格和多页面结果工作簿；
+- 版图构建，以及更完整的 Momentum、RFPro、FEM、SIPro 和 PIPro 任务。
 
 ## 更多信息
 
