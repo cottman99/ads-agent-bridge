@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.0a40 - 2026-08-30
+
+- Project each newly launched agent-owned ADS session as a common
+  `eda-runtime.resource/v1` resource with its managed-session id and typed
+  `session.shutdown` release payload.
+- Keep the existing nonce, slot, workspace, modal-dialog, and process ownership
+  gates as the authority for shutdown; reused or user-owned ADS processes are
+  never claimed by the common resource view.
+- Validate one isolated ADS 2026 Update 2.1 launch and native bounded shutdown
+  on Linux `DISPLAY=:4.0` without touching existing sessions or simulating.
+
 ## 0.1.0a39 - 2026-08-30
 
 - Let a typed circuit-simulation plan request one safe deterministic `.ds`

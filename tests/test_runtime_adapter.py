@@ -380,7 +380,15 @@ def test_session_launch_uses_workspace_from_opaque_context(monkeypatch):
 
     def fake_launch(instance, workspace, **kwargs):
         captured.update(instance=instance, workspace=str(workspace), **kwargs)
-        return {"status": "ready", "slot": kwargs["slot"]}
+        return {
+            "status": "ready",
+            "slot": kwargs["slot"],
+            "ownership": "agent-owned",
+            "session": {
+                "slot": kwargs["slot"],
+                "managed_session_id": "managed-one",
+            },
+        }
 
     monkeypatch.setattr(runtime_adapter, "launch_session", fake_launch)
     request = RequestEnvelope(
@@ -399,3 +407,12 @@ def test_session_launch_uses_workspace_from_opaque_context(monkeypatch):
     assert result.status == "passed"
     assert captured["workspace"].replace("\\", "/") == "/remote/demo_wrk"
     assert captured["display"] == ":4.0"
+    assert result.result["resource"] == {
+        "protocol": "eda-runtime.resource/v1",
+        "resource_id": "managed-one",
+        "kind": "ads-session",
+        "ownership": "runtime-owned",
+        "state": "active",
+        "release_operation": "session.shutdown",
+        "release_payload": {"slot": "greenfield"},
+    }
