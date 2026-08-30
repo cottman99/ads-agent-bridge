@@ -8,9 +8,9 @@
   <img src="docs/assets/readme/logo.png" width="150" alt="ADS Agent Bridge logo">
 </p>
 
-<p align="center"><strong>让 Agent 理解你真正指定的 ADS 版本、工作区和对象。</strong></p>
+<p align="center"><strong>从明确选中的 ADS 对象或空白电路，到经过检查的数据和可编辑 DDS 结果。</strong></p>
 
-![选中的射频电路经过受控执行桥，返回经过验证的响应](docs/assets/readme/ads-user-value-v2.png)
+![射频工程师从空白电路出发，经过仿真得到经过检查的原生结果](docs/assets/readme/ads-engineer-workflow-v3.png)
 
 ADS Agent Bridge 是一个非官方、本地优先的 Keysight ADS 桥接工具。它帮助
 Codex、Pi Agent 等通用 Agent 使用你机器上已经安装的 ADS，而不是猜测
@@ -19,6 +19,11 @@ Codex、Pi Agent 等通用 Agent 使用你机器上已经安装的 ADS，而不�
 它把版本匹配的本地文档、DE/DDS Context 插件、受控实时会话和类型化
 自动化组合在一起。ADS 始终留在 EDA 主机；重复远程工作通过 EDA Bridge
 Runtime 复用一条 SSH 通道，不需要每次重新拼接命令。
+
+当前维护中的公开路径已经能够在一个类型化计划里完成空白电路或测试平台、
+电路仿真、数值检查与导出，以及原生 DDS 页面；也能使用明确选中的原理图、
+版图、树或 DDS 对象，并运行已经生成的 Momentum 输入。尚未宣称的能力在
+后文边界中明确列出。
 
 > [!IMPORTANT]
 > 本项目仍是公开 Alpha，与 Keysight Technologies 无隶属或背书关系。
@@ -96,6 +101,8 @@ ADS 重启后，支持的 DE 原理图、版图、符号、Folder/Library 树和
 维护中的验收路径使用真实 Windows 与 Linux ADS，分别检查文档、Context
 捕获、实时会话身份、对话框监督、类型化原理图搭建、电路仿真、数据集与
 CSV 回读、原生 DDS 方程与曲线创建，以及已生成 Momentum 输入的执行。
+
+![display4 公开验收中得到的 ADS 31 点 AC 实测结果](docs/assets/readme/ads-real-ac-result.png)
 
 维护中的“空白工作区 → 原理图 → 仿真 → 原生 DDS”路径也已作为一个四阶段
 Runtime 计划通过：总耗时 **4.469 秒**，得到 31 个有限数值点、确定命名的
