@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.0a41 - 2026-08-31
+
+- Extend the bounded native DDS contract with `ads.dds-report/v2`: one accepted
+  dataset can produce up to 16 named pages containing rectangular or polar
+  plots, while the existing single-page v1 contract remains compatible.
+- Reject unknown plot kinds, duplicate page names, unbounded content, raw
+  scripts, path escapes, and overwrite; save the editable `.dds` and verify the
+  exact page sequence after a fresh reopen.
+- Validate one blank-workspace-to-results Runtime plan on ADS 2026 Update 2.1 /
+  Linux / `DISPLAY=:4.0`: six-instance circuit, 31 finite rows, two native DDS
+  pages, rectangular and polar plots, all four stages passed in 4.312 seconds.
+
 ## 0.1.0a40 - 2026-08-30
 
 - Project each newly launched agent-owned ADS session as a common

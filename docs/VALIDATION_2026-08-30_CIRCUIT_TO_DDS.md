@@ -63,3 +63,38 @@ The first candidate attempt also proved failure isolation: a standalone-worker
 import error stopped the plan at simulation before DDS creation. The preserved
 source and already-verified candidate were reused after the packaging fix;
 neither workspace was rebuilt from scratch.
+
+## Multi-page and polar-plot acceptance
+
+The v2 report contract was then exercised through the same Runtime connection
+on ADS 2026 Update 2.1 / Linux / `DISPLAY=:4.0`. One four-stage plan created a
+fresh workspace, built and freshly reopened the six-instance circuit, simulated
+31 finite rows, and created an editable native report with two pages:
+
+- `Magnitude`: a valid `output_db` equation and one rectangular plot;
+- `Complex response`: one polar plot of the complex response.
+
+Both documented plot constructors completed, and fresh reopen returned the
+exact ordered page list. The source workspace remained unchanged.
+Client-visible Runtime transport time was 4.312 seconds: 0.734 s create,
+0.813 s build, 1.672 s simulate, and 1.062 s report. The accepted Runs were
+`run_d18dd02bdaa74f4695d87cba4f04c976`,
+`run_224f4eecaf164ec9b2c2271d7713703b`,
+`run_5f4380f5855743c589a4dc1274e5ac63`, and
+`run_7ec8ae8a14a244479b78e85db17d3701`.
+
+The first post-install attempt reached the report gate with the already-running
+Runtime transport still holding the previous Bridge process. It correctly
+rejected the unknown v2 field before execution. Resetting only that transport
+loaded the candidate without closing ADS; the preserved circuit and dataset
+were reused and the report passed. This is the intended recovery path for a
+Bridge upgrade and avoids rebuilding accepted work.
+
+The versioned `0.1.0a41` wheel was then installed into the same isolated ADS
+environment, the Runtime transport was reset without closing ADS, and a new
+two-page native report passed again in 1.094 seconds. Its accepted Run was
+`run_073a01444edf47efb5d7d9d01a43e289`.
+
+The same wheel also accepted the unchanged single-page v1 plan, preserved its
+legacy readback fields, and freshly reopened the result in 1.031 seconds. Its
+accepted Run was `run_e029d5a1f5a34912ac7800d3e793b717`.

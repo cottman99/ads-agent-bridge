@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/cottman99/ads-agent-bridge/docs/schemas/ads-dds-report-v2.schema.json",
+  "title": "ADS DDS Multi-page Report Plan v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "operation_id", "workspace", "dataset", "output_file", "pages"],
+  "properties": {
+    "schema_version": {"const": "ads.dds-report/v2"},
+    "operation_id": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$"},
+    "workspace": {"type": "string", "minLength": 1},
+    "dataset": {"type": "string", "minLength": 1},
+    "output_file": {"type": "string", "pattern": "\\.dds$"},
+    "instance": {"type": "string", "minLength": 1},
+    "pages": {"type": "array", "minItems": 1, "maxItems": 16, "items": {"$ref": "#/$defs/page"}}
+  },
+  "$defs": {
+    "equation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "expression"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$"},
+        "expression": {"type": "string", "minLength": 1, "maxLength": 512}
+      }
+    },
+    "plot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "name", "traces", "rect"],
+      "properties": {
+        "kind": {"enum": ["rectangular", "polar"]},
+        "name": {"type": "string", "minLength": 1, "maxLength": 128},
+        "traces": {"type": "array", "minItems": 1, "maxItems": 32, "items": {"type": "string", "minLength": 1, "maxLength": 512}},
+        "rect": {"type": "array", "prefixItems": [{"type": "integer"}, {"type": "integer"}, {"type": "integer", "minimum": 1}, {"type": "integer", "minimum": 1}], "items": false}
+      }
+    },
+    "page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "plots"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1, "maxLength": 128},
+        "equations": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/equation"}},
+        "plots": {"type": "array", "minItems": 1, "maxItems": 32, "items": {"$ref": "#/$defs/plot"}}
+      }
+    }
+  }
+}

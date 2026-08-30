@@ -25,9 +25,9 @@
 
 - 从空白工作区建立6实例 AC 电路；
 - 运行电路仿真并返回31行有限数据；
-- 导出 CSV，创建原生 DDS 方程和矩形图；
+- 导出 CSV，创建包含矩形图和极坐标图的两个原生 DDS 页面；
 - 保存、关闭并全新重开可编辑结果；
-- 四阶段 Runtime 计划耗时 **4.469秒**。
+- 四阶段 Runtime 计划耗时 **4.312秒**。
 
 两张图都是真实 ADS 应用窗口，DDS 曲线保持原生、可编辑。相同维护路径也能
 从 **Copy ADS Context** 复制的明确原理图、版图、Library 树或 DDS 选择继续
@@ -58,8 +58,8 @@ MCP/插件；只运行 ADS 的主机不需要 Agent 侧插件。
 工作区创建、最小电路仿真和数据集回读分别通过后才会成功。
 
 如果机器上还没有 `pipx` 或合适的 Python，可使用版本化的
-[Linux 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a39/install.sh)
-或 [Windows PowerShell 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a39/install.ps1)。
+[Linux 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a41/install.sh)
+或 [Windows PowerShell 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a41/install.ps1)。
 它会创建隔离环境，不替换外部管理的系统 Python。
 
 之后再打开真实工作区：
@@ -83,7 +83,7 @@ ads-agent disconnect
 | “就用我在原理图、版图、树或 DDS 里选中的对象。” | 解析复制的 `ADS_CONTEXT`，不猜前台窗口。 |
 | “打开这个工作区，告诉我 ADS 现在是什么状态。” | 核对工作区、进程、版本、Display、所有权、窗口和阻塞对话框。 |
 | “安全地修改这些原理图对象。” | 只改非覆盖副本，保存关闭后全新重开，并逐项断言。 |
-| “仿真这个电路，把数据给我，并搭好 DDS 曲线。” | 生成网表、运行电路仿真、检查数值数据列、导出 CSV，并全新重开原生 DDS 报告。 |
+| “仿真这个电路，把数据给我，并搭好 DDS 曲线。” | 生成网表、运行电路仿真、检查数值数据列、导出 CSV，并全新重开包含矩形图或极坐标图的原生多页面 DDS 报告。 |
 | “运行这份已经生成的 Momentum 输入。” | 保护源文件，只求解兄弟副本，并验证完整有限 N 端口结果。 |
 | “断开连接，但不要关闭 ADS。” | 把客户端断开与身份校验后的原生退出严格分开。 |
 
@@ -111,8 +111,8 @@ ADS 重启后，支持的 DE 原理图、版图、符号、Folder/Library 树和
 CSV 回读、原生 DDS 方程与曲线创建，以及已生成 Momentum 输入的执行。
 
 维护中的“空白工作区 → 原理图 → 仿真 → 原生 DDS”路径已作为一个四阶段
-Runtime 计划通过：总耗时 **4.469 秒**，得到 31 个有限数值点、确定命名的
-原生数据集、CSV，以及全新重开确认的 DDS 报告。见
+Runtime 计划通过：总耗时 **4.312 秒**，得到 31 个有限数值点、确定命名的
+原生数据集、CSV，以及全新重开确认、包含矩形图和极坐标图的两页 DDS 报告。见
 [脱敏工作流证据](docs/VALIDATION_2026-08-30_CIRCUIT_TO_DDS.md)。
 
 另有两个范围严格受限的 ADS 2027 对比：
@@ -162,7 +162,7 @@ Runtime 复用一条 SSH 标准输入输出通道，记录每次操作的动机�
 ## 下一步
 
 - 更丰富的 RF testbench 和可复用参数化单元；
-- 原生 DDS marker、Smith 图、表格和多页面结果工作簿；
+- 原生 DDS marker、Smith 图和表格；
 - 版图构建，以及更完整的 Momentum、RFPro、FEM、SIPro 和 PIPro 任务。
 
 ## 更多信息
