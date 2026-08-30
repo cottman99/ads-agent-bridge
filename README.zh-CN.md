@@ -45,8 +45,8 @@ MCP/插件；只运行 ADS 的主机不需要 Agent 侧插件。
 工作区创建、最小电路仿真和数据集回读分别通过后才会成功。
 
 如果机器上还没有 `pipx` 或合适的 Python，可使用版本化的
-[Linux 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a38/install.sh)
-或 [Windows PowerShell 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a38/install.ps1)。
+[Linux 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a39/install.sh)
+或 [Windows PowerShell 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a39/install.ps1)。
 它会创建隔离环境，不替换外部管理的系统 Python。
 
 之后再打开真实工作区：
@@ -96,6 +96,11 @@ ADS 重启后，支持的 DE 原理图、版图、符号、Folder/Library 树和
 维护中的验收路径使用真实 Windows 与 Linux ADS，分别检查文档、Context
 捕获、实时会话身份、对话框监督、类型化原理图搭建、电路仿真、数据集与
 CSV 回读、原生 DDS 方程与曲线创建，以及已生成 Momentum 输入的执行。
+
+维护中的“空白工作区 → 原理图 → 仿真 → 原生 DDS”路径也已作为一个四阶段
+Runtime 计划通过：总耗时 **4.469 秒**，得到 31 个有限数值点、确定命名的
+原生数据集、CSV，以及全新重开确认的 DDS 报告。见
+[脱敏工作流证据](docs/VALIDATION_2026-08-30_CIRCUIT_TO_DDS.md)。
 
 另有两个范围严格受限的 ADS 2027 对比：
 
