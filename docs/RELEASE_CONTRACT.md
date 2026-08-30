@@ -13,6 +13,11 @@ workspace, distinguish agent-owned from externally owned sessions, disconnect
 without closing ADS, and request native safe exit only for a verified
 agent-owned session.
 
+The operation catalog is not a second ADS API. Stable typed operations are
+certified workflows and shortcuts. Broader capability must come from governed
+official Python/AEL execution in an exact Context, using the common transaction
+and validation mechanisms defined in `docs/ARCHITECTURE.md`.
+
 ## User path
 
 ```text

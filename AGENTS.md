@@ -18,6 +18,12 @@ ads-agent shutdown
 Work that does not improve or protect that path is not a v0.1 release blocker.
 Read `docs/RELEASE_CONTRACT.md` before expanding scope.
 
+Capability work must also follow `docs/ARCHITECTURE.md` and
+`docs/OPERATION_CLASSIFICATION.md`. Do not recreate the ADS API as a growing set
+of Bridge wrappers. Treat typed operations as certified workflows; expand broad
+functionality through version-matched official docs plus governed native
+execution and reusable transaction/validation infrastructure.
+
 Rules:
 
 - Windows and Linux are equal release gates.

@@ -189,16 +189,19 @@ the same in both topologies.
 
 ## Next
 
-- richer RF testbenches and reusable parameterized cells;
-- native DDS markers, Smith charts, tables, and multi-page result workbooks;
-- layout construction and broader Momentum, RFPro, FEM, SIPro, and PIPro
-  journeys.
+- governed access to version-matched official Python/AEL so new documented ADS
+  uses do not require one Bridge wrapper per component, plot, or solver option;
+- richer RF testbenches, reusable parameterized cells, native DDS, layout, and
+  EM work delivered through that common path and selectively promoted as
+  certified workflows.
 
 ## More information
 
 - [Installation and command reference](docs/CLI_REFERENCE.md)
 - [Five public examples](docs/EXAMPLES.md)
 - [Capability and evidence matrix](docs/CAPABILITY_MATRIX.md)
+- [Architecture and capability growth](docs/ARCHITECTURE.md)
+- [Operation classification](docs/OPERATION_CLASSIFICATION.md)
 - [Session and dialog behavior](docs/DIALOG_AUTOMATION.md)
 - [Execution context contract](docs/EXECUTION_CONTEXT_CONTRACT.md)
 - [Release contract](docs/RELEASE_CONTRACT.md)
