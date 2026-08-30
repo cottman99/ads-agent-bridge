@@ -73,13 +73,13 @@ def test_bilingual_readmes_share_navigation_and_user_facing_visual_assets():
 
     for relative_path in (
         "docs/assets/readme/logo.png",
-        "docs/assets/readme/ads-user-value.png",
+        "docs/assets/readme/ads-user-value-v2.png",
     ):
         assert (root / relative_path).is_file()
         assert relative_path in english
         assert relative_path in chinese
 
-    assert (root / "docs/assets/readme/social-preview.png").is_file()
+    assert (root / "docs/assets/readme/social-preview-v2.png").is_file()
 
 
 def test_public_capability_claims_keep_plugin_and_comparison_scope_explicit():
