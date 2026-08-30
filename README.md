@@ -8,7 +8,7 @@
   <img src="docs/assets/readme/logo.png" width="150" alt="ADS Agent Bridge logo">
 </p>
 
-<p align="center"><strong>Let your Agent understand the ADS version, workspace, and object you actually mean.</strong></p>
+<p align="center"><strong>From an exact ADS selection or blank circuit to checked data and an editable DDS result.</strong></p>
 
 <p align="center">
   <a href="https://pypi.org/project/ads-agent-bridge/"><img alt="PyPI" src="https://img.shields.io/pypi/v/ads-agent-bridge"></a>
@@ -17,7 +17,7 @@
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/cottman99/ads-agent-bridge"></a>
 </p>
 
-![A selected RF circuit passes through a controlled bridge and returns a verified response](docs/assets/readme/ads-user-value-v2.png)
+![An RF engineer goes from a blank circuit through simulation to checked native results](docs/assets/readme/ads-engineer-workflow-v3.png)
 
 ADS Agent Bridge is an unofficial, local-first bridge for Keysight Advanced
 Design System. It helps general-purpose Agents such as Codex and Pi Agent use
@@ -28,6 +28,12 @@ It combines version-matched local documentation, an installed DE/DDS context
 plug-in, controlled live sessions, and bounded automation. ADS stays on the ADS
 host; repeated remote work uses EDA Bridge Runtime over one persistent SSH
 channel instead of rebuilding an SSH command for every action.
+
+Today, the maintained public path can complete a blank circuit or testbench,
+run circuit simulation, check and export numeric data, and create a native DDS
+page in one typed plan. It can also work from exact schematic, layout, tree, or
+DDS selections and run already-generated Momentum inputs. The boundaries below
+state what is not yet claimed.
 
 > [!IMPORTANT]
 > This project is public alpha software and is not affiliated with or endorsed
@@ -116,6 +122,8 @@ Linux. It separately checks documentation, context capture, live session
 identity, safe dialog supervision, typed schematic construction, circuit
 simulation, dataset and CSV readback, native DDS equation and plot creation,
 and generated-input Momentum execution.
+
+![Measured 31-point ADS AC result from the public display4 acceptance](docs/assets/readme/ads-real-ac-result.png)
 
 The maintained blank-workspace → schematic → simulation → native DDS path also
 passed as one four-stage Runtime plan in **4.469 seconds**, with 31 finite rows,
