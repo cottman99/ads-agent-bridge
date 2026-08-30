@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.0a39 - 2026-08-30
+
+- Let a typed circuit-simulation plan request one safe deterministic `.ds`
+  filename inside its output directory, while rejecting traversal, nested paths,
+  non-dataset extensions, and overwrite.
+- Make simulation output directly composable with `dds.create`, allowing the
+  maintained blank-workspace → schematic → simulation → native DDS workflow to
+  run as one validated Runtime plan without an Agent round trip between dataset
+  discovery and report creation.
+- Validate the four-stage plan on ADS 2026 Update 2.1 / Linux / `DISPLAY=:4.0`
+  in 4.469 seconds of client-visible Runtime transport time.
+
 ## 0.1.0a38 - 2026-08-30
 
 - Add composable typed `circuit.simulate` and `dds.create` Runtime operations,

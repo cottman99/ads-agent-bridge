@@ -14,6 +14,11 @@ import keysight.ads.de as de
 from keysight.ads.de import db_uu as db
 from keysight.edatoolbox import ads
 
+try:
+    from .simulation_artifacts import accept_dataset_artifact
+except ImportError:  # Executed by ADS Python as a standalone file.
+    from simulation_artifacts import accept_dataset_artifact
+
 
 def _finite(value) -> bool:
     if isinstance(value, complex):
@@ -38,10 +43,16 @@ def run(plan: dict[str, object]) -> dict[str, object]:
         netlist_path.write_text(netlist, encoding="utf-8")
         started = time.monotonic()
         run_result = ads.CircuitSimulator().run_netlist(netlist, output_dir=str(output))
-        datasets = sorted(output.glob("*.ds"), key=lambda item: item.stat().st_mtime, reverse=True)
+        datasets = sorted(
+            output.glob("*.ds"), key=lambda item: item.stat().st_mtime, reverse=True
+        )
         if not datasets:
             raise RuntimeError("simulation completed without a dataset")
-        dataset_path = datasets[0]
+        dataset_path = accept_dataset_artifact(
+            output,
+            datasets[0],
+            str(plan["dataset_name"]) if plan.get("dataset_name") else None,
+        )
         assertions = plan["assertions"]
         frames = []
         with dataset.open(dataset_path) as data:
@@ -53,17 +64,27 @@ def run(plan: dict[str, object]) -> dict[str, object]:
         selected_name, selected = max(frames, key=lambda item: len(item[1]))
         columns = [str(column) for column in selected.columns]
         rows = int(len(selected))
-        missing = [name for name in assertions["required_columns"] if name not in columns]
+        missing = [
+            name for name in assertions["required_columns"] if name not in columns
+        ]
         if missing:
-            raise RuntimeError("dataset is missing required columns: " + ", ".join(missing))
+            raise RuntimeError(
+                "dataset is missing required columns: " + ", ".join(missing)
+            )
         if rows < assertions["minimum_rows"]:
-            raise RuntimeError(f"dataset has {rows} rows; expected at least {assertions['minimum_rows']}")
+            raise RuntimeError(
+                f"dataset has {rows} rows; expected at least {assertions['minimum_rows']}"
+            )
         nonfinite = []
         for name in assertions["finite_columns"]:
-            if name not in columns or not all(_finite(value) for value in selected[name]):
+            if name not in columns or not all(
+                _finite(value) for value in selected[name]
+            ):
                 nonfinite.append(name)
         if nonfinite:
-            raise RuntimeError("dataset has non-finite columns: " + ", ".join(nonfinite))
+            raise RuntimeError(
+                "dataset has non-finite columns: " + ", ".join(nonfinite)
+            )
         csv_path = output / "dataset.csv"
         selected.to_csv(csv_path, index=False)
         result.update(

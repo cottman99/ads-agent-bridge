@@ -33,3 +33,33 @@ Runtime run identifiers for audit are `run_16356e0d8a684bbbbfc148bd73b93372`,
 `run_32cde9a74c384de090ffc7746fa02fd4`,
 `run_2744ae47e336430384985e8efb23797c`, and
 `run_4d03a74b39ab4eafb797499b3db5354b`.
+
+## One-plan composability acceptance
+
+The follow-up release acceptance added an optional bounded `dataset_name` to
+the simulation plan. The Bridge gives the simulator-selected native dataset
+that predetermined filename only after the dataset exists, refuses overwrite,
+and returns the accepted path as the dataset artifact. This keeps vendor output
+normalization in the vendor Bridge instead of adding general scripting or
+cross-step expression evaluation to Runtime.
+
+One independent `eda.run_plan` call then completed all four stages without an
+Agent round trip between simulation and DDS:
+
+| Stage | Result | Client-visible Runtime time | Key acceptance |
+| --- | --- | ---: | --- |
+| Workspace | passed | 0.750 s | New disposable source and empty schematic |
+| Circuit build | passed | 0.797 s | 6 instances, 14 assertions, source preserved, fresh reopen |
+| Simulation | passed | 1.859 s | 31 finite rows; `accepted.ds`, netlist, and CSV |
+| DDS report | passed | 1.032 s | Valid `output_db`, one plot, native DDS fresh reopen |
+| Whole Runtime plan | passed | 4.469 s | Four ordered Runs, stopped-on-failure semantics, no GUI or raw code |
+
+The four Run identities are `run_963c72a1950b4489af8ada051761df60`,
+`run_b1fbd5262025471e8ed9ad856693cf72`,
+`run_d41d47980d4e4ed49778f59d053305d2`, and
+`run_523b98951cc04bb88a214f788ca42bf8`.
+
+The first candidate attempt also proved failure isolation: a standalone-worker
+import error stopped the plan at simulation before DDS creation. The preserved
+source and already-verified candidate were reused after the packaging fix;
+neither workspace was rebuilt from scratch.
