@@ -32,3 +32,26 @@ Rules:
 - Run tests from a non-system-drive temporary directory when available.
 - A partial quickstart must return a non-zero status and name every unpassed
   gate; never report docs lookup as a completed automation roundtrip.
+
+## User-facing release communication
+
+- Write README and GitHub Release content for engineers who want to complete
+  ADS work, not primarily for maintainers or API developers.
+- Lead with the user outcome, then native ADS evidence and exact observed
+  results. Put architecture, PRs, commits, and implementation detail later.
+- Keep validation runs clean. Do not add screenshots, camera work, plots, or
+  promotional steps to a timed engineering acceptance.
+- After a successful run is frozen, promotional material may be made by
+  reopening or replaying that exact accepted result. Record this separately as
+  release preparation, never as engineering-task time.
+- Prefer real ADS application-window captures and native editable schematic,
+  layout, dataset, or DDS results. Do not substitute mockups or external
+  replots for native evidence.
+- Describe supported outcomes positively and precisely. Put useful planned
+  expansion in a compact Roadmap or Next section instead of leading with
+  defensive language.
+- Keep installation and natural-language task examples prominent. Put
+  compatibility detail, changelogs, PRs, checksums, and developer notes last.
+- Follow the shared
+  [user-facing release communication guide](https://github.com/cottman99/eda-bridge-runtime/blob/main/docs/USER_FACING_RELEASES.md)
+  when editing a README, release note, public example, or homepage visual.
