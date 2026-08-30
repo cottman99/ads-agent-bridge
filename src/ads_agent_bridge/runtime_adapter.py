@@ -8,11 +8,13 @@ from typing import Any
 
 from . import __version__
 from .bridge_client import request as bridge_request
+from .circuit_simulation import execute_simulation_plan
 from .config import select_instance
 from .design_plan import execute_design_plan
 from .docs_kb import get_document
 from .docs_kb import query as query_docs
 from .docs_kb import status as docs_status
+from .dds_report import execute_dds_plan
 from .momentum import run_generated_momentum
 from .session_manager import launch as launch_session
 from .session_manager import shutdown as shutdown_session
@@ -131,6 +133,34 @@ class _AdsAdapterBase:
                         "optional": ["instance", "display", "timeout_seconds"],
                     },
                     "state": {"available": profile == "de", "healthy": profile == "de"},
+                },
+                {
+                    "id": "circuit.simulate",
+                    "category": "simulation",
+                    "safety": "bounded",
+                    "mutates": True,
+                    "latency_class": "slow",
+                    "requires_context": False,
+                    "returns_context": False,
+                    "input_schema": {
+                        "required": ["plan"],
+                        "optional": ["instance", "display", "timeout_seconds"],
+                    },
+                    "state": {"available": profile == "de", "healthy": profile == "de"},
+                },
+                {
+                    "id": "dds.create",
+                    "category": "reporting",
+                    "safety": "bounded",
+                    "mutates": True,
+                    "latency_class": "moderate",
+                    "requires_context": False,
+                    "returns_context": False,
+                    "input_schema": {
+                        "required": ["plan"],
+                        "optional": ["instance", "display", "timeout_seconds"],
+                    },
+                    "state": {"available": True, "healthy": True},
                 },
                 {
                     "id": "momentum.run_generated",
@@ -266,7 +296,13 @@ class _AdsAdapterBase:
                 "eda": "keysight-ads",
             }
             request = RequestEnvelope.from_dict(data)
-        slot = request.target.get("slot")
+        target_slot = request.target.get("slot")
+        payload_slot = request.payload.get("slot")
+        if target_slot and payload_slot and str(target_slot) != str(payload_slot):
+            raise ValueError(
+                "ADS slot conflicts between target.slot and payload.slot"
+            )
+        slot = target_slot or payload_slot
         profile = str(request.target.get("profile") or "de")
         if profile not in {"de", "dds"}:
             raise ValueError("ADS profile must be de or dds")
@@ -340,6 +376,46 @@ class _AdsAdapterBase:
             if selected_instance and "instance" not in plan:
                 plan["instance"] = selected_instance
             result = execute_design_plan(
+                plan,
+                expected_display=request.payload.get("display")
+                or request.target.get("display"),
+                timeout=float(request.payload.get("timeout_seconds", 180)),
+            )
+            return AdapterResult(status="passed", result={"bridge": result})
+        if request.operation == "circuit.simulate":
+            if not request.is_mutating:
+                raise ValueError("circuit.simulate requires payload.mutating=true")
+            if profile != "de":
+                raise ValueError("circuit.simulate requires the ADS DE profile")
+            plan = request.payload.get("plan")
+            if not isinstance(plan, dict):
+                raise TypeError("circuit.simulate requires a structured plan object")
+            plan = dict(plan)
+            selected_instance = request.payload.get("instance") or request.target.get(
+                "instance"
+            )
+            if selected_instance and "instance" not in plan:
+                plan["instance"] = selected_instance
+            result = execute_simulation_plan(
+                plan,
+                expected_display=request.payload.get("display")
+                or request.target.get("display"),
+                timeout=float(request.payload.get("timeout_seconds", 600)),
+            )
+            return AdapterResult(status="passed", result={"bridge": result})
+        if request.operation == "dds.create":
+            if not request.is_mutating:
+                raise ValueError("dds.create requires payload.mutating=true")
+            plan = request.payload.get("plan")
+            if not isinstance(plan, dict):
+                raise TypeError("dds.create requires a structured plan object")
+            plan = dict(plan)
+            selected_instance = request.payload.get("instance") or request.target.get(
+                "instance"
+            )
+            if selected_instance and "instance" not in plan:
+                plan["instance"] = selected_instance
+            result = execute_dds_plan(
                 plan,
                 expected_display=request.payload.get("display")
                 or request.target.get("display"),

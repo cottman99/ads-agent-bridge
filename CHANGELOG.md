@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.0a38 - 2026-08-30
+
+- Add composable typed `circuit.simulate` and `dds.create` Runtime operations,
+  completing the first schematic-to-simulation-to-dataset-to-native-DDS path
+  without accepting Agent-authored Python or AEL.
+- Require explicit dataset row, column, and finite-value assertions; export the
+  accepted variable block to CSV alongside the native dataset and generated
+  netlist.
+- Create bounded DDS equations and rectangular plots, save without overwrite,
+  and fresh-reopen the native DDS file before acceptance.
+- Accept `session.shutdown` slot selection from the advertised payload field,
+  while rejecting conflicting target and payload slots before touching ADS.
+
 ## 0.1.0a37 - 2026-08-30
 
 - Build one platform-aware ADS bundled-Python environment for quickstart,

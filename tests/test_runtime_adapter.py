@@ -141,6 +141,8 @@ def test_capabilities_keep_greenfield_available_without_live_session(monkeypatch
         "docs.get",
         "workspace.create",
         "design.apply",
+        "circuit.simulate",
+        "dds.create",
         "momentum.run_generated",
         "session.launch",
         "session.status",
@@ -197,6 +199,86 @@ def test_runtime_design_apply_rejects_dds_profile(monkeypatch):
         idempotency_key="reject-dds-design",
     )
     with pytest.raises(ValueError, match="requires the ADS DE profile"):
+        runtime_adapter._AdsAdapterBase().execute(
+            request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+        )
+
+
+def test_runtime_circuit_simulate_accepts_structured_plan(monkeypatch):
+    from eda_bridge_runtime import RequestEnvelope
+
+    captured = {}
+
+    def fake_execute(plan, **kwargs):
+        captured.update(plan=plan, **kwargs)
+        return {"status": "passed", "simulation_completed": True}
+
+    monkeypatch.setattr(runtime_adapter, "execute_simulation_plan", fake_execute)
+    request = RequestEnvelope(
+        purpose="Simulate the selected ADS circuit and read its dataset",
+        target={"eda": "keysight-ads", "instance": "ads2026", "display": ":4.0"},
+        operation="circuit.simulate",
+        payload={
+            "mutating": True,
+            "plan": {
+                "schema_version": "ads.circuit-simulation/v1",
+                "operation_id": "demo",
+            },
+        },
+        idempotency_key="simulate-demo",
+    )
+    result = runtime_adapter._AdsAdapterBase().execute(
+        request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+    )
+    assert result.status == "passed"
+    assert captured["plan"]["instance"] == "ads2026"
+    assert captured["expected_display"] == ":4.0"
+
+
+def test_runtime_shutdown_accepts_slot_from_payload(monkeypatch):
+    from eda_bridge_runtime import RequestEnvelope
+
+    captured = {}
+
+    def fake_shutdown(slot, wait_seconds):
+        captured.update(slot=slot, wait_seconds=wait_seconds)
+        return {"status": "exited", "slot": slot}
+
+    monkeypatch.setattr(runtime_adapter, "shutdown_session", fake_shutdown)
+    request = RequestEnvelope(
+        purpose="Close the exact agent-owned ADS session",
+        target={"eda": "keysight-ads"},
+        operation="session.shutdown",
+        payload={"mutating": True, "slot": "u2", "timeout_seconds": 12},
+        idempotency_key="shutdown-u2",
+    )
+    result = runtime_adapter._AdsAdapterBase().execute(
+        request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+    )
+
+    assert result.status == "passed"
+    assert captured == {"slot": "u2", "wait_seconds": 12.0}
+
+
+def test_runtime_rejects_conflicting_slot_sources(monkeypatch):
+    from eda_bridge_runtime import RequestEnvelope
+
+    monkeypatch.setattr(
+        runtime_adapter,
+        "shutdown_session",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("conflicting slots must be rejected before shutdown")
+        ),
+    )
+    request = RequestEnvelope(
+        purpose="Reject an ambiguous ADS session target",
+        target={"eda": "keysight-ads", "slot": "u2"},
+        operation="session.shutdown",
+        payload={"mutating": True, "slot": "u1"},
+        idempotency_key="reject-slot-conflict",
+    )
+
+    with pytest.raises(ValueError, match="slot conflicts"):
         runtime_adapter._AdsAdapterBase().execute(
             request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
         )
