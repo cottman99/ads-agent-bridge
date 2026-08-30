@@ -29,6 +29,24 @@ Runtime 复用一条 SSH 通道，不需要每次重新拼接命令。
 > 本项目仍是公开 Alpha，与 Keysight Technologies 无隶属或背书关系。
 > 首次使用请从可丢弃工作区开始，并先查看各能力的验收边界。
 
+## 现在可以完成什么
+
+- 从空白电路或明确选中的原理图出发，搭建受控的电路/测试平台，结果仍可在
+  ADS 中继续编辑。
+- 执行电路仿真，检查目标数据是否为有限值，导出 CSV，并创建可编辑的原生
+  Data Display 页面。
+- 通过 **Copy ADS Context** 从原理图、版图、Library 树或 DDS 对象继续工作，
+  不让 Agent 猜测当前目标。
+- 对已经生成的 Momentum 输入执行受保护的兄弟副本求解，并返回带验收证据的
+  N 端口结果。
+
+下面两张图来自 ADS 2026 Update 2.1 的公开合成验收工程，是 EDA 应用窗口的
+真实截图，不是效果图，曲线也没有在 ADS 之外重绘。
+
+![公开验收中搭建的原生 ADS 原理图](docs/assets/readme/ads-native-schematic.png)
+
+![由验收数据集创建并可继续编辑的原生 ADS Data Display 页面](docs/assets/readme/ads-native-dds.png)
+
 ## 三步开始
 
 需要一套已授权的 ADS、Windows 或 Linux，以及 Python 3.10 以上环境。
@@ -102,9 +120,7 @@ ADS 重启后，支持的 DE 原理图、版图、符号、Folder/Library 树和
 捕获、实时会话身份、对话框监督、类型化原理图搭建、电路仿真、数据集与
 CSV 回读、原生 DDS 方程与曲线创建，以及已生成 Momentum 输入的执行。
 
-![display4 公开验收中得到的 ADS 31 点 AC 实测结果](docs/assets/readme/ads-real-ac-result.png)
-
-维护中的“空白工作区 → 原理图 → 仿真 → 原生 DDS”路径也已作为一个四阶段
+维护中的“空白工作区 → 原理图 → 仿真 → 原生 DDS”路径已作为一个四阶段
 Runtime 计划通过：总耗时 **4.469 秒**，得到 31 个有限数值点、确定命名的
 原生数据集、CSV，以及全新重开确认的 DDS 报告。见
 [脱敏工作流证据](docs/VALIDATION_2026-08-30_CIRCUIT_TO_DDS.md)。

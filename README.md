@@ -40,6 +40,25 @@ state what is not yet claimed.
 > by Keysight Technologies. Begin with a disposable workspace and review the
 > reported capability gates before relying on automation results.
 
+## What you can finish today
+
+- Start from a blank circuit or an exact schematic selection, build a bounded
+  circuit/testbench, and keep the result editable in ADS.
+- Run circuit simulation, check that the requested numeric data is finite,
+  export CSV, and create an editable native Data Display page.
+- Continue from a schematic, layout, library-tree, or DDS item selected with
+  **Copy ADS Context**, instead of asking the Agent to guess the active target.
+- Run an already-generated Momentum input on a protected sibling copy and
+  return the N-port result with acceptance evidence.
+
+The images below are application-window captures from the public synthetic
+acceptance on ADS 2026 Update 2.1. They are not mockups and the curve was not
+replotted outside ADS.
+
+![Native ADS schematic built in the public acceptance workspace](docs/assets/readme/ads-native-schematic.png)
+
+![Editable native ADS Data Display page created from the accepted dataset](docs/assets/readme/ads-native-dds.png)
+
 ## Start in three steps
 
 Prerequisites: a licensed ADS installation, Windows or Linux, and Python 3.10
@@ -123,9 +142,7 @@ identity, safe dialog supervision, typed schematic construction, circuit
 simulation, dataset and CSV readback, native DDS equation and plot creation,
 and generated-input Momentum execution.
 
-![Measured 31-point ADS AC result from the public display4 acceptance](docs/assets/readme/ads-real-ac-result.png)
-
-The maintained blank-workspace → schematic → simulation → native DDS path also
+The maintained blank-workspace → schematic → simulation → native DDS path
 passed as one four-stage Runtime plan in **4.469 seconds**, with 31 finite rows,
 a deterministic native dataset, CSV, and a freshly reopened DDS report. See the
 [sanitized workflow evidence](docs/VALIDATION_2026-08-30_CIRCUIT_TO_DDS.md).

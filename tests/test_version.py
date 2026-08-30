@@ -74,7 +74,8 @@ def test_bilingual_readmes_share_navigation_and_user_facing_visual_assets():
     for relative_path in (
         "docs/assets/readme/logo.png",
         "docs/assets/readme/ads-engineer-workflow-v3.png",
-        "docs/assets/readme/ads-real-ac-result.png",
+        "docs/assets/readme/ads-native-schematic.png",
+        "docs/assets/readme/ads-native-dds.png",
     ):
         assert (root / relative_path).is_file()
         assert relative_path in english
