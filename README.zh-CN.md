@@ -161,15 +161,18 @@ Runtime 复用一条 SSH 标准输入输出通道，记录每次操作的动机�
 
 ## 下一步
 
-- 更丰富的 RF testbench 和可复用参数化单元；
-- 原生 DDS marker、Smith 图和表格；
-- 版图构建，以及更完整的 Momentum、RFPro、FEM、SIPro 和 PIPro 任务。
+- 受治理地调用版本匹配的官方 Python/AEL，避免每增加一个元件、图形或
+  求解选项就新增一个 Bridge wrapper；
+- 通过这条通用路径完成更丰富的 RF testbench、参数化单元、原生 DDS、
+  版图和 EM 任务，并只把高价值、高复用流程提升为认证 workflow。
 
 ## 更多信息
 
 - [安装与命令参考](docs/CLI_REFERENCE.md)
 - [五个公开示例](docs/EXAMPLES.md)
 - [能力与证据矩阵](docs/CAPABILITY_MATRIX.md)
+- [架构与能力扩展原则](docs/ARCHITECTURE.md)
+- [Operation 分类与迁移判断](docs/OPERATION_CLASSIFICATION.md)
 - [会话与对话框行为](docs/DIALOG_AUTOMATION.md)
 - [执行上下文契约](docs/EXECUTION_CONTEXT_CONTRACT.md)
 - [版本契约](docs/RELEASE_CONTRACT.md)

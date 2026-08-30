@@ -2,6 +2,8 @@
 
 This matrix separates the public product surface from the evidence that
 supports each claim. It is intentionally narrower than a roadmap.
+Operation roles and migration decisions are recorded separately in
+[`OPERATION_CLASSIFICATION.md`](OPERATION_CLASSIFICATION.md).
 
 ## Evidence labels
 
