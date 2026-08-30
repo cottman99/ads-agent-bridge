@@ -58,8 +58,8 @@ disposable workspace creation, minimal circuit simulation, and dataset readback
 have each passed.
 
 If `pipx` or a suitable Python is not yet available, use the versioned
-bootstrap for [Linux](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a37/install.sh)
-or [Windows PowerShell](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a37/install.ps1).
+bootstrap for [Linux](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a38/install.sh)
+or [Windows PowerShell](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a38/install.ps1).
 The bootstrap creates an isolated environment and does not replace an
 externally managed system Python.
 
@@ -84,6 +84,7 @@ matching Agent-owned session.
 | “Use the schematic, layout, cell, folder, or DDS item I selected.” | Resolves the copied `ADS_CONTEXT` instead of guessing the foreground window. |
 | “Open this exact workspace and tell me what ADS is doing.” | Verifies workspace, process, ADS version, display, ownership, visible UI, and blocking dialogs. |
 | “Apply these schematic edits safely.” | Modifies a non-overwriting copy and accepts it only after save, close, fresh reopen, and exact assertions. |
+| “Simulate this circuit, give me the data, and build the DDS plots.” | Generates the netlist, runs the circuit simulator, checks numeric dataset columns, exports CSV, and fresh-reopens the native DDS report. |
 | “Run this already-generated Momentum input.” | Preserves the source, solves a sibling copy, and checks a complete finite N-port result before promotion. |
 | “Disconnect but keep ADS open.” | Separates client disconnect from identity-checked native shutdown. |
 
@@ -112,8 +113,9 @@ selection coverage.
 
 The maintained acceptance path uses real ADS installations on Windows and
 Linux. It separately checks documentation, context capture, live session
-identity, safe dialog supervision, no-GUI simulation, dataset readback,
-structured schematic edits, and generated-input Momentum execution.
+identity, safe dialog supervision, typed schematic construction, circuit
+simulation, dataset and CSV readback, native DDS equation and plot creation,
+and generated-input Momentum execution.
 
 Two narrow ADS 2027 comparisons are also public:
 

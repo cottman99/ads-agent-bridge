@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/cottman99/ads-agent-bridge/docs/schemas/ads-circuit-simulation-v1.schema.json",
+  "title": "ADS Circuit Simulation Plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "operation_id", "workspace", "design", "output_directory", "assertions"],
+  "properties": {
+    "schema_version": {"const": "ads.circuit-simulation/v1"},
+    "operation_id": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$"},
+    "workspace": {"type": "string", "minLength": 1},
+    "design": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}:[A-Za-z_][A-Za-z0-9_]{0,127}:schematic$"},
+    "output_directory": {"type": "string", "minLength": 1},
+    "instance": {"type": "string", "minLength": 1},
+    "assertions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required_columns"],
+      "properties": {
+        "minimum_rows": {"type": "integer", "minimum": 1, "default": 1},
+        "required_columns": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1, "maxLength": 256}},
+        "finite_columns": {"type": "array", "items": {"type": "string", "minLength": 1, "maxLength": 256}}
+      }
+    }
+  }
+}
