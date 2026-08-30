@@ -47,6 +47,13 @@ plug-in, controlled live sessions, and bounded automation stay with ADS on the
 EDA host; repeated remote work reuses EDA Bridge Runtime instead of rebuilding
 an SSH command for every action.
 
+New ADS functionality does not require a new Bridge wrapper. The Agent first
+uses version-matched official docs and a small packaged experience library,
+then runs official ADS Python through a governed workspace transaction.
+Maintained operations such as `design.apply` and `dds.create` remain available
+as asset-bound compiled shortcuts: they save tokens and transcription errors,
+but never define the outer limit of ADS capability.
+
 ## Start in three steps
 
 Prerequisites: a licensed ADS installation, Windows or Linux, and Python 3.10
@@ -71,8 +78,8 @@ disposable workspace creation, minimal circuit simulation, and dataset readback
 have each passed.
 
 If `pipx` or a suitable Python is not yet available, use the versioned
-bootstrap for [Linux](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a41/install.sh)
-or [Windows PowerShell](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a41/install.ps1).
+bootstrap for [Linux](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a42/install.sh)
+or [Windows PowerShell](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a42/install.ps1).
 The bootstrap creates an isolated environment and does not replace an
 externally managed system Python.
 

@@ -140,6 +140,9 @@ def test_capabilities_keep_greenfield_available_without_live_session(monkeypatch
         "docs.query",
         "docs.get",
         "workspace.create",
+        "experience.list",
+        "experience.get",
+        "native.batch",
         "design.apply",
         "circuit.simulate",
         "dds.create",
@@ -160,6 +163,11 @@ def test_runtime_design_apply_accepts_only_structured_plan(monkeypatch):
         return {"status": "passed", "fresh_reopen": True}
 
     monkeypatch.setattr(runtime_adapter, "execute_design_plan", fake_execute)
+    monkeypatch.setattr(
+        runtime_adapter,
+        "select_instance",
+        lambda _value: SimpleNamespace(year=2026, product_version="2026"),
+    )
     request = RequestEnvelope(
         purpose="Apply one bounded schematic plan",
         target={"eda": "keysight-ads", "instance": "ads2026", "display": ":4.0"},
@@ -179,6 +187,39 @@ def test_runtime_design_apply_accepts_only_structured_plan(monkeypatch):
     assert result.status == "passed"
     assert captured["plan"]["instance"] == "ads2026"
     assert captured["expected_display"] == ":4.0"
+
+
+def test_degraded_experience_disables_shortcuts_but_not_native_execution(monkeypatch):
+    monkeypatch.setattr(
+        runtime_adapter,
+        "bridge_request",
+        lambda *_args, **_kwargs: {"ok": True, "result": {"descriptors": []}},
+    )
+    monkeypatch.setattr(
+        runtime_adapter,
+        "select_instance",
+        lambda _value: SimpleNamespace(
+            year=2026, product_version="2026", python_executable="/ads/python"
+        ),
+    )
+    monkeypatch.setattr(
+        runtime_adapter,
+        "shortcut_state",
+        lambda *_args, **_kwargs: {
+            "available": False,
+            "healthy": False,
+            "reason": "asset hash mismatch",
+        },
+    )
+
+    operations = {
+        item["id"]: item
+        for item in runtime_adapter._AdsAdapterBase().capabilities(
+            {"profile": "de", "instance": "ads2026"}
+        )["operations"]
+    }
+    assert operations["design.apply"]["state"]["available"] is False
+    assert operations["native.batch"]["state"]["available"] is True
 
 
 def test_runtime_design_apply_rejects_dds_profile(monkeypatch):
@@ -214,6 +255,11 @@ def test_runtime_circuit_simulate_accepts_structured_plan(monkeypatch):
         return {"status": "passed", "simulation_completed": True}
 
     monkeypatch.setattr(runtime_adapter, "execute_simulation_plan", fake_execute)
+    monkeypatch.setattr(
+        runtime_adapter,
+        "select_instance",
+        lambda _value: SimpleNamespace(year=2026, product_version="2026"),
+    )
     request = RequestEnvelope(
         purpose="Simulate the selected ADS circuit and read its dataset",
         target={"eda": "keysight-ads", "instance": "ads2026", "display": ":4.0"},
@@ -294,6 +340,11 @@ def test_runtime_momentum_accepts_only_bounded_transaction(monkeypatch):
         return {"status": "passed", "source_preserved": True}
 
     monkeypatch.setattr(runtime_adapter, "run_generated_momentum", fake_run)
+    monkeypatch.setattr(
+        runtime_adapter,
+        "select_instance",
+        lambda _value: SimpleNamespace(year=2026, product_version="2026"),
+    )
     request = RequestEnvelope(
         purpose="Run one copied generated Momentum input",
         target={"eda": "keysight-ads", "instance": "ads2026", "display": ":4.0"},

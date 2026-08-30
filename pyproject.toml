@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ads-agent-bridge"
-version = "0.1.0a41"
+version = "0.1.0a42"
 description = "Unofficial local documentation and automation bridge for Keysight ADS"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,7 +24,7 @@ classifiers = [
 ]
 dependencies = [
   "beautifulsoup4>=4.12,<5",
-  "eda-bridge-runtime>=0.1.0a9,<0.2",
+  "eda-bridge-runtime>=0.1.0a34,<0.2",
   "html2text>=2024.2.26,<2027",
   "Pillow>=11.2.1,<13",
   "platformdirs>=4,<5",

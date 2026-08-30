@@ -24,6 +24,12 @@ of Bridge wrappers. Treat typed operations as certified workflows; expand broad
 functionality through version-matched official docs plus governed native
 execution and reusable transaction/validation infrastructure.
 
+The packaged Bootstrap Experience Library is advisory and independent from
+execution. Markdown is never executed, missing assets never block native
+execution, and every non-infrastructure shortcut must match an eligible asset
+id, version, and content hash. Shortcut code is only a compiled token/reliability
+optimization, never the semantic source of truth.
+
 Rules:
 
 - Windows and Linux are equal release gates.

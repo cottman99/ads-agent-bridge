@@ -14,9 +14,16 @@ without closing ADS, and request native safe exit only for a verified
 agent-owned session.
 
 The operation catalog is not a second ADS API. Stable typed operations are
-certified workflows and shortcuts. Broader capability must come from governed
+infrastructure or asset-bound compiled shortcuts. Broader capability comes from governed
 official Python/AEL execution in an exact Context, using the common transaction
 and validation mechanisms defined in `docs/ARCHITECTURE.md`.
+
+The wheel carries a hashed Bootstrap Experience Library with read-only
+`experience.list/get`. Assets are advisory package data and never executable;
+their absence or corruption must not block the execution core. A compiled
+shortcut must declare and verify its asset id/version/hash, applicability,
+effect, parameters, validation, implementation version, and governed-native
+fallback, then include the binding and expanded-plan hash in its receipt.
 
 ## User path
 
@@ -107,6 +114,8 @@ addons, AEL interoperability, headless automation, or EM routes are available.
 - five cataloged examples with explicit prerequisites, state changes, evidence,
   and nonzero failure behavior;
 - no vendor docs, private paths, or monorepo runtime imports.
+- verified experience manifest hashes and compiled-shortcut bindings;
+- wheel inspection proving packaged experience assets and the shared schema.
 
 ## Non-blocking extensions
 
