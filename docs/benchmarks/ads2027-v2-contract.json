@@ -1,0 +1,76 @@
+{
+  "schema": "ads-agent-benchmark-contract/v2",
+  "benchmark_id": "ads2027-current-regression-v2",
+  "purpose": "Measure the current Bridge against its historical release and the unchanged ADS 2027 official MCP under controlled Codex and Pi Agent protocols.",
+  "runtime": {
+    "host_os": "Linux",
+    "ads_version": "ADS 2027",
+    "agents": [
+      "Codex CLI 0.145.0",
+      "Pi Agent 0.84.4"
+    ],
+    "model": "gpt-5.6-terra",
+    "reasoning_effort": "medium",
+    "display": ":4",
+    "execution": "serial-counterbalanced"
+  },
+  "arms": {
+    "bridge_a29": {
+      "surface": "packaged ads-agent Bridge and its packaged Skills",
+      "version": "0.1.0a29"
+    },
+    "bridge_a48": {
+      "surface": "packaged ads-agent Bridge and its packaged Skills",
+      "version": "0.1.0a48"
+    },
+    "official": {
+      "surface": "ADS 2027 official MCP start_local_session and execute_python tools",
+      "executable_sha256": "b68afcc4e904fae576a3c139898f877261fe9266a5235313ec46d48a2d0e4783"
+    }
+  },
+  "controls": {
+    "fresh_codex_home_per_run": true,
+    "fresh_pi_home_per_run": true,
+    "only_auth_is_inherited": true,
+    "global_config_rules_skills_memories_sessions_and_shell_startup_masked": true,
+    "web_external_repositories_prior_outputs_and_cross_arm_access_forbidden": true,
+    "direct_ads_python_or_simulator_shell_bypass_forbidden": true,
+    "formal_runs": 3,
+    "calibration_runs_are_excluded": true,
+    "pi_official_mcp_adapter": "thin transport-only extension; Pi Agent has no built-in MCP client"
+  },
+  "cases": {
+    "K1": {
+      "class": "knowledge",
+      "title": "Execution route and boundary",
+      "prompt": "An engineer using ADS 2027 asks an Agent how it should create a disposable minimal AC circuit, simulate it without opening the ADS GUI, read one finite numeric result, and keep every generated artifact below an assigned run directory. There is no pre-existing DE or DDS session; this is a disposable headless proof, not a live-session task. Identify the supported route exposed by your assigned product surface, give its actual supported command or tool sequence, and state the important boundary. This is a knowledge-only route-selection question: do not launch ADS, do not run the simulation or quickstart, and do not create artifacts. Do not invent an API or hypothetical subcommand, do not use the other product surface, and do not claim the described workflow has already completed. Return only the required JSON object.",
+      "required": ["supported route", "headless execution", "dataset readback", "boundary"]
+    },
+    "K3": {
+      "class": "knowledge",
+      "title": "ADS 2027 layout geometry API",
+      "prompt": "Using only the ADS 2027 knowledge source exposed by your assigned product surface, provide a compact runnable Python example that creates a layout rectangle, polygon, and path in an already opened writable layout design. Use documented receiver and constructor signatures, include the necessary imports, and identify any values the caller must supply. Do not execute ADS and do not invent methods. Return only the required JSON object.",
+      "required": ["rectangle", "polygon", "path", "documented signatures"]
+    },
+    "K6": {
+      "class": "knowledge",
+      "title": "Python DRC capability boundary",
+      "prompt": "Using only the ADS 2027 knowledge source exposed by your assigned product surface, determine whether a documented ADS Python API for executing layout DRC has been established. If it is not established, say so plainly, do not present create_drc_job or another unverified symbol as runnable, and give a bounded verification step plus a safe fallback route. Return only the required JSON object.",
+      "required": ["verified boundary", "verification step", "safe fallback"]
+    },
+    "E3": {
+      "class": "execution",
+      "title": "Disposable minimal headless AC simulation and dataset readback",
+      "prompt": "Create a new disposable ADS 2027 workspace strictly below RUN_DIRECTORY, run a minimal AC simulation without launching the ADS GUI, read the generated dataset, and return one finite numeric sample. Use only your assigned product surface. Do not call ADS Python, hpeesofsim, or another simulator directly from the shell. Do not use the other benchmark arm. Return only the required JSON object and do not claim success unless every acceptance field is proven.",
+      "acceptance": {
+        "new_workspace_below_run_directory": true,
+        "running_automation": true,
+        "is_pde_app": false,
+        "simulation_completed": true,
+        "dataset_read_back": true,
+        "finite_numeric_sample": true,
+        "gui_launched": false
+      }
+    }
+  }
+}

@@ -1,0 +1,245 @@
+{
+  "schema": "ads-agent-public-benchmark/v2",
+  "benchmark_id": "ads2027-current-regression-20260901",
+  "date": "2026-09-01",
+  "identities": {
+    "ads": "ADS 2027",
+    "bridge_historical": "ads-agent-bridge 0.1.0a29",
+    "bridge_current": "ads-agent-bridge 0.1.0a48",
+    "official_mcp_sha256": "b68afcc4e904fae576a3c139898f877261fe9266a5235313ec46d48a2d0e4783",
+    "codex": "Codex CLI 0.145.0",
+    "pi": "Pi Agent 0.84.4",
+    "model": "gpt-5.6-terra",
+    "reasoning_effort": "medium"
+  },
+  "protocol": {
+    "execution": "serial-counterbalanced",
+    "repetitions": 3,
+    "calibration_excluded": true,
+    "fresh_agent_home_per_run": true,
+    "isolation_violations": 0,
+    "pi_official_transport": "thin MCP forwarding extension; no added domain knowledge"
+  },
+  "rows": [
+    {
+      "agent": "codex",
+      "arm": "bridge_a29",
+      "case": "K1",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 59.328,
+      "min_wall_seconds": 41.921,
+      "max_wall_seconds": 61.346,
+      "median_total_tokens": 165617
+    },
+    {
+      "agent": "codex",
+      "arm": "bridge_a29",
+      "case": "K3",
+      "passes": 2,
+      "runs": 3,
+      "median_wall_seconds": 48.407,
+      "min_wall_seconds": 45.997,
+      "max_wall_seconds": 49.221,
+      "median_total_tokens": 107625
+    },
+    {
+      "agent": "codex",
+      "arm": "bridge_a29",
+      "case": "K6",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 39.105,
+      "min_wall_seconds": 37.104,
+      "max_wall_seconds": 40.28,
+      "median_total_tokens": 125895
+    },
+    {
+      "agent": "codex",
+      "arm": "bridge_a29",
+      "case": "E3",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 82.263,
+      "min_wall_seconds": 66.562,
+      "max_wall_seconds": 101.513,
+      "median_total_tokens": 238032
+    },
+    {
+      "agent": "codex",
+      "arm": "bridge_a48",
+      "case": "K1",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 40.188,
+      "min_wall_seconds": 30.001,
+      "max_wall_seconds": 43.19,
+      "median_total_tokens": 84695
+    },
+    {
+      "agent": "codex",
+      "arm": "bridge_a48",
+      "case": "K3",
+      "passes": 2,
+      "runs": 3,
+      "median_wall_seconds": 58.399,
+      "min_wall_seconds": 37.89,
+      "max_wall_seconds": 91.505,
+      "median_total_tokens": 206616
+    },
+    {
+      "agent": "codex",
+      "arm": "bridge_a48",
+      "case": "K6",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 45.539,
+      "min_wall_seconds": 35.643,
+      "max_wall_seconds": 50.172,
+      "median_total_tokens": 164998
+    },
+    {
+      "agent": "codex",
+      "arm": "bridge_a48",
+      "case": "E3",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 64.8,
+      "min_wall_seconds": 62.656,
+      "max_wall_seconds": 78.664,
+      "median_total_tokens": 308038
+    },
+    {
+      "agent": "codex",
+      "arm": "official",
+      "case": "K1",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 52.929,
+      "min_wall_seconds": 43.182,
+      "max_wall_seconds": 56.405,
+      "median_total_tokens": 192727
+    },
+    {
+      "agent": "codex",
+      "arm": "official",
+      "case": "K3",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 41.631,
+      "min_wall_seconds": 35.678,
+      "max_wall_seconds": 42.676,
+      "median_total_tokens": 165762
+    },
+    {
+      "agent": "codex",
+      "arm": "official",
+      "case": "K6",
+      "passes": 0,
+      "runs": 3,
+      "median_wall_seconds": 27.921,
+      "min_wall_seconds": 26.762,
+      "max_wall_seconds": 29.136,
+      "median_total_tokens": 122917
+    },
+    {
+      "agent": "codex",
+      "arm": "official",
+      "case": "E3",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 53.111,
+      "min_wall_seconds": 50.117,
+      "max_wall_seconds": 56.317,
+      "median_total_tokens": 221590
+    },
+    {
+      "agent": "pi",
+      "arm": "bridge_a48",
+      "case": "K1",
+      "passes": 0,
+      "runs": 3,
+      "median_wall_seconds": 21.32,
+      "min_wall_seconds": 21.278,
+      "max_wall_seconds": 25.582,
+      "median_total_tokens": 9183
+    },
+    {
+      "agent": "pi",
+      "arm": "bridge_a48",
+      "case": "K3",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 33.068,
+      "min_wall_seconds": 31.573,
+      "max_wall_seconds": 83.865,
+      "median_total_tokens": 35326
+    },
+    {
+      "agent": "pi",
+      "arm": "bridge_a48",
+      "case": "K6",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 28.797,
+      "min_wall_seconds": 27.254,
+      "max_wall_seconds": 28.879,
+      "median_total_tokens": 37745
+    },
+    {
+      "agent": "pi",
+      "arm": "bridge_a48",
+      "case": "E3",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 43.944,
+      "min_wall_seconds": 40.882,
+      "max_wall_seconds": 52.832,
+      "median_total_tokens": 60746
+    },
+    {
+      "agent": "pi",
+      "arm": "official",
+      "case": "K1",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 31.744,
+      "min_wall_seconds": 29.178,
+      "max_wall_seconds": 35.764,
+      "median_total_tokens": 15188
+    },
+    {
+      "agent": "pi",
+      "arm": "official",
+      "case": "K3",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 26.794,
+      "min_wall_seconds": 24.336,
+      "max_wall_seconds": 29.29,
+      "median_total_tokens": 46545
+    },
+    {
+      "agent": "pi",
+      "arm": "official",
+      "case": "K6",
+      "passes": 0,
+      "runs": 3,
+      "median_wall_seconds": 15.455,
+      "min_wall_seconds": 12.644,
+      "max_wall_seconds": 16.499,
+      "median_total_tokens": 11824
+    },
+    {
+      "agent": "pi",
+      "arm": "official",
+      "case": "E3",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 37.671,
+      "min_wall_seconds": 36.199,
+      "max_wall_seconds": 38.167,
+      "median_total_tokens": 33397
+    }
+  ]
+}

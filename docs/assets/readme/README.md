@@ -16,3 +16,10 @@ bounded 2026-08-31 ADS and AEDT supervised live-edit acceptances. The ADS panel
 is sourced from `docs/VALIDATION_2026-08-31_LIVE_EDIT.md`; its warm-edit values
 are end to end, while create, replay, and rollback are Bridge round trips. The
 two vendor panels use different timing boundaries and are not a vendor ranking.
+
+`ads2027-headless-ac-benchmark.svg` and
+`ads2027-knowledge-benchmark.svg` are generated from the sanitized 2026-09-01
+three-run ADS 2027 benchmark aggregate by
+`scripts/render_ads2027_v2_charts.py`. The first is an E3 median/range chart;
+the second is a per-case reliability matrix. Neither contains private paths,
+credentials, vendor documentation excerpts, or customer data.

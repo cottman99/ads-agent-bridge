@@ -1,55 +1,75 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
-  <title id="title">ADS 2027 knowledge regression benchmark</title>
-  <desc id="desc">ADS Agent Bridge completed nine of nine runs and the official ADS MCP completed six of nine. Bridge used 10.4 percent fewer total tokens, while its median latency was 5.2 percent higher.</desc>
-  <defs>
-    <style>
-      .label{font:600 17px Inter,Segoe UI,Arial,sans-serif;fill:#43524d;letter-spacing:.2px}
-      .value{font:700 42px Inter,Segoe UI,Arial,sans-serif;fill:#17221f}
-      .note{font:400 16px Inter,Segoe UI,Arial,sans-serif;fill:#64736e}
-      .legend{font:600 15px Inter,Segoe UI,Arial,sans-serif;fill:#43524d}
-      .footer{font:400 14px Inter,Segoe UI,Arial,sans-serif;fill:#73817c}
-    </style>
-  </defs>
-  <rect width="1200" height="420" rx="28" fill="#f7f9f8"/>
-  <g transform="translate(42 32)">
-    <circle cx="8" cy="9" r="7" fill="#18866b"/>
-    <text x="23" y="15" class="legend">ADS Agent Bridge</text>
-    <circle cx="197" cy="9" r="7" fill="#aeb8b4"/>
-    <text x="212" y="15" class="legend">Official ADS MCP</text>
-  </g>
-
-  <g transform="translate(42 82)">
-    <rect width="350" height="254" rx="20" fill="#ffffff" stroke="#dde4e1"/>
-    <text x="28" y="42" class="label">Strict completion</text>
-    <text x="28" y="92" class="value">9 / 9</text>
-    <text x="28" y="116" class="note">Bridge · 100%</text>
-    <rect x="28" y="130" width="294" height="10" rx="5" fill="#18866b"/>
-    <text x="28" y="184" class="value" style="font-size:28px">6 / 9</text>
-    <text x="28" y="208" class="note">Official · 66.7%</text>
-    <rect x="28" y="220" width="196" height="10" rx="5" fill="#aeb8b4"/>
-  </g>
-
-  <g transform="translate(425 82)">
-    <rect width="350" height="254" rx="20" fill="#ffffff" stroke="#dde4e1"/>
-    <text x="28" y="42" class="label">Total tokens</text>
-    <text x="28" y="92" class="value">1.00M</text>
-    <text x="28" y="116" class="note">Bridge · 1,000,338</text>
-    <rect x="28" y="130" width="263" height="10" rx="5" fill="#18866b"/>
-    <text x="28" y="184" class="value" style="font-size:28px">1.12M</text>
-    <text x="28" y="208" class="note">Official · Bridge used 10.4% less</text>
-    <rect x="28" y="220" width="294" height="10" rx="5" fill="#aeb8b4"/>
-  </g>
-
-  <g transform="translate(808 82)">
-    <rect width="350" height="254" rx="20" fill="#ffffff" stroke="#dde4e1"/>
-    <text x="28" y="42" class="label">Median wall time</text>
-    <text x="28" y="92" class="value">66.8 s</text>
-    <text x="28" y="116" class="note">Bridge</text>
-    <rect x="28" y="130" width="294" height="10" rx="5" fill="#18866b"/>
-    <text x="28" y="184" class="value" style="font-size:28px">63.5 s</text>
-    <text x="28" y="208" class="note">Official · 5.2% faster</text>
-    <rect x="28" y="220" width="279" height="10" rx="5" fill="#aeb8b4"/>
-  </g>
-
-  <text x="42" y="382" class="footer">Frozen 2026-08-11 baseline · 3 tasks × 3 repetitions per arm · same model, host, prompts, and output contract</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="520" viewBox="0 0 1120 520" role="img" aria-labelledby="title desc">
+  <title id="title">ADS 2027 knowledge reliability benchmark</title>
+  <desc id="desc">A matrix shows strict passes out of three for route selection, geometry API use, and the Python DRC capability boundary across Codex and Pi Agent product combinations.</desc>
+  <style>
+    .title{font:700 25px Inter,Segoe UI,sans-serif;fill:#152233}
+    .subtitle{font:14px Inter,Segoe UI,sans-serif;fill:#526071}
+    .label{font:600 14px Inter,Segoe UI,sans-serif;fill:#263548}
+    .value{font:700 13px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#152233}
+    .axis{font:12px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#697789}
+    .note{font:12px Inter,Segoe UI,sans-serif;fill:#697789}
+    .grid{stroke:#dfe5ec;stroke-width:1}
+  </style>
+  <rect width="1120" height="100%" fill="#ffffff"/>
+  <text x="40" y="42" class="title" text-anchor="start">ADS 2027 knowledge reliability</text>
+  <text x="40" y="68" class="subtitle" text-anchor="start">Strict passes in three repetitions. Exact cells reveal which boundary fails; darker means more passes.</text>
+  <text x="380" y="103" class="label" text-anchor="middle">Route + boundary</text>
+  <text x="560" y="103" class="label" text-anchor="middle">Geometry API</text>
+  <text x="740" y="103" class="label" text-anchor="middle">DRC boundary</text>
+  <text x="920" y="103" class="label" text-anchor="middle">Knowledge total</text>
+  <text x="40" y="150" class="label" text-anchor="start">Codex · Bridge a29</text>
+  <rect x="300" y="120" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
+  <text x="380" y="150" text-anchor="middle" class="value" fill="#ffffff" style="fill:#ffffff">3/3</text>
+  <rect x="480" y="120" width="160" height="48" rx="5" fill="#91b3f7" stroke="#627086"/>
+  <text x="560" y="150" text-anchor="middle" class="value" fill="#152233" style="fill:#152233">2/3</text>
+  <rect x="660" y="120" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
+  <text x="740" y="150" text-anchor="middle" class="value" fill="#ffffff" style="fill:#ffffff">3/3</text>
+  <rect x="840" y="120" width="160" height="48" rx="5" fill="#91b3f7" stroke="#627086"/>
+  <text x="920" y="150" text-anchor="middle" class="value" style="fill:#152233">8/9</text>
+  <text x="40" y="212" class="label" text-anchor="start">Codex · Bridge a48</text>
+  <rect x="300" y="182" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
+  <text x="380" y="212" text-anchor="middle" class="value" fill="#ffffff" style="fill:#ffffff">3/3</text>
+  <rect x="480" y="182" width="160" height="48" rx="5" fill="#91b3f7" stroke="#627086"/>
+  <text x="560" y="212" text-anchor="middle" class="value" fill="#152233" style="fill:#152233">2/3</text>
+  <rect x="660" y="182" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
+  <text x="740" y="212" text-anchor="middle" class="value" fill="#ffffff" style="fill:#ffffff">3/3</text>
+  <rect x="840" y="182" width="160" height="48" rx="5" fill="#91b3f7" stroke="#627086"/>
+  <text x="920" y="212" text-anchor="middle" class="value" style="fill:#152233">8/9</text>
+  <text x="40" y="274" class="label" text-anchor="start">Codex · Official MCP</text>
+  <rect x="300" y="244" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
+  <text x="380" y="274" text-anchor="middle" class="value" fill="#ffffff" style="fill:#ffffff">3/3</text>
+  <rect x="480" y="244" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
+  <text x="560" y="274" text-anchor="middle" class="value" fill="#ffffff" style="fill:#ffffff">3/3</text>
+  <rect x="660" y="244" width="160" height="48" rx="5" fill="#ffffff" stroke="#627086"/>
+  <text x="740" y="274" text-anchor="middle" class="value" fill="#152233" style="fill:#152233">0/3</text>
+  <rect x="840" y="244" width="160" height="48" rx="5" fill="#dce8ff" stroke="#627086"/>
+  <text x="920" y="274" text-anchor="middle" class="value" style="fill:#152233">6/9</text>
+  <text x="40" y="336" class="label" text-anchor="start">Pi Agent · Bridge a48</text>
+  <rect x="300" y="306" width="160" height="48" rx="5" fill="#ffffff" stroke="#627086"/>
+  <text x="380" y="336" text-anchor="middle" class="value" fill="#152233" style="fill:#152233">0/3</text>
+  <rect x="480" y="306" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
+  <text x="560" y="336" text-anchor="middle" class="value" fill="#ffffff" style="fill:#ffffff">3/3</text>
+  <rect x="660" y="306" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
+  <text x="740" y="336" text-anchor="middle" class="value" fill="#ffffff" style="fill:#ffffff">3/3</text>
+  <rect x="840" y="306" width="160" height="48" rx="5" fill="#dce8ff" stroke="#627086"/>
+  <text x="920" y="336" text-anchor="middle" class="value" style="fill:#152233">6/9</text>
+  <text x="40" y="398" class="label" text-anchor="start">Pi Agent · Official MCP</text>
+  <rect x="300" y="368" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
+  <text x="380" y="398" text-anchor="middle" class="value" fill="#ffffff" style="fill:#ffffff">3/3</text>
+  <rect x="480" y="368" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
+  <text x="560" y="398" text-anchor="middle" class="value" fill="#ffffff" style="fill:#ffffff">3/3</text>
+  <rect x="660" y="368" width="160" height="48" rx="5" fill="#ffffff" stroke="#627086"/>
+  <text x="740" y="398" text-anchor="middle" class="value" fill="#152233" style="fill:#152233">0/3</text>
+  <rect x="840" y="368" width="160" height="48" rx="5" fill="#dce8ff" stroke="#627086"/>
+  <text x="920" y="398" text-anchor="middle" class="value" style="fill:#152233">6/9</text>
+  <text x="300" y="452" class="axis" text-anchor="start">Passes:</text>
+  <rect x="345" y="440" width="24" height="16" rx="2" fill="#ffffff" stroke="#627086"/>
+  <text x="375" y="453" class="axis" text-anchor="start">0</text>
+  <rect x="415" y="440" width="24" height="16" rx="2" fill="#dce8ff" stroke="#627086"/>
+  <text x="445" y="453" class="axis" text-anchor="start">1</text>
+  <rect x="485" y="440" width="24" height="16" rx="2" fill="#91b3f7" stroke="#627086"/>
+  <text x="515" y="453" class="axis" text-anchor="start">2</text>
+  <rect x="555" y="440" width="24" height="16" rx="2" fill="#2f6fed" stroke="#627086"/>
+  <text x="585" y="453" class="axis" text-anchor="start">3</text>
+  <text x="40" y="495" class="note" text-anchor="start">K1 route · K3 rectangle/polygon/path · K6 reject unverified Python DRC · 3 repetitions · 2026-09-01</text>
 </svg>

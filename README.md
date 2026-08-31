@@ -169,20 +169,29 @@ a deterministic native dataset, CSV, and a freshly reopened two-page DDS report
 containing rectangular and polar plots. See the
 [sanitized workflow evidence](docs/VALIDATION_2026-08-30_CIRCUIT_TO_DDS.md).
 
-Two narrow ADS 2027 comparisons are also public:
+Two narrow ADS 2027 comparisons were refreshed on 2026-09-01 with both Codex
+and Pi Agent. The execution result is deliberately plain: all **15/15** E3
+runs completed, while the official MCP was faster for this minimal headless
+task. Bridge a48 still reduced the Codex median from **82.3 s** in a29 to
+**64.8 s**. [Method and data](docs/BENCHMARK_ADS2027_HEADLESS_AC.md)
 
-- In nine isolated knowledge tasks, Bridge completed **9/9**, used **10.4% fewer
-  total tokens**, and had **5.2% higher median latency** than the official ADS
-  MCP. [Method and data](docs/BENCHMARK_ADS2027_KNOWLEDGE.md)
-- In a three-run headless AC microbenchmark, both paths completed **3/3**;
-  Bridge used **43.4% fewer total tokens** and had **21.5% lower median wall
-  time**. [Method and data](docs/BENCHMARK_ADS2027_HEADLESS_AC.md)
+![ADS 2027 headless AC execution timing across Codex and Pi Agent](docs/assets/readme/ads2027-headless-ac-benchmark.svg)
+
+The knowledge result is case-specific rather than a single product score.
+Bridge a48 rejected the unverified Python DRC route in **6/6** Codex/Pi runs;
+the official MCP instead treated it as established in **6/6** and therefore
+passed **0/6**. Pi + Bridge omitted the required dataset-readback statement in
+K1, while the official route completed K1 in **6/6** runs.
+[Method and data](docs/BENCHMARK_ADS2027_KNOWLEDGE.md)
+
+![ADS 2027 knowledge reliability by task, product surface, and Agent](docs/assets/readme/ads2027-knowledge-benchmark.svg)
 
 These are small, isolated regression suites, not a universal product ranking.
 They do not compare installation, the DE/DDS plug-in, GUI session control,
 dialog handling, or every ADS solver workflow; this is not a full-product comparison.
-The sanitized headless per-run summary is also available as
-[JSON](docs/benchmarks/ads2027-headless-ac-v1-summary.json).
+The refreshed aggregate data is available as
+[JSON](docs/benchmarks/ads2027-v2-public-summary.json); the August v1 files
+remain available as historical baselines.
 
 ## Local and remote use follow one path
 

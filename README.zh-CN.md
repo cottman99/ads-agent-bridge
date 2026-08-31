@@ -142,17 +142,25 @@ CSV 回读、原生 DDS 方程与曲线创建、已生成 Momentum 输入的执�
 原生数据集、CSV，以及全新重开确认、包含矩形图和极坐标图的两页 DDS 报告。见
 [脱敏工作流证据](docs/VALIDATION_2026-08-30_CIRCUIT_TO_DDS.md)。
 
-另有两个范围严格受限的 ADS 2027 对比：
+两个 ADS 2027 对比已在 2026-09-01 使用 Codex 与 Pi Agent 重测。无 GUI
+执行的结果很直接：E3 共 **15/15** 次完成，官方 MCP 在这个最小任务上
+更快；Bridge a48 仍把 Codex 中位耗时从 a29 的 **82.3 秒**降到
+**64.8 秒**。[方法与数据](docs/BENCHMARK_ADS2027_HEADLESS_AC.md)
 
-- 九项隔离知识任务中，Bridge 完成 **9/9**，总 token 少 **10.4%**，
-  但中位耗时高 **5.2%**。[方法与数据](docs/BENCHMARK_ADS2027_KNOWLEDGE.md)
-- 三次无 GUI AC 微基准中，两边都完成 **3/3**；Bridge 总 token 少
-  **43.4%**，中位耗时低 **21.5%**。
-  [方法与数据](docs/BENCHMARK_ADS2027_HEADLESS_AC.md)
+![Codex 与 Pi Agent 下的 ADS 2027 无 GUI AC 执行耗时](docs/assets/readme/ads2027-headless-ac-benchmark.svg)
+
+知识结果必须逐题看。Bridge a48 在 Codex/Pi 的 **6/6** 次中都拒绝把
+未经确认的 Python DRC 路径当成可运行能力；官方 MCP 在 **6/6** 次中都
+把它判断为已建立，因此严格通过 **0/6**。Pi + Bridge 的 K1 则遗漏了
+数据集回读说明，而官方路径 K1 完成 **6/6**。
+[方法与数据](docs/BENCHMARK_ADS2027_KNOWLEDGE.md)
+
+![按任务、产品入口与 Agent 展示的 ADS 2027 知识可靠性](docs/assets/readme/ads2027-knowledge-benchmark.svg)
 
 这些是小型工程回归集，不是完整产品对比，也不代表所有场景的产品排名。
-无 GUI 每次运行的脱敏摘要也以
-[JSON](docs/benchmarks/ads2027-headless-ac-v1-summary.json) 形式公开。
+更新后的聚合数据以
+[JSON](docs/benchmarks/ads2027-v2-public-summary.json) 形式公开；8 月的 v1
+文件继续作为历史基线保留。
 
 ## 本机与远程使用同一条路径
 
