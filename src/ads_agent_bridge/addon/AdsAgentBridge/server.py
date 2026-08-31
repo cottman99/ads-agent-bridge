@@ -164,6 +164,7 @@ class _Runtime:
         self.profile = profile
         self.slot = slot
         self.contexts = ContextRegistry(profile, slot=slot)
+        self._live_patch_journal: dict[str, dict[str, Any]] = {}
         self._shutdown_state: dict[str, Any] = {"state": "idle"}
         self._dialog_action_state: dict[str, Any] = {"state": "idle"}
         self.namespace: dict[str, Any] = {"__builtins__": __builtins__, "Path": Path}
@@ -402,7 +403,7 @@ class _Runtime:
         return design, actual_design
 
     def _design_live_patch(self, args: dict[str, Any]) -> dict[str, Any]:
-        """Apply one bounded parameter patch to the design in the current GUI window."""
+        """Apply one bounded patch to the design in the current GUI window."""
 
         if self.profile != "de":
             raise RuntimeError("design.live_patch requires the ADS DE profile")
@@ -418,25 +419,110 @@ class _Runtime:
         if not isinstance(operations, list) or not operations or len(operations) > 32:
             raise ValueError("design.live_patch requires 1..32 typed operations")
 
-        normalized: list[dict[str, str]] = []
+        normalized: list[dict[str, Any]] = []
         for index, operation in enumerate(operations):
             if not isinstance(operation, dict):
                 raise TypeError(f"design.live_patch operation {index} must be an object")
-            if operation.get("op") != "set_instance_parameter":
-                raise ValueError(
-                    "design.live_patch currently supports only set_instance_parameter"
+            kind = _required_text(operation, "op")
+            if kind == "set_instance_parameter":
+                normalized.append(
+                    {
+                        "op": kind,
+                        "instance": _required_text(operation, "instance"),
+                        "parameter": _required_text(operation, "parameter"),
+                        "expected_before": _required_text(operation, "expected_before"),
+                        "value": _required_text(operation, "value"),
+                    }
                 )
-            normalized.append(
-                {
-                    "instance": _required_text(operation, "instance"),
-                    "parameter": _required_text(operation, "parameter"),
-                    "expected_before": _required_text(operation, "expected_before"),
-                    "value": _required_text(operation, "value"),
+                continue
+            if kind == "add_instance":
+                item = operation.get("item")
+                at = operation.get("at")
+                parameters = operation.get("parameters") or {}
+                if (
+                    not isinstance(item, list)
+                    or len(item) != 3
+                    or not all(isinstance(value, str) and value for value in item)
+                ):
+                    raise ValueError(f"design.live_patch operation {index} item is invalid")
+                if (
+                    not isinstance(at, list)
+                    or len(at) != 2
+                    or not all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in at)
+                ):
+                    raise ValueError(f"design.live_patch operation {index} at is invalid")
+                if not isinstance(parameters, dict) or any(
+                    not isinstance(name, str)
+                    or not name
+                    or not isinstance(value, str)
+                    for name, value in parameters.items()
+                ):
+                    raise ValueError(
+                        f"design.live_patch operation {index} parameters are invalid"
+                    )
+                entry = {
+                    "op": kind,
+                    "name": _required_text(operation, "name"),
+                    "item": list(item),
+                    "at": list(at),
+                    "parameters": dict(parameters),
                 }
-            )
+                if "angle" in operation:
+                    angle = operation["angle"]
+                    if not isinstance(angle, (int, float)) or isinstance(angle, bool):
+                        raise ValueError(
+                            f"design.live_patch operation {index} angle is invalid"
+                        )
+                    entry["angle"] = angle
+                normalized.append(entry)
+                continue
+            if kind == "add_wire":
+                points = operation.get("points")
+                if (
+                    not isinstance(points, list)
+                    or len(points) < 2
+                    or any(
+                        not isinstance(point, list)
+                        or len(point) != 2
+                        or any(
+                            not isinstance(value, (int, float))
+                            or isinstance(value, bool)
+                            for value in point
+                        )
+                        for point in points
+                    )
+                ):
+                    raise ValueError(
+                        f"design.live_patch operation {index} points are invalid"
+                    )
+                entry = {"op": kind, "points": [list(point) for point in points]}
+                if operation.get("label") is not None:
+                    entry["label"] = _required_text(operation, "label")
+                normalized.append(entry)
+                continue
+            raise ValueError(f"unsupported ADS live design operation: {kind}")
 
-        resolved: list[tuple[dict[str, str], Any]] = []
+        patch_id = str(args.get("patch_id") or "live-patch")[:80]
+        prior_patch = self._live_patch_journal.get(patch_id)
+        if prior_patch is not None:
+            if prior_patch["design"] != actual_design:
+                raise RuntimeError("ADS live patch id belongs to another design")
+            return {**prior_patch["result"], "status": "preserved"}
+
+        resolved: list[tuple[dict[str, Any], Any | None]] = []
         for operation in normalized:
+            if operation["op"] == "add_instance":
+                try:
+                    design.instances[operation["name"]]
+                except Exception:
+                    resolved.append((operation, None))
+                    continue
+                raise RuntimeError(
+                    f"ADS live patch precondition failed: instance {operation['name']} already exists"
+                )
+            if operation["op"] == "add_wire":
+                resolved.append((operation, None))
+                continue
             try:
                 instance = design.instances[operation["instance"]]
                 parameter = instance.parameters[operation["parameter"]]
@@ -456,41 +542,149 @@ class _Runtime:
         transaction_type = getattr(getattr(de, "db", None), "Transaction", None)
         if transaction_type is None:
             raise RuntimeError("ADS design transaction API is unavailable")
-        patch_id = str(args.get("patch_id") or "live-patch")[:80]
+        inverse: list[dict[str, Any]] = []
+        readback: list[dict[str, Any]] = []
         with transaction_type(design, f"EDA Bridge {patch_id}") as transaction:
-            for operation, parameter in resolved:
-                parameter.value = operation["value"]
+            for operation, target in resolved:
+                if operation["op"] == "set_instance_parameter":
+                    target.value = operation["value"]
+                    inverse.append(
+                        {
+                            "op": "restore_parameter",
+                            "target": target,
+                            "instance": operation["instance"],
+                            "parameter": operation["parameter"],
+                            "expected_current": operation["value"],
+                            "value": operation["expected_before"],
+                        }
+                    )
+                    continue
+                if operation["op"] == "add_instance":
+                    kwargs = {"name": operation["name"]}
+                    if "angle" in operation:
+                        kwargs["angle"] = operation["angle"]
+                    instance = design.add_instance(
+                        tuple(operation["item"]), tuple(operation["at"]), **kwargs
+                    )
+                    for name, value in operation["parameters"].items():
+                        instance.parameters[name].value = value
+                    inverse.append(
+                        {
+                            "op": "delete_created_object",
+                            "target": instance,
+                            "kind": "instance",
+                            "name": operation["name"],
+                        }
+                    )
+                    continue
+                wire = design.add_wire([tuple(point) for point in operation["points"]])
+                if operation.get("label"):
+                    wire.add_wire_label(operation["label"])
+                inverse.append(
+                    {
+                        "op": "delete_created_object",
+                        "target": wire,
+                        "kind": "wire",
+                        "name": operation.get("label") or f"wire-{len(inverse) + 1}",
+                    }
+                )
             transaction.commit()
 
-        readback = []
-        for operation, parameter in resolved:
-            actual = str(parameter.value)
-            if actual != operation["value"]:
-                raise RuntimeError(
-                    "ADS live patch readback failed for "
-                    f"{operation['instance']}.{operation['parameter']}"
-                )
-            readback.append(
-                {
-                    "instance": operation["instance"],
-                    "parameter": operation["parameter"],
-                    "before": operation["expected_before"],
-                    "actual": actual,
-                }
+        try:
+            for operation, target in resolved:
+                if operation["op"] == "set_instance_parameter":
+                    actual = str(target.value)
+                    if actual != operation["value"]:
+                        raise RuntimeError(
+                            "ADS live patch readback failed for "
+                            f"{operation['instance']}.{operation['parameter']}"
+                        )
+                    readback.append(
+                        {
+                            "instance": operation["instance"],
+                            "parameter": operation["parameter"],
+                            "before": operation["expected_before"],
+                            "actual": actual,
+                        }
+                    )
+                elif operation["op"] == "add_instance":
+                    created = design.instances[operation["name"]]
+                    actual_parameters = {
+                        name: str(created.parameters[name].value)
+                        for name in operation["parameters"]
+                    }
+                    if actual_parameters != operation["parameters"]:
+                        raise RuntimeError(
+                            f"ADS live patch readback failed for instance {operation['name']}"
+                        )
+                    readback.append(
+                        {
+                            "op": operation["op"],
+                            "name": operation["name"],
+                            "parameters": actual_parameters,
+                        }
+                    )
+                else:
+                    readback.append(
+                        {
+                            "op": operation["op"],
+                            "point_count": len(operation["points"]),
+                            "label": operation.get("label"),
+                        }
+                    )
+        except Exception:
+            self._rollback_live_inverse(
+                design,
+                inverse,
+                transaction_type,
+                f"EDA Bridge failed readback {patch_id}",
             )
-        return {
+            raise
+        result = {
             "status": "passed",
             "design": actual_design,
             "patch_id": patch_id,
             "readback": readback,
+            "reversible": True,
         }
+        self._live_patch_journal[patch_id] = {
+            "design": actual_design,
+            "inverse": inverse,
+            "result": result,
+        }
+        return result
+
+    @staticmethod
+    def _rollback_live_inverse(
+        design: Any,
+        inverse: list[dict[str, Any]],
+        transaction_type: Any,
+        title: str,
+    ) -> None:
+        with transaction_type(design, title) as transaction:
+            for item in reversed(inverse):
+                if item["op"] == "restore_parameter":
+                    actual = str(item["target"].value)
+                    if actual != item["expected_current"]:
+                        raise RuntimeError(
+                            "ADS live rollback refused because an edited parameter changed"
+                        )
+                    item["target"].value = item["value"]
+                    continue
+                delete_object = getattr(item["target"], "delete_object", None)
+                if not callable(delete_object):
+                    raise RuntimeError(
+                        f"ADS live rollback cannot delete created {item['kind']}"
+                    )
+                delete_object()
+            transaction.commit()
 
     def _design_live_finalize(self, args: dict[str, Any]) -> dict[str, Any]:
         if self.profile != "de":
             raise RuntimeError("design.live_finalize requires the ADS DE profile")
         expected_design = _required_text(args, "design")
         action = _required_text(args, "action")
-        if action not in {"keep_unsaved", "save", "discard_unsaved"}:
+        if action not in {"keep_unsaved", "save", "discard_unsaved", "rollback_patch"}:
             raise ValueError("Unsupported ADS live finalize action")
         design, actual_design = self._resolve_live_design(
             expected_design,
@@ -498,6 +692,28 @@ class _Runtime:
         )
         if action == "keep_unsaved":
             return {"status": "passed", "design": actual_design, "action": action}
+        if action == "rollback_patch":
+            patch_id = _required_text(args, "patch_id")
+            record = self._live_patch_journal.get(patch_id)
+            if record is None or record["design"] != actual_design:
+                raise RuntimeError("ADS live patch is not available for rollback")
+            de = self.namespace.get("de")
+            transaction_type = getattr(getattr(de, "db", None), "Transaction", None)
+            if transaction_type is None:
+                raise RuntimeError("ADS design transaction API is unavailable")
+            self._rollback_live_inverse(
+                design,
+                record["inverse"],
+                transaction_type,
+                f"EDA Bridge rollback {patch_id}",
+            )
+            del self._live_patch_journal[patch_id]
+            return {
+                "status": "passed",
+                "design": actual_design,
+                "action": action,
+                "patch_id": patch_id,
+            }
 
         decision = args.get("decision")
         if not isinstance(decision, dict):
@@ -520,6 +736,7 @@ class _Runtime:
             design.save_design()
         else:
             design.revert_design()
+        self._live_patch_journal.clear()
         return {
             "status": "passed",
             "design": actual_design,

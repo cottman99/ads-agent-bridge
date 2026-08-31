@@ -147,8 +147,15 @@ _CAPABILITY_SPECS: tuple[dict[str, Any], ...] = (
         "requirements": ("de-python", "de-app", "exact-design-identity"),
         "input_schema": {
             "required": ("design", "operations"),
-            "optional": ("patch_id", "activate"),
-            "operation_schema": "ads.live-design-operation/v1",
+            "optional": (
+                "schema_version",
+                "patch_id",
+                "expected_revision",
+                "conflict_policy",
+                "validation",
+                "activate",
+            ),
+            "operation_schema": "eda.live-edit/v1 + ads.live-design-operation/v2",
         },
     },
     {
@@ -161,8 +168,13 @@ _CAPABILITY_SPECS: tuple[dict[str, Any], ...] = (
         "requirements": ("de-python", "de-app", "exact-design-identity"),
         "input_schema": {
             "required": ("design", "action"),
-            "optional": ("activate", "decision"),
-            "action_enum": ("keep_unsaved", "save", "discard_unsaved"),
+            "optional": ("activate", "decision", "patch_id"),
+            "action_enum": (
+                "keep_unsaved",
+                "save",
+                "discard_unsaved",
+                "rollback_patch",
+            ),
         },
     },
     {

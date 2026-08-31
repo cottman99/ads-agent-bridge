@@ -866,6 +866,38 @@ class _AdsAdapterBase:
             args = legacy_args
         if not isinstance(args, dict):
             raise TypeError("ADS operation args must be an object")
+        if request.operation == "design.live_patch":
+            import hashlib
+
+            from eda_bridge_runtime import LIVE_EDIT_SCHEMA, validate_live_edit
+
+            patch_id = str(args.get("patch_id") or "")
+            if not patch_id:
+                material = str(
+                    getattr(request, "idempotency_key", None)
+                    or getattr(request, "request_id", "live-patch")
+                )
+                patch_id = "patch-" + hashlib.sha256(material.encode("utf-8")).hexdigest()[:16]
+            common = validate_live_edit(
+                {
+                    "schema_version": args.get("schema_version") or LIVE_EDIT_SCHEMA,
+                    "patch_id": patch_id,
+                    "expected_revision": args.get("expected_revision"),
+                    "operations": args.get("operations"),
+                    "conflict_policy": args.get("conflict_policy") or "fail_on_change",
+                    "validation": args.get("validation") or "readback",
+                }
+            )
+            if common["expected_revision"] is not None:
+                raise ValueError(
+                    "ADS live edits currently require object preconditions, "
+                    "not a global revision"
+                )
+            args = {
+                **args,
+                **common,
+                "operations": common["operations"],
+            }
         if request.operation in {"design.live_patch", "design.live_finalize"} and not args.get(
             "design"
         ):

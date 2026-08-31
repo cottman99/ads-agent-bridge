@@ -3,7 +3,7 @@ requires-python = ">=3.10"
 
 [[package]]
 name = "ads-agent-bridge"
-version = "0.1.0a47"
+version = "0.1.0a48"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -22,7 +22,7 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "beautifulsoup4", specifier = ">=4.12,<5" },
-    { name = "eda-bridge-runtime", specifier = ">=0.1.0a36,<0.2" },
+    { name = "eda-bridge-runtime", specifier = ">=0.1.0a37,<0.2" },
     { name = "html2text", specifier = ">=2024.2.26,<2027" },
     { name = "pillow", specifier = ">=11.2.1,<13" },
     { name = "platformdirs", specifier = ">=4,<5" },
@@ -54,11 +54,10 @@ wheels = [
 
 [[package]]
 name = "eda-bridge-runtime"
-version = "0.1.0a36"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/d0/61/086fbf08f0e65f1dbc8a2feae517b76950a968193d58d241c4832b6f616e/eda_bridge_runtime-0.1.0a36.tar.gz", hash = "sha256:48136dd4ca179cee8be850b994e4ffc12e3614251dcdb7ec0051be132ac73094", size = 5835299 }
+version = "0.1.0a37"
+source = { registry = "../../EDA/eda-bridge-runtime/.codex_tmp/dist-a37" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3e/5a/0f03584074479faf0c91b725f7c75d18cd11b0b3c3c889f45e26129cab78/eda_bridge_runtime-0.1.0a36-py3-none-any.whl", hash = "sha256:6f804ca15a8e15bc0604af3b74846306607cbd2196b9bfed56b42069c99b6036", size = 78613 },
+    { path = "eda_bridge_runtime-0.1.0a37-py3-none-any.whl" },
 ]
 
 [[package]]
