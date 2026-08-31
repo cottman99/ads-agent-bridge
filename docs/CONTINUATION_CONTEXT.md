@@ -7,6 +7,13 @@ non-sensitive content-bound summary. Exact instance, version, profile, optional
 `slot + connection + design`, absolute workspace path, and the trusted source
 fingerprint remain in a private record on the ADS worker host.
 
+`workspace.create` returns two deliberately different Context roles. Its
+`eda_context` remains the general workspace/lifecycle Context. Its
+`continuation_context` is already content-bound and may bootstrap the first
+`native.batch` without making the Agent rediscover the absolute workspace path,
+ADS version, or source fingerprint. Subsequent successful batches return the
+next content-bound continuation Context in the same field.
+
 The next governed native batch may put that handle in
 `target.continuation_context` or `target.context`. It may omit only identity and
 content-state fields already bound by the Context:
