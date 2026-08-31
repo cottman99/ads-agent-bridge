@@ -21,6 +21,17 @@ _ALLOWED_IMPORTS = ("keysight.ads.de", "keysight.ads.dds", "json", "math")
 _RUNTIMES = {"de": "ads.python.de", "dds": "ads.python.dds"}
 
 
+def _instance_version_selectors(instance: Any) -> set[str]:
+    """Return stable version spellings that identify one selected installation."""
+    values = {str(instance.year)} if instance.year else set()
+    product_version = str(instance.product_version or "").strip()
+    if product_version:
+        values.add(product_version)
+        if product_version.lower().startswith("ads "):
+            values.add(product_version[4:].strip())
+    return values
+
+
 def _validate_ads_plan(value: Any) -> dict[str, Any]:
     plan = validate_native_batch(value)
     if plan["program"]["language"] != "python":
@@ -145,8 +156,8 @@ def execute_native_batch(
     instance = select_instance(selectors.get("instance"))
     if not instance.python_executable:
         raise RuntimeError("ADS Python was not discovered for the selected instance")
-    selected_version = str(instance.year or instance.product_version)
-    if str(selectors["version"]) != selected_version:
+    selected_version = str(instance.product_version or instance.year)
+    if str(selectors["version"]).strip() not in _instance_version_selectors(instance):
         raise ValueError(
             "ADS native batch version selector does not match the installation"
         )
