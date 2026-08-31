@@ -89,6 +89,20 @@ def test_continuation_fingerprint_is_checked_before_program_runs(tmp_path, monke
     )
 
     with pytest.raises(ValueError, match="content state does not match"):
-        native_batch.execute_native_batch(
-            plan, expected_source_fingerprint="a" * 64
-        )
+        native_batch.execute_native_batch(plan, expected_source_fingerprint="a" * 64)
+
+
+@pytest.mark.parametrize(
+    ("selector", "matches"),
+    [
+        ("2026", True),
+        ("2026 Update 2", True),
+        ("ADS 2026 Update 2", True),
+        ("2026 Update 1", False),
+        ("2025", False),
+    ],
+)
+def test_instance_version_selectors_preserve_update_identity(selector, matches):
+    instance = SimpleNamespace(year=2026, product_version="ADS 2026 Update 2")
+
+    assert (selector in native_batch._instance_version_selectors(instance)) is matches
