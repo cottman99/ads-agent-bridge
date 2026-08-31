@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.1.0a45 - 2026-08-31
+
+- Resolve content-bound continuation Contexts before lifecycle Context
+  expansion, so an opaque exact-workspace handoff cannot be misread as a
+  session record.
+
 ## 0.1.0a44 - 2026-08-31
 
 - Let `workspace.create` return a separate content-bound continuation Context
