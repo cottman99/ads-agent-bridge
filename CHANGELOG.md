@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0a43 - 2026-08-31
+
 - Add opaque, host-private, content-bound continuation Contexts for governed
   `native.batch`, including fail-closed target conflict and source-state checks.
 
