@@ -76,12 +76,16 @@ def test_bilingual_readmes_share_navigation_and_user_facing_visual_assets():
         "docs/assets/readme/ads-engineer-workflow-v3.png",
         "docs/assets/readme/ads-native-schematic.png",
         "docs/assets/readme/ads-native-dds.png",
+        "docs/assets/readme/supervised-live-edit-latency.png",
     ):
         assert (root / relative_path).is_file()
         assert relative_path in english
         assert relative_path in chinese
 
     assert (root / "docs/assets/readme/social-preview-v2.png").is_file()
+    for value in ("253", "3", "21", "93–187"):
+        assert value in english
+        assert value in chinese
 
 
 def test_public_capability_claims_keep_plugin_and_comparison_scope_explicit():

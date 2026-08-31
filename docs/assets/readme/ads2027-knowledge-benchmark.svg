@@ -51,5 +51,5 @@
     <rect x="28" y="220" width="279" height="10" rx="5" fill="#aeb8b4"/>
   </g>
 
-  <text x="42" y="382" class="footer">3 tasks × 3 repetitions per arm · same model, host, prompts, and output contract · lower is better for tokens and time</text>
+  <text x="42" y="382" class="footer">Frozen 2026-08-11 baseline · 3 tasks × 3 repetitions per arm · same model, host, prompts, and output contract</text>
 </svg>

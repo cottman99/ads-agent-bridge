@@ -34,7 +34,8 @@ The public ADS 2026 Update 2.1 acceptance completed the whole request:
 - ran the circuit simulation and returned 31 finite rows;
 - exported CSV and created two native DDS pages with rectangular and polar plots;
 - saved, closed, and freshly reopened the editable result;
-- completed the four-stage Runtime plan in **4.312 seconds**.
+- completed a separate maintained Bridge acceptance for the four-stage Runtime
+  plan in **4.312 seconds**.
 
 These are real ADS application-window captures; the DDS curve remains native
 and editable. The same maintained path can continue from an exact schematic,
@@ -59,6 +60,22 @@ later batch can reuse its exact host-private target and content fingerprint;
 the Bridge still requires a new explicit program, effect, write scope,
 purpose, idempotency key, and validation, and rejects stale content or
 conflicting identity. See [the continuation contract](docs/CONTINUATION_CONTEXT.md).
+
+## Small edits stay in the ADS window you are watching
+
+![Observed supervised live-edit latency in ADS and AEDT](docs/assets/readme/supervised-live-edit-latency.png)
+
+The ADS 2026 Update 2.1 acceptance reused one already-open graphical process.
+A typed patch created a resistor and labeled wire, read both objects back, and
+left save or discard as an explicit decision. The observed object transaction
+took **253 ms**; exact replay returned in **3 ms** with zero duplicate objects;
+patch-local rollback took **21 ms** and removed only those created objects.
+Warm parameter edits completed end to end in **93–187 ms**.
+
+These are bounded observations from the disposable `0.1.0a48` acceptance on
+2026-08-31, not a general latency guarantee. Codex and Pi Agent independently
+passed the same create, replay, and rollback contract. See the
+[sanitized live-edit evidence](docs/VALIDATION_2026-08-31_LIVE_EDIT.md).
 
 ## Start in three steps
 
@@ -142,10 +159,12 @@ The maintained acceptance path uses real ADS installations on Windows and
 Linux. It separately checks documentation, context capture, live session
 identity, safe dialog supervision, typed schematic construction, circuit
 simulation, dataset and CSV readback, native DDS equation and plot creation,
-and generated-input Momentum execution.
+generated-input Momentum execution, and reversible live object patches in the
+already-open design.
 
-The maintained blank-workspace → schematic → simulation → native DDS path
-passed as one four-stage Runtime plan in **4.312 seconds**, with 31 finite rows,
+The separate maintained Bridge acceptance for the blank-workspace → schematic
+→ simulation → native DDS path passed as one four-stage Runtime plan in
+**4.312 seconds**, with 31 finite rows,
 a deterministic native dataset, CSV, and a freshly reopened two-page DDS report
 containing rectangular and polar plots. See the
 [sanitized workflow evidence](docs/VALIDATION_2026-08-30_CIRCUIT_TO_DDS.md).
@@ -186,6 +205,8 @@ the same in both topologies.
 - Live endpoints bind to loopback and require a random session token.
 - A reused session must match the selected ADS installation and exact workspace.
 - A Context identifies the target but never authorizes editing or simulation.
+- Supervised live edits are read back immediately and are never saved or
+  discarded implicitly.
 - Structured edits protect the source and require fresh-reopen assertions.
 - Dialog actions require a fresh process/window fingerprint, not screen
   coordinates.
