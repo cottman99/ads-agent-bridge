@@ -111,7 +111,12 @@ def _run_program(
     return result
 
 
-def execute_native_batch(value: Any, *, redact_paths: bool = True) -> dict[str, Any]:
+def execute_native_batch(
+    value: Any,
+    *,
+    redact_paths: bool = True,
+    expected_source_fingerprint: str | None = None,
+) -> dict[str, Any]:
     plan = _validate_ads_plan(value)
     scope = plan["scope"]
     selectors = scope["selectors"]
@@ -147,6 +152,8 @@ def execute_native_batch(value: Any, *, redact_paths: bool = True) -> dict[str, 
         )
 
     source_before = workspace_fingerprint(source)
+    if expected_source_fingerprint and expected_source_fingerprint != source_before:
+        raise ValueError("ADS native batch continuation content state does not match")
     expected = plan["transaction"]["source_fingerprints"].get(str(source))
     if expected and expected != source_before:
         raise ValueError("ADS native batch source fingerprint does not match")

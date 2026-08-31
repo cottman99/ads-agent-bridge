@@ -30,6 +30,12 @@ Bridge infrastructure owns installation, profile, slot, display, workspace,
 selection Context, session ownership, dialog safety, transport, runtime
 selection, staging, fingerprints, retries, and evidence normalization.
 
+For multi-turn governed work, a successful native batch returns an opaque
+content-bound continuation Context. Its private ADS-host record binds the exact
+target identity and source fingerprint; the next batch may reuse those facts
+but not prior authority, effect, write scope, program, idempotency, or
+validation. See [Content-bound continuation Context](CONTINUATION_CONTEXT.md).
+
 Generic native execution owns the controlled invocation of documented ADS
 Python or AEL. It must declare Context, effect scope, timeout, artifacts, and
 validation; it is not an unrestricted shell.

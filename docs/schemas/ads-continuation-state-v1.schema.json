@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/cottman99/ads-agent-bridge/schemas/ads-continuation-state-v1.schema.json",
+  "title": "ADS Continuation State v1",
+  "description": "Non-sensitive summary accompanying an EDA_CONTEXT:v2 continuation token.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "state",
+    "content_state",
+    "profile",
+    "slot_bound",
+    "connection_bound",
+    "design_bound"
+  ],
+  "properties": {
+    "schema_version": {"const": "ads-continuation-state/v1"},
+    "state": {"const": "content-bound"},
+    "content_state": {"enum": ["source-fingerprint", "state-revision"]},
+    "profile": {"enum": ["de", "dds"]},
+    "slot_bound": {"type": "boolean"},
+    "connection_bound": {"type": "boolean"},
+    "design_bound": {"type": "boolean"}
+  }
+}

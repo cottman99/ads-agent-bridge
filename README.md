@@ -54,6 +54,12 @@ Maintained operations such as `design.apply` and `dds.create` remain available
 as asset-bound compiled shortcuts: they save tokens and transcription errors,
 but never define the outer limit of ADS capability.
 
+Successful governed native work returns an opaque continuation Context. A
+later batch can reuse its exact host-private target and content fingerprint;
+the Bridge still requires a new explicit program, effect, write scope,
+purpose, idempotency key, and validation, and rejects stale content or
+conflicting identity. See [the continuation contract](docs/CONTINUATION_CONTEXT.md).
+
 ## Start in three steps
 
 Prerequisites: a licensed ADS installation, Windows or Linux, and Python 3.10

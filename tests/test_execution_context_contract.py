@@ -17,6 +17,7 @@ SCHEMA_DIR = ROOT / "docs" / "schemas"
 
 def test_contract_schemas_are_versioned_and_parseable() -> None:
     names = (
+        "ads-continuation-state-v1.schema.json",
         "bridge-capability-descriptor-v1.schema.json",
         "bridge-runtime-snapshot-v1.schema.json",
     )
@@ -24,6 +25,7 @@ def test_contract_schemas_are_versioned_and_parseable() -> None:
     schemas = [json.loads((SCHEMA_DIR / name).read_text(encoding="utf-8")) for name in names]
 
     assert [schema["title"] for schema in schemas] == [
+        "ADS Continuation State v1",
         "Bridge Capability Descriptor v1",
         "Bridge Runtime Snapshot v1",
     ]

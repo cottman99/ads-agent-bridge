@@ -12,7 +12,7 @@ compatible while common mechanisms are extracted.
 | `experience.list/get` | Bridge infrastructure | Keep as a read-only advisory gateway; missing assets degrade guidance, never execution |
 | `workspace.create` | Bridge infrastructure | Keep; workspace identity and non-overwrite creation are lifecycle foundations |
 | `session.launch/status/shutdown` | Bridge infrastructure | Keep; ownership, Context, and safe lifecycle are core |
-| `native.batch` | Generic native execution | Primary official ADS Python extension path; governed scope, staging, timeout, fresh-process validation, and promotion |
+| `native.batch` | Generic native execution | Primary official ADS Python extension path; governed scope, staging, timeout, fresh-process validation, promotion, and opaque content-bound continuation Context |
 | `design.apply` | Asset-bound compiled shortcut | Keep compatible while its asset/version/hash and runtime match; do not add more schematic verbs |
 | `circuit.simulate` | Asset-bound compiled shortcut | Keep as an accepted circuit-to-data macro; generalize job, timeout, artifact, and dataset validation mechanics |
 | `dds.create` | Asset-bound compiled shortcut | Keep v1/v2 compatible; do not add one wrapper field per DDS widget or plot kind |
