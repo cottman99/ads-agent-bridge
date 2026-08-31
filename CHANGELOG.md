@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Add opaque, host-private, content-bound continuation Contexts for governed
+  `native.batch`, including fail-closed target conflict and source-state checks.
+
 ## 0.1.0a42 - 2026-08-31
 
 - Add governed official ADS Python batch execution for exact workspaces with

@@ -220,6 +220,125 @@ def test_degraded_experience_disables_shortcuts_but_not_native_execution(monkeyp
     }
     assert operations["design.apply"]["state"]["available"] is False
     assert operations["native.batch"]["state"]["available"] is True
+    assert operations["native.batch"]["returns_context"] is True
+    assert (
+        operations["native.batch"]["input_schema"]["continuation_schema"]
+        == "eda-context/v2"
+    )
+
+
+def test_native_batch_continues_from_opaque_content_bound_context(tmp_path, monkeypatch):
+    from eda_bridge_runtime import RequestEnvelope
+
+    source = tmp_path / "source_wrk"
+    output = tmp_path / "output_wrk"
+    captured = {}
+    record = {
+        "identity": {
+            "connection_id": "worker-one",
+            "slot": "u2",
+            "profile": "de",
+            "instance": "ads2027",
+            "version": "2027",
+            "workspace": str(source.resolve()),
+            "design": "demo_lib:cell:schematic",
+        },
+        "content_state": {"kind": "source_fingerprint", "sha256": "a" * 64},
+    }
+    monkeypatch.setattr(
+        runtime_adapter, "resolve_continuation_context", lambda _value: record
+    )
+
+    def fake_execute(plan, **kwargs):
+        captured.update(plan=plan, **kwargs)
+        return {
+            "status": "passed",
+            "effect": "staged_mutation",
+            "source_fingerprint": "a" * 64,
+            "output_fingerprint": "b" * 64,
+        }
+
+    monkeypatch.setattr(runtime_adapter, "execute_native_batch", fake_execute)
+    monkeypatch.setattr(
+        runtime_adapter,
+        "select_instance",
+        lambda _value: SimpleNamespace(
+            instance_id="ads2027", year=2027, product_version="2027"
+        ),
+    )
+    def fake_create_continuation(**kwargs):
+        captured["continued"] = kwargs
+        return "EDA_CONTEXT:v2:opaque", {
+            "schema_version": "ads-continuation-state/v1",
+            "state": "content-bound",
+        }
+
+    monkeypatch.setattr(
+        runtime_adapter, "create_continuation_context", fake_create_continuation
+    )
+    plan = {
+        "schema_version": "eda.native-batch/v1",
+        "batch_id": "continue_demo",
+        "runtime": "ads.python.de",
+        "effect": "staged_mutation",
+        "program": {},
+        "scope": {"write_paths": [str(output)], "artifacts": []},
+        "transaction": {
+            "strategy": "adapter_staging",
+            "fresh_reopen": True,
+            "promotion": "on_validation",
+        },
+        "validation": {},
+        "limits": {},
+    }
+    request = RequestEnvelope(
+        purpose="Continue the exact governed ADS workspace mutation",
+        target={
+            "eda": "keysight-ads",
+            "continuation_context": "ctx_" + "1" * 20,
+        },
+        operation="native.batch",
+        payload={"mutating": True, "plan": plan},
+        idempotency_key="continue-demo-v2",
+    )
+    result = runtime_adapter._AdsAdapterBase().execute(
+        request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+    )
+
+    assert captured["plan"]["scope"]["read_paths"] == [str(source.resolve())]
+    assert captured["plan"]["scope"]["selectors"] == {
+        "instance": "ads2027",
+        "version": "2027",
+        "profile": "de",
+    }
+    assert captured["expected_source_fingerprint"] == "a" * 64
+    assert captured["continued"]["identity"]["workspace"] == str(output)
+    assert captured["continued"]["source_fingerprint"] == "b" * 64
+    assert result.result["bridge"]["continuation_context"].startswith("EDA_CONTEXT:v2:")
+    assert result.result["bridge"]["continuation_state"] == {
+        "schema_version": "ads-continuation-state/v1",
+        "state": "content-bound",
+    }
+
+
+def test_native_continuation_context_rejects_another_operation(monkeypatch):
+    from eda_bridge_runtime import RequestEnvelope
+
+    monkeypatch.setattr(
+        runtime_adapter,
+        "continuation_reference",
+        lambda _target, _payload: "ctx_" + "1" * 20,
+    )
+    request = RequestEnvelope(
+        purpose="Do not broaden a continuation Context",
+        target={"eda": "keysight-ads"},
+        operation="session.status",
+        payload={"mutating": False},
+    )
+    with pytest.raises(ValueError, match="bound to native.batch"):
+        runtime_adapter._AdsAdapterBase().execute(
+            request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+        )
 
 
 def test_runtime_design_apply_rejects_dds_profile(monkeypatch):

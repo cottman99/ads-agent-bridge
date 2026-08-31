@@ -42,6 +42,11 @@ EDA 主机；重复远程工作复用 EDA Bridge Runtime，不为每个动作重
 执行官方 ADS Python。`design.apply`、`dds.create` 等保留为与经验资产绑定的
 编译快捷方式，用来省 token、减少拼写和转义错误，但不定义 ADS 能力边界。
 
+成功的受控原生执行会返回不透明的 continuation Context。后续 batch 可复用其
+仅保存在 ADS 主机私有记录中的精确目标和内容指纹；程序、effect、写入范围、
+purpose、idempotency key 和验证仍需重新明确声明，内容过期或身份冲突会直接
+拒绝。详见[续接 Context 合约](docs/CONTINUATION_CONTEXT.md)。
+
 ## 三步开始
 
 需要一套已授权的 ADS、Windows 或 Linux，以及 Python 3.10 以上环境。

@@ -1,7 +1,9 @@
 import hashlib
+from types import SimpleNamespace
 
 import pytest
 
+from ads_agent_bridge import native_batch
 from ads_agent_bridge.native_batch import _validate_ads_plan
 
 
@@ -60,3 +62,33 @@ def test_ads_native_batch_rejects_shell_import():
     }
     with pytest.raises(ValueError, match="undeclared module"):
         _validate_ads_plan(plan)
+
+
+def test_continuation_fingerprint_is_checked_before_program_runs(tmp_path, monkeypatch):
+    workspace = tmp_path / "source_wrk"
+    workspace.mkdir()
+    plan = _observe()
+    plan["scope"]["read_paths"] = [str(workspace)]
+    monkeypatch.setattr(
+        native_batch,
+        "select_instance",
+        lambda _value: SimpleNamespace(
+            instance_id="ads2027",
+            year=2027,
+            product_version="2027",
+            python_executable="ads-python",
+        ),
+    )
+    monkeypatch.setattr(native_batch, "workspace_fingerprint", lambda _path: "b" * 64)
+    monkeypatch.setattr(
+        native_batch,
+        "_run_program",
+        lambda **_kwargs: (_ for _ in ()).throw(
+            AssertionError("stale continuation must fail before native code")
+        ),
+    )
+
+    with pytest.raises(ValueError, match="content state does not match"):
+        native_batch.execute_native_batch(
+            plan, expected_source_fingerprint="a" * 64
+        )

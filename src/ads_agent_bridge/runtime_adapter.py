@@ -10,6 +10,12 @@ from . import __version__
 from .bridge_client import request as bridge_request
 from .circuit_simulation import execute_simulation_plan
 from .config import select_instance
+from .continuation_context import (
+    continuation_reference,
+    create_continuation_context,
+    materialize_native_batch_plan,
+    resolve_continuation_context,
+)
 from .dds_report import execute_dds_plan
 from .design_plan import execute_design_plan
 from .docs_kb import get_document
@@ -190,10 +196,19 @@ class _AdsAdapterBase:
                     "mutates": True,
                     "latency_class": "slow",
                     "requires_context": False,
-                    "returns_context": False,
+                    "returns_context": True,
                     "input_schema": {
                         "required": ["plan"],
+                        "optional": ["continuation_context", "redact_paths"],
                         "plan_schema": "eda.native-batch/v1",
+                        "continuation_schema": "eda-context/v2",
+                        "context_materializes": [
+                            "scope.selectors.instance",
+                            "scope.selectors.version",
+                            "scope.selectors.profile",
+                            "scope.read_paths",
+                            "transaction.source_fingerprints",
+                        ],
                     },
                     "state": {"available": True, "healthy": True},
                 },
@@ -420,12 +435,30 @@ class _AdsAdapterBase:
                 "eda": "keysight-ads",
             }
             request = RequestEnvelope.from_dict(data)
+        continuation = continuation_reference(request.target, request.payload)
+        if continuation and request.operation != "native.batch":
+            raise ValueError(
+                "ADS native continuation Context is bound to native.batch"
+            )
+        continuation_record = (
+            resolve_continuation_context(continuation) if continuation else None
+        )
         target_slot = request.target.get("slot")
         payload_slot = request.payload.get("slot")
         if target_slot and payload_slot and str(target_slot) != str(payload_slot):
             raise ValueError("ADS slot conflicts between target.slot and payload.slot")
         slot = target_slot or payload_slot
-        profile = str(request.target.get("profile") or "de")
+        if slot is None and continuation_record is not None:
+            slot = continuation_record["identity"].get("slot")
+        profile = str(
+            request.target.get("profile")
+            or (
+                continuation_record["identity"].get("profile")
+                if continuation_record is not None
+                else None
+            )
+            or "de"
+        )
         if profile not in {"de", "dds"}:
             raise ValueError("ADS profile must be de or dds")
         if request.operation.startswith("docs."):
@@ -503,9 +536,45 @@ class _AdsAdapterBase:
             plan = request.payload.get("plan")
             if not isinstance(plan, dict):
                 raise TypeError("native.batch requires a governed native batch plan")
+            expected_source_fingerprint = None
+            if continuation_record is not None:
+                plan, expected_source_fingerprint = materialize_native_batch_plan(
+                    plan,
+                    record=continuation_record,
+                    target=request.target,
+                    payload=request.payload,
+                )
             result = execute_native_batch(
-                plan, redact_paths=bool(request.payload.get("redact_paths", True))
+                plan,
+                redact_paths=bool(request.payload.get("redact_paths", True)),
+                expected_source_fingerprint=expected_source_fingerprint,
             )
+            source_path = (
+                plan["scope"]["write_paths"][0]
+                if result.get("effect") == "staged_mutation"
+                else plan["scope"]["read_paths"][0]
+            )
+            source_fingerprint = (
+                result.get("output_fingerprint")
+                if result.get("effect") == "staged_mutation"
+                else result.get("source_fingerprint")
+            )
+            selected = select_instance(plan["scope"]["selectors"].get("instance"))
+            continuation_token, continuation_state = create_continuation_context(
+                identity={
+                    "connection_id": request.target.get("connection_id"),
+                    "slot": slot,
+                    "profile": plan["scope"]["selectors"]["profile"],
+                    "instance": selected.instance_id,
+                    "version": str(selected.year or selected.product_version),
+                    "workspace": source_path,
+                    "design": request.target.get("design")
+                    or request.target.get("top_design"),
+                },
+                source_fingerprint=str(source_fingerprint or ""),
+            )
+            result["continuation_context"] = continuation_token
+            result["continuation_state"] = continuation_state
             return AdapterResult(status="passed", result={"bridge": result})
         if request.operation == "design.apply":
             if not request.is_mutating:
