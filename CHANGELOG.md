@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.1.0a46 - 2026-08-31
+
+- Match continuation Context versions against the selected ADS installation's
+  equivalent year and product-update spellings while retaining the exact
+  installation identity and fail-closed mismatch behavior.
+
 ## 0.1.0a45 - 2026-08-31
 
 - Resolve content-bound continuation Contexts before lifecycle Context

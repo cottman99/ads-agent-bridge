@@ -3,7 +3,7 @@ requires-python = ">=3.10"
 
 [[package]]
 name = "ads-agent-bridge"
-version = "0.1.0a45"
+version = "0.1.0a46"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
