@@ -147,16 +147,15 @@ def test_runtime_adapter_passes_typed_payload_without_args_wrapper(monkeypatch):
     result = runtime_adapter._AdsAdapterBase().execute(request, context)
 
     assert result.status == "passed"
-    assert calls[-1] == (
-        "design.live_patch",
-        {
-            "design": "demo_lib:cell:schematic",
-            "operations": [{"op": "set_instance_parameter"}],
-        },
-        "slot-1",
-        "de",
-        30.0,
-    )
+    command, args, slot, profile, timeout = calls[-1]
+    assert command == "design.live_patch"
+    assert args["design"] == "demo_lib:cell:schematic"
+    assert args["operations"] == [{"op": "set_instance_parameter"}]
+    assert args["schema_version"] == "eda.live-edit/v1"
+    assert args["patch_id"].startswith("patch-")
+    assert args["conflict_policy"] == "fail_on_change"
+    assert args["validation"] == "readback"
+    assert (slot, profile, timeout) == ("slot-1", "de", 30.0)
 
 
 def test_runtime_adapter_derives_live_design_from_copied_context_target(monkeypatch):

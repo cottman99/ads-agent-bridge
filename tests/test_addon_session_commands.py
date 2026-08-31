@@ -140,6 +140,110 @@ def test_design_live_patch_updates_current_gui_design_with_readback(monkeypatch)
     ]
 
 
+def test_design_live_patch_adds_instance_and_wire_then_rolls_back_patch(monkeypatch) -> None:
+    server = load_server(monkeypatch)
+
+    class Created:
+        def __init__(self, collection=None, name=None):
+            self.parameters = {"R": types.SimpleNamespace(value="50 Ohm")}
+            self._collection = collection
+            self._name = name
+            self.deleted = False
+
+        def delete_object(self):
+            self.deleted = True
+            if self._collection is not None:
+                self._collection.pop(self._name, None)
+
+    instances = {}
+    wires = []
+
+    def add_instance(item, at, **kwargs):
+        assert item == ("ads_rflib", "R", "symbol")
+        assert at == (1.0, 2.0)
+        created = Created(instances, kwargs["name"])
+        instances[kwargs["name"]] = created
+        return created
+
+    def add_wire(points):
+        assert points == [(1.0, 2.0), (3.0, 2.0)]
+        wire = Created()
+        wire.add_wire_label = lambda label: setattr(wire, "label", label)
+        wires.append(wire)
+        return wire
+
+    design = types.SimpleNamespace(
+        lib_name="demo_lib",
+        cell_name="Main",
+        view_name="schematic",
+        instances=instances,
+        add_instance=add_instance,
+        add_wire=add_wire,
+    )
+
+    class Transaction:
+        def __init__(self, selected_design, label):
+            assert selected_design is design
+            assert "patch-objects" in label
+
+        def __enter__(self):
+            return self
+
+        def commit(self):
+            pass
+
+        def __exit__(self, *_args):
+            pass
+
+    runtime = server._Runtime("de", "slot-a")
+    runtime.namespace["de"] = types.SimpleNamespace(
+        db=types.SimpleNamespace(Transaction=Transaction)
+    )
+    runtime.namespace["de_app"] = types.SimpleNamespace(
+        current_window=lambda: object(),
+        get_design_in_uu_from_window=lambda _window: design,
+    )
+
+    args = {
+        "design": "demo_lib:Main:schematic",
+        "patch_id": "patch-objects",
+        "operations": [
+            {
+                "op": "add_instance",
+                "name": "R_AGENT",
+                "item": ["ads_rflib", "R", "symbol"],
+                "at": [1.0, 2.0],
+                "parameters": {"R": "75 Ohm"},
+            },
+            {
+                "op": "add_wire",
+                "points": [[1.0, 2.0], [3.0, 2.0]],
+                "label": "AGENT_NET",
+            },
+        ],
+    }
+    created = runtime._dispatch("design.live_patch", args)
+    preserved = runtime._dispatch("design.live_patch", args)
+
+    assert created["reversible"] is True
+    assert preserved["status"] == "preserved"
+    assert instances["R_AGENT"].parameters["R"].value == "75 Ohm"
+    assert wires[0].label == "AGENT_NET"
+
+    rolled_back = runtime._dispatch(
+        "design.live_finalize",
+        {
+            "design": "demo_lib:Main:schematic",
+            "action": "rollback_patch",
+            "patch_id": "patch-objects",
+        },
+    )
+
+    assert rolled_back["action"] == "rollback_patch"
+    assert "R_AGENT" not in instances
+    assert wires[0].deleted is True
+
+
 def test_design_live_patch_refuses_wrong_active_design(monkeypatch) -> None:
     server = load_server(monkeypatch)
     design = types.SimpleNamespace(

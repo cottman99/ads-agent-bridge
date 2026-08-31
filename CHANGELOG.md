@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.1.0a48 - 2026-08-31
+
+- Extend the supervised live-design lane with bounded component and wire
+  creation in the already-open ADS process, using one native transaction,
+  immediate object readback, and exact-name preconditions.
+- Add idempotent patch identifiers and patch-local rollback so a repeated Agent
+  request creates no duplicate objects and recovery removes only objects owned
+  by that patch.
+- Adopt the shared Runtime `eda.live-edit/v1` envelope and validate the complete
+  create, replay, and rollback journey independently through Codex and Pi Agent.
+
 ## 0.1.0a47 - 2026-08-31
 
 - Add a real-time ADS design lane that captures the exact active design and
