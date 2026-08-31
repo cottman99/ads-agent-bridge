@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import copy
 import contextlib
 import hashlib
 import io
@@ -222,6 +223,8 @@ class _Runtime:
             return self.contexts.list()
         if command == "context_get":
             return self.contexts.get(_required_text(args, "context"))
+        if command == "context_capture_active_design":
+            return self._context_capture_active_design()
         if command == "context_refresh":
             return self.contexts.refresh(_required_text(args, "context"))
         if command == "context_drop":
@@ -237,6 +240,10 @@ class _Runtime:
             return self._ael_workspace_path()
         if command == "open_workspace":
             return self._open_workspace(args)
+        if command == "design.live_patch":
+            return self._design_live_patch(args)
+        if command == "design.live_finalize":
+            return self._design_live_finalize(args)
         if command == "safe_shutdown":
             return self._safe_shutdown()
         if command in {"eval", "exec", "ael_call"}:
@@ -350,7 +357,196 @@ class _Runtime:
                 "reason": reason,
                 "safe_next_actions": safe_next_actions,
             },
+            **(
+                {"input_schema": copy.deepcopy(spec["input_schema"])}
+                if spec.get("input_schema")
+                else {}
+            ),
         }
+
+    def _resolve_live_design(self, expected_design: str, *, activate: bool) -> tuple[Any, str]:
+        de_app = self.namespace.get("de_app")
+        if de_app is None:
+            raise RuntimeError("ADS DE application API is required")
+        current_window = getattr(de_app, "current_window", None)
+        design_from_window = getattr(de_app, "get_design_in_uu_from_window", None)
+        if not callable(current_window) or not callable(design_from_window):
+            raise RuntimeError("ADS current-design window APIs are unavailable")
+        window = current_window()
+        try:
+            design = design_from_window(window) if window is not None else None
+        except Exception:
+            design = None
+        if design is None and activate:
+            ael = self.namespace.get("ael")
+            if ael is None:
+                raise RuntimeError("ADS AEL is required to activate the requested design")
+            design_context = ael.call.de_get_design_context_from_name(expected_design)
+            ael.call.de_bring_context_to_top_or_open_new_window(design_context)
+            window = current_window()
+            try:
+                design = design_from_window(window) if window is not None else None
+            except Exception:
+                design = None
+        if design is None:
+            raise RuntimeError("Activate one ADS design window before a live design operation")
+
+        actual_design = ":".join(
+            str(getattr(design, name, "") or "")
+            for name in ("lib_name", "cell_name", "view_name")
+        )
+        if actual_design != expected_design:
+            raise RuntimeError(
+                f"Active ADS design mismatch: expected {expected_design}, got {actual_design or 'unknown'}"
+            )
+        return design, actual_design
+
+    def _design_live_patch(self, args: dict[str, Any]) -> dict[str, Any]:
+        """Apply one bounded parameter patch to the design in the current GUI window."""
+
+        if self.profile != "de":
+            raise RuntimeError("design.live_patch requires the ADS DE profile")
+        de = self.namespace.get("de")
+        if de is None:
+            raise RuntimeError("ADS DE Python API is required")
+        expected_design = _required_text(args, "design")
+        design, actual_design = self._resolve_live_design(
+            expected_design,
+            activate=bool(args.get("activate", False)),
+        )
+        operations = args.get("operations")
+        if not isinstance(operations, list) or not operations or len(operations) > 32:
+            raise ValueError("design.live_patch requires 1..32 typed operations")
+
+        normalized: list[dict[str, str]] = []
+        for index, operation in enumerate(operations):
+            if not isinstance(operation, dict):
+                raise TypeError(f"design.live_patch operation {index} must be an object")
+            if operation.get("op") != "set_instance_parameter":
+                raise ValueError(
+                    "design.live_patch currently supports only set_instance_parameter"
+                )
+            normalized.append(
+                {
+                    "instance": _required_text(operation, "instance"),
+                    "parameter": _required_text(operation, "parameter"),
+                    "expected_before": _required_text(operation, "expected_before"),
+                    "value": _required_text(operation, "value"),
+                }
+            )
+
+        resolved: list[tuple[dict[str, str], Any]] = []
+        for operation in normalized:
+            try:
+                instance = design.instances[operation["instance"]]
+                parameter = instance.parameters[operation["parameter"]]
+            except Exception as exc:
+                raise RuntimeError(
+                    f"ADS object not found: {operation['instance']}.{operation['parameter']}"
+                ) from exc
+            before = str(parameter.value)
+            if before != operation["expected_before"]:
+                raise RuntimeError(
+                    "ADS live patch precondition failed for "
+                    f"{operation['instance']}.{operation['parameter']}: "
+                    f"expected {operation['expected_before']}, got {before}"
+                )
+            resolved.append((operation, parameter))
+
+        transaction_type = getattr(getattr(de, "db", None), "Transaction", None)
+        if transaction_type is None:
+            raise RuntimeError("ADS design transaction API is unavailable")
+        patch_id = str(args.get("patch_id") or "live-patch")[:80]
+        with transaction_type(design, f"EDA Bridge {patch_id}") as transaction:
+            for operation, parameter in resolved:
+                parameter.value = operation["value"]
+            transaction.commit()
+
+        readback = []
+        for operation, parameter in resolved:
+            actual = str(parameter.value)
+            if actual != operation["value"]:
+                raise RuntimeError(
+                    "ADS live patch readback failed for "
+                    f"{operation['instance']}.{operation['parameter']}"
+                )
+            readback.append(
+                {
+                    "instance": operation["instance"],
+                    "parameter": operation["parameter"],
+                    "before": operation["expected_before"],
+                    "actual": actual,
+                }
+            )
+        return {
+            "status": "passed",
+            "design": actual_design,
+            "patch_id": patch_id,
+            "readback": readback,
+        }
+
+    def _design_live_finalize(self, args: dict[str, Any]) -> dict[str, Any]:
+        if self.profile != "de":
+            raise RuntimeError("design.live_finalize requires the ADS DE profile")
+        expected_design = _required_text(args, "design")
+        action = _required_text(args, "action")
+        if action not in {"keep_unsaved", "save", "discard_unsaved"}:
+            raise ValueError("Unsupported ADS live finalize action")
+        design, actual_design = self._resolve_live_design(
+            expected_design,
+            activate=bool(args.get("activate", False)),
+        )
+        if action == "keep_unsaved":
+            return {"status": "passed", "design": actual_design, "action": action}
+
+        decision = args.get("decision")
+        if not isinstance(decision, dict):
+            raise ValueError("save and discard_unsaved require a decision object")
+        authorization = _required_text(decision, "authorization")
+        reason = _required_text(decision, "reason")
+        if authorization not in {"user-confirmed", "agent-owned-session"}:
+            raise ValueError(
+                "decision.authorization must be user-confirmed or agent-owned-session"
+            )
+        if (
+            action == "discard_unsaved"
+            and authorization == "agent-owned-session"
+            and not os.environ.get("ADS_AGENT_MANAGED_SESSION_ID")
+        ):
+            raise PermissionError(
+                "discard_unsaved agent-owned-session policy requires a managed ADS session"
+            )
+        if action == "save":
+            design.save_design()
+        else:
+            design.revert_design()
+        return {
+            "status": "passed",
+            "design": actual_design,
+            "action": action,
+            "decision": {"authorization": authorization, "reason": reason},
+        }
+
+    def _context_capture_active_design(self) -> dict[str, Any]:
+        if self.profile != "de":
+            raise RuntimeError("context_capture_active_design requires the ADS DE profile")
+        de_app = self.namespace.get("de_app")
+        current_window = getattr(de_app, "current_window", None) if de_app is not None else None
+        design_from_window = (
+            getattr(de_app, "get_design_in_uu_from_window", None)
+            if de_app is not None
+            else None
+        )
+        if not callable(current_window) or not callable(design_from_window):
+            raise RuntimeError("ADS current-design window APIs are unavailable")
+        window = current_window()
+        try:
+            design = design_from_window(window) if window is not None else None
+        except Exception:
+            design = None
+        if design is None:
+            raise RuntimeError("Activate one ADS design window before capturing Context")
+        return self.contexts.capture_design(design, window, "agent-active-design")
 
     def _runtime_snapshot(self, args: dict[str, Any]) -> dict[str, Any]:
         detail = str(args.get("detail") or "compact")

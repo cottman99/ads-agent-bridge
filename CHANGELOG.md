@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.1.0a47 - 2026-08-31
+
+- Add a real-time ADS design lane that captures the exact active design and
+  applies bounded, typed instance-parameter patches inside the open GUI
+  session with exact preconditions, one native transaction, and readback.
+- Add explicit `keep_unsaved`, `save`, and `discard_unsaved` finalization so a
+  supervised edit session does not create a project copy or permanent version
+  for every small change.
+- Validate Context-driven live editing and discard recovery through both Codex
+  and Pi Agent against a disposable ADS design.
+
 ## 0.1.0a46 - 2026-08-31
 
 - Match continuation Context versions against the selected ADS installation's
