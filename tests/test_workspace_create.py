@@ -36,6 +36,10 @@ def test_create_workspace_returns_opaque_context(tmp_path, monkeypatch):
 
     def fake_run(command, **_kwargs):
         workspace = command[command.index("--workspace") + 1]
+        workspace_create.Path(workspace).mkdir(parents=True)
+        (workspace_create.Path(workspace) / "workspace.defs").write_text(
+            "# benchmark\n", encoding="utf-8"
+        )
         return subprocess.CompletedProcess(
             command,
             0,
@@ -74,6 +78,24 @@ def test_create_workspace_returns_opaque_context(tmp_path, monkeypatch):
     assert "workspace" not in decoded.locator
     record = workspace_create.resolve_context(result["context_id"])
     assert record["target"]["workspace"].endswith("demo_wrk")
+
+    continuation = EDAContext.decode(result["continuation_context"])
+    assert continuation.target == {"binding": "private-host-record"}
+    assert result["continuation_state"] == {
+        "schema_version": "ads-continuation-state/v1",
+        "state": "content-bound",
+        "content_state": "source-fingerprint",
+        "profile": "de",
+        "slot_bound": True,
+        "connection_bound": True,
+        "design_bound": True,
+    }
+    from ads_agent_bridge.continuation_context import resolve_continuation_context
+
+    continuation_record = resolve_continuation_context(result["continuation_context"])
+    assert continuation_record["identity"]["version"] == "2026 Update 2"
+    assert continuation_record["identity"]["design"] == "Demo_lib:Main:schematic"
+    assert continuation_record["content_state"]["sha256"]
 
 
 def test_create_workspace_removes_its_partial_output_on_failure(tmp_path, monkeypatch):

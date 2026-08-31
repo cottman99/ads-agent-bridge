@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.1.0a44 - 2026-08-31
+
+- Let `workspace.create` return a separate content-bound continuation Context
+  so the first governed `native.batch` can reuse the exact ADS version,
+  workspace path, and source fingerprint without Agent rediscovery.
+
 ## 0.1.0a43 - 2026-08-31
 
 - Add opaque, host-private, content-bound continuation Contexts for governed

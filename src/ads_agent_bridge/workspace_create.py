@@ -16,6 +16,7 @@ from typing import Any
 
 from .bridge_client import runtime_dir
 from .config import select_instance
+from .design_plan import workspace_fingerprint
 from .runtime_environment import ads_runtime_environment
 
 _NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,127}")
@@ -156,12 +157,30 @@ def create_workspace(
         "display": actual_display,
     }
     context_id, generation = _write_context(target)
+    # Preserve the general workspace Context for lifecycle operations while
+    # also returning a content-bound Context that can bootstrap native.batch.
+    from .continuation_context import create_continuation_context
+
+    continuation_context, continuation_state = create_continuation_context(
+        identity={
+            "connection_id": connection_id,
+            "slot": selected_slot,
+            "profile": profile,
+            "instance": instance.instance_id,
+            "version": instance.product_version,
+            "workspace": str(workspace_path),
+            "design": top_design,
+        },
+        source_fingerprint=workspace_fingerprint(workspace_path),
+    )
     from eda_bridge_runtime import EDAContext, capability_digest, stable_origin_id
 
     locator = {"context_id": context_id, "slot": selected_slot, "profile": profile}
     if connection_id:
         locator["connection_id"] = connection_id
-    capability_states = {name: "available" for name in ("open", "inspect", "edit", "simulate")}
+    capability_states = {
+        name: "available" for name in ("open", "inspect", "edit", "simulate")
+    }
     token = EDAContext(
         eda="keysight-ads",
         target_kind="workspace",
@@ -195,4 +214,6 @@ def create_workspace(
         "display": actual_display,
         "eda_context": token,
         "context_id": context_id,
+        "continuation_context": continuation_context,
+        "continuation_state": continuation_state,
     }
