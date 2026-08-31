@@ -84,6 +84,15 @@ _CAPABILITY_SPECS: tuple[dict[str, Any], ...] = (
         "requirements": ("context-registry", "context-handle"),
     },
     {
+        "id": "context_capture_active_design",
+        "category": "context",
+        "safety": "safe",
+        "profiles": ("de",),
+        "mutates": False,
+        "latency_class": "fast",
+        "requirements": ("context-registry", "de-app", "active-design-window"),
+    },
+    {
         "id": "context_refresh",
         "category": "context",
         "safety": "safe",
@@ -127,6 +136,34 @@ _CAPABILITY_SPECS: tuple[dict[str, Any], ...] = (
         "mutates": True,
         "latency_class": "moderate",
         "requirements": ("de-python", "workspace-path"),
+    },
+    {
+        "id": "design.live_patch",
+        "category": "design",
+        "safety": "bounded",
+        "profiles": ("de",),
+        "mutates": True,
+        "latency_class": "fast",
+        "requirements": ("de-python", "de-app", "exact-design-identity"),
+        "input_schema": {
+            "required": ("design", "operations"),
+            "optional": ("patch_id", "activate"),
+            "operation_schema": "ads.live-design-operation/v1",
+        },
+    },
+    {
+        "id": "design.live_finalize",
+        "category": "design",
+        "safety": "bounded",
+        "profiles": ("de",),
+        "mutates": True,
+        "latency_class": "fast",
+        "requirements": ("de-python", "de-app", "exact-design-identity"),
+        "input_schema": {
+            "required": ("design", "action"),
+            "optional": ("activate", "decision"),
+            "action_enum": ("keep_unsaved", "save", "discard_unsaved"),
+        },
     },
     {
         "id": "safe_shutdown",
@@ -183,6 +220,12 @@ def capability_specs() -> list[dict[str, Any]]:
     for record in records:
         record["profiles"] = list(record["profiles"])
         record["requirements"] = list(record["requirements"])
+        input_schema = record.get("input_schema")
+        if input_schema:
+            input_schema["required"] = list(input_schema.get("required", ()))
+            input_schema["optional"] = list(input_schema.get("optional", ()))
+            if "action_enum" in input_schema:
+                input_schema["action_enum"] = list(input_schema["action_enum"])
     return records
 
 

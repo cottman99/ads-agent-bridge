@@ -108,6 +108,175 @@ def test_runtime_stdio_records_purpose(tmp_path, monkeypatch):
     assert any(event["event_type"] == "ads.bridge.completed" for event in recorded)
 
 
+def test_runtime_adapter_passes_typed_payload_without_args_wrapper(monkeypatch):
+    pytest.importorskip("eda_bridge_runtime")
+    calls = []
+
+    def fake_bridge_request(command, args, slot, profile, timeout):
+        calls.append((command, args, slot, profile, timeout))
+        if command == "capabilities":
+            return {
+                "ok": True,
+                "result": {
+                    "descriptors": [
+                        {
+                            "id": "design.live_patch",
+                            "safety": "bounded",
+                            "mutates": True,
+                            "state": {"available": True, "healthy": True},
+                        }
+                    ]
+                },
+            }
+        return {"ok": True, "result": {"status": "passed"}}
+
+    monkeypatch.setattr(runtime_adapter, "bridge_request", fake_bridge_request)
+    request = SimpleNamespace(
+        operation="design.live_patch",
+        payload={
+            "mutating": True,
+            "design": "demo_lib:cell:schematic",
+            "operations": [{"op": "set_instance_parameter"}],
+            "timeout_seconds": 30,
+        },
+        target={"slot": "slot-1", "profile": "de"},
+        is_mutating=True,
+    )
+    context = SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+
+    result = runtime_adapter._AdsAdapterBase().execute(request, context)
+
+    assert result.status == "passed"
+    assert calls[-1] == (
+        "design.live_patch",
+        {
+            "design": "demo_lib:cell:schematic",
+            "operations": [{"op": "set_instance_parameter"}],
+        },
+        "slot-1",
+        "de",
+        30.0,
+    )
+
+
+def test_runtime_adapter_derives_live_design_from_copied_context_target(monkeypatch):
+    pytest.importorskip("eda_bridge_runtime")
+    calls = []
+
+    def fake_bridge_request(command, args, slot, profile, timeout):
+        calls.append((command, args, slot, profile, timeout))
+        if command == "capabilities":
+            return {
+                "ok": True,
+                "result": {
+                    "descriptors": [
+                        {
+                            "id": "design.live_patch",
+                            "safety": "bounded",
+                            "mutates": True,
+                            "state": {"available": True, "healthy": True},
+                        }
+                    ]
+                },
+            }
+        return {"ok": True, "result": {"status": "passed"}}
+
+    monkeypatch.setattr(runtime_adapter, "bridge_request", fake_bridge_request)
+    request = SimpleNamespace(
+        operation="design.live_patch",
+        payload={
+            "mutating": True,
+            "operations": [{"op": "set_instance_parameter"}],
+        },
+        target={
+            "slot": "slot-1",
+            "profile": "de",
+            "kind": "design",
+            "identity": {
+                "library": "demo_lib",
+                "cell": "cell",
+                "view": "schematic",
+            },
+        },
+        is_mutating=True,
+    )
+    context = SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+
+    runtime_adapter._AdsAdapterBase().execute(request, context)
+
+    assert calls[-1][1]["design"] == "demo_lib:cell:schematic"
+
+
+def test_runtime_adapter_revalidates_live_context_in_same_ads_process(monkeypatch):
+    from eda_bridge_runtime import EDAContext, RequestEnvelope
+
+    target = {
+        "kind": "design",
+        "identity": {"library": "demo_lib", "cell": "cell", "view": "schematic"},
+        "display_name": "demo_lib:cell:schematic",
+    }
+    token = EDAContext(
+        eda="keysight-ads",
+        target_kind="design",
+        locator={"context_id": "ctx_0123456789abcdef0123", "slot": "gui", "profile": "de"},
+        display_name="demo_lib:cell:schematic",
+        generation=3,
+        session={"slot": "gui", "profile": "de", "display": ":4.0", "state": "live"},
+        target=target,
+        freshness={"generation": 3, "state": "captured-live"},
+    ).encode()
+    calls = []
+
+    def fake_bridge_request(command, args, slot, profile, timeout):
+        calls.append((command, args, slot, profile, timeout))
+        if command == "context_get":
+            return {
+                "ok": True,
+                "result": {
+                    "target": target,
+                    "freshness": {"generation": 3, "state": "captured-live"},
+                },
+            }
+        if command == "capabilities":
+            return {
+                "ok": True,
+                "result": {
+                    "descriptors": [
+                        {
+                            "id": "design.live_patch",
+                            "safety": "bounded",
+                            "mutates": True,
+                            "state": {"available": True, "healthy": True},
+                        }
+                    ]
+                },
+            }
+        return {"ok": True, "result": {"status": "passed"}}
+
+    monkeypatch.setattr(runtime_adapter, "bridge_request", fake_bridge_request)
+    request = RequestEnvelope(
+        purpose="Edit the selected live ADS design",
+        target={"eda": "keysight-ads", "context": token},
+        operation="design.live_patch",
+        payload={
+            "mutating": True,
+            "operations": [{"op": "set_instance_parameter"}],
+        },
+    )
+    execution_context = SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+
+    runtime_adapter._AdsAdapterBase().execute(request, execution_context)
+
+    assert calls[0][:4] == (
+        "context_get",
+        {"context": "ctx_0123456789abcdef0123"},
+        "gui",
+        "de",
+    )
+    assert calls[-1][0] == "design.live_patch"
+    assert calls[-1][1]["design"] == "demo_lib:cell:schematic"
+
+
 def test_capabilities_include_greenfield_workspace(monkeypatch):
     monkeypatch.setattr(
         runtime_adapter,
@@ -123,6 +292,31 @@ def test_capabilities_include_greenfield_workspace(monkeypatch):
     )
     assert create["returns_context"] is True
     assert create["state"]["available"] is True
+
+
+def test_capabilities_classify_live_patch_as_typed_live_edit(monkeypatch):
+    monkeypatch.setattr(
+        runtime_adapter,
+        "bridge_request",
+        lambda *_args, **_kwargs: {
+            "ok": True,
+            "result": {
+                "descriptors": [
+                    {
+                        "id": "design.live_patch",
+                        "safety": "bounded",
+                        "mutates": True,
+                        "state": {"available": True, "healthy": True},
+                    }
+                ]
+            },
+        },
+    )
+    operations = runtime_adapter._AdsAdapterBase().capabilities(
+        {"slot": "u2", "profile": "de"}
+    )["operations"]
+    live_patch = next(item for item in operations if item["id"] == "design.live_patch")
+    assert live_patch["operation_class"] == "typed-live-edit"
 
 
 def test_capabilities_keep_greenfield_available_without_live_session(monkeypatch):

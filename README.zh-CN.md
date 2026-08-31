@@ -68,8 +68,8 @@ MCP/插件；只运行 ADS 的主机不需要 Agent 侧插件。
 工作区创建、最小电路仿真和数据集回读分别通过后才会成功。
 
 如果机器上还没有 `pipx` 或合适的 Python，可使用版本化的
-[Linux 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a46/install.sh)
-或 [Windows PowerShell 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a46/install.ps1)。
+[Linux 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a47/install.sh)
+或 [Windows PowerShell 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a47/install.ps1)。
 它会创建隔离环境，不替换外部管理的系统 Python。
 
 之后再打开真实工作区：
@@ -92,6 +92,7 @@ ads-agent disconnect
 | “先证明自动化能工作，不要碰我的工程。” | 新建临时工作区，运行最小 AC 仿真，并分阶段回读数据。 |
 | “就用我在原理图、版图、树或 DDS 里选中的对象。” | 解析复制的 `ADS_CONTEXT`，不猜前台窗口。 |
 | “打开这个工作区，告诉我 ADS 现在是什么状态。” | 核对工作区、进程、版本、Display、所有权、窗口和阻塞对话框。 |
+| “就在我正看着的设计里调整这个参数。” | 在精确匹配的活动 ADS 设计内执行带前置值检查的类型化修改，立即回读，并把保存或放弃留作明确决定。 |
 | “安全地修改这些原理图对象。” | 只改非覆盖副本，保存关闭后全新重开，并逐项断言。 |
 | “仿真这个电路，把数据给我，并搭好 DDS 曲线。” | 生成网表、运行电路仿真、检查数值数据列、导出 CSV，并全新重开包含矩形图或极坐标图的原生多页面 DDS 报告。 |
 | “运行这份已经生成的 Momentum 输入。” | 保护源文件，只求解兄弟副本，并验证完整有限 N 端口结果。 |

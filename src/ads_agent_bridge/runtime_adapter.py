@@ -371,6 +371,18 @@ class _AdsAdapterBase:
                             }
                         ),
                     }
+            elif operation in {"design.live_patch", "design.live_finalize"}:
+                descriptor["operation_class"] = "typed-live-edit"
+                schema = dict(descriptor.get("input_schema") or {})
+                schema["required"] = [
+                    field for field in schema.get("required", []) if field != "design"
+                ]
+                schema["optional"] = [
+                    *[field for field in schema.get("optional", []) if field != "design"],
+                    "design",
+                ]
+                schema["requires_one_of"] = ["design", "EDA_CONTEXT:design"]
+                descriptor["input_schema"] = schema
             elif operation in {"dds_readback", "ael_workspace_path"}:
                 descriptor["operation_class"] = "acceptance-probe"
             else:
@@ -415,8 +427,8 @@ class _AdsAdapterBase:
 
     def execute(self, request, context):
         _, AdapterResult, _, _, _ = _runtime_imports()
-        context_id = request.target.get("context_id")
         encoded_context = request.target.get("context")
+        decoded_context = None
         native_continuation = False
         if encoded_context:
             from eda_bridge_runtime import EDAContext
@@ -425,22 +437,74 @@ class _AdsAdapterBase:
             native_continuation = decoded_context.target.get("binding") == (
                 "private-host-record"
             )
+        context_id = request.target.get("context_id") or (
+            decoded_context.locator.get("context_id") if decoded_context is not None else None
+        )
         if context_id and not native_continuation:
-            from eda_bridge_runtime import EDAContext, RequestEnvelope
+            from eda_bridge_runtime import RequestEnvelope
 
-            stored = resolve_context(str(context_id))
-            if encoded_context:
-                decoded = EDAContext.decode(str(encoded_context))
-                if stored.get("generation") != decoded.generation:
+            live_context = bool(
+                decoded_context is not None
+                and isinstance(decoded_context.target, dict)
+                and decoded_context.target.get("kind")
+            )
+            if live_context:
+                live_slot = str(
+                    decoded_context.locator.get("slot")
+                    or decoded_context.session.get("slot")
+                    or ""
+                )
+                live_profile = str(
+                    decoded_context.locator.get("profile")
+                    or decoded_context.session.get("profile")
+                    or "de"
+                )
+                if not live_slot:
+                    raise ValueError("ADS live Context has no session slot")
+                response = bridge_request(
+                    "context_get",
+                    {"context": str(context_id)},
+                    live_slot,
+                    live_profile,
+                    timeout=30.0,
+                )
+                if not response.get("ok"):
+                    raise ValueError(
+                        f"ADS live Context is unavailable: {response.get('error')}"
+                    )
+                envelope = response.get("result")
+                if not isinstance(envelope, dict):
+                    raise ValueError("ADS live Context record is invalid")
+                if int(envelope.get("freshness", {}).get("generation") or 0) != int(
+                    decoded_context.generation
+                ):
+                    raise ValueError("ADS live Context is stale; copy it again from ADS")
+                if envelope.get("target") != decoded_context.target:
+                    raise ValueError("ADS live Context target identity changed")
+                target = {
+                    **envelope["target"],
+                    "slot": live_slot,
+                    "profile": live_profile,
+                    "context_id": str(context_id),
+                    "display": decoded_context.session.get("display"),
+                }
+            else:
+                stored = resolve_context(str(context_id))
+                if decoded_context is not None and stored.get("generation") != (
+                    decoded_context.generation
+                ):
                     raise ValueError("ADS Runtime context is stale")
+                target = {
+                    **stored["target"],
+                    **{
+                        key: value
+                        for key, value in request.target.items()
+                        if key != "context"
+                    },
+                }
             data = request.to_dict()
             data["target"] = {
-                **stored["target"],
-                **{
-                    key: value
-                    for key, value in request.target.items()
-                    if key != "context"
-                },
+                **target,
                 "eda": "keysight-ads",
             }
             request = RequestEnvelope.from_dict(data)
@@ -791,9 +855,25 @@ class _AdsAdapterBase:
                 "request mutation flag does not match live ADS capability descriptor"
             )
             raise ValueError(message)
-        args = request.payload.get("args", {})
+        legacy_args = request.payload.get("args")
+        if legacy_args is None:
+            args = {
+                key: value
+                for key, value in request.payload.items()
+                if key not in {"mutating", "timeout_seconds", "escape_lane"}
+            }
+        else:
+            args = legacy_args
         if not isinstance(args, dict):
             raise TypeError("ADS operation args must be an object")
+        if request.operation in {"design.live_patch", "design.live_finalize"} and not args.get(
+            "design"
+        ):
+            identity = request.target.get("identity")
+            if request.target.get("kind") == "design" and isinstance(identity, dict):
+                parts = [identity.get(name) for name in ("library", "cell", "view")]
+                if all(isinstance(part, str) and part for part in parts):
+                    args = {**args, "design": ":".join(parts)}
         if request.operation == "open_workspace" and "workspace" not in args:
             workspace = request.target.get("workspace")
             if workspace:

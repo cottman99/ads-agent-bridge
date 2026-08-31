@@ -71,6 +71,288 @@ def make_workspace(tmp_path: Path, name: str) -> Path:
     return workspace
 
 
+def test_design_live_patch_updates_current_gui_design_with_readback(monkeypatch) -> None:
+    server = load_server(monkeypatch)
+
+    class Parameter:
+        value = "50 Ohm"
+
+    parameter = Parameter()
+    design = types.SimpleNamespace(
+        lib_name="demo_lib",
+        cell_name="Main",
+        view_name="schematic",
+        instances={"R1": types.SimpleNamespace(parameters={"R": parameter})},
+        save_design=lambda: (_ for _ in ()).throw(AssertionError("must not save")),
+    )
+    window = object()
+    commits: list[str] = []
+
+    class Transaction:
+        def __init__(self, selected_design, label) -> None:
+            assert selected_design is design
+            assert "patch-1" in label
+
+        def __enter__(self):
+            return self
+
+        def commit(self) -> None:
+            commits.append("commit")
+
+        def __exit__(self, exc_type, exc, traceback) -> None:
+            del exc_type, exc, traceback
+
+    runtime = server._Runtime("de", "slot-a")
+    runtime.namespace["de"] = types.SimpleNamespace(
+        db=types.SimpleNamespace(Transaction=Transaction)
+    )
+    runtime.namespace["de_app"] = types.SimpleNamespace(
+        current_window=lambda: window,
+        get_design_in_uu_from_window=lambda selected: design if selected is window else None,
+    )
+
+    result = runtime._dispatch(
+        "design.live_patch",
+        {
+            "design": "demo_lib:Main:schematic",
+            "patch_id": "patch-1",
+            "operations": [
+                {
+                    "op": "set_instance_parameter",
+                    "instance": "R1",
+                    "parameter": "R",
+                    "expected_before": "50 Ohm",
+                    "value": "75 Ohm",
+                }
+            ],
+        },
+    )
+
+    assert commits == ["commit"]
+    assert parameter.value == "75 Ohm"
+    assert result["readback"] == [
+        {
+            "instance": "R1",
+            "parameter": "R",
+            "before": "50 Ohm",
+            "actual": "75 Ohm",
+        }
+    ]
+
+
+def test_design_live_patch_refuses_wrong_active_design(monkeypatch) -> None:
+    server = load_server(monkeypatch)
+    design = types.SimpleNamespace(
+        lib_name="other_lib",
+        cell_name="Main",
+        view_name="schematic",
+    )
+    runtime = server._Runtime("de", "slot-a")
+    runtime.namespace["de"] = types.SimpleNamespace(db=types.SimpleNamespace())
+    runtime.namespace["de_app"] = types.SimpleNamespace(
+        current_window=lambda: object(),
+        get_design_in_uu_from_window=lambda window: design,
+    )
+
+    with pytest.raises(RuntimeError, match="Active ADS design mismatch"):
+        runtime._dispatch(
+            "design.live_patch",
+            {
+                "design": "demo_lib:Main:schematic",
+                "operations": [
+                    {
+                        "op": "set_instance_parameter",
+                        "instance": "R1",
+                        "parameter": "R",
+                        "expected_before": "50 Ohm",
+                        "value": "75 Ohm",
+                    }
+                ],
+            },
+        )
+
+
+def test_design_live_patch_can_activate_exact_named_design(monkeypatch) -> None:
+    server = load_server(monkeypatch)
+
+    class Parameter:
+        value = "50 Ohm"
+
+    parameter = Parameter()
+    design = types.SimpleNamespace(
+        lib_name="demo_lib",
+        cell_name="Main",
+        view_name="schematic",
+        instances={"R1": types.SimpleNamespace(parameters={"R": parameter})},
+    )
+    state = {"window": None}
+    target_window = object()
+
+    class Transaction:
+        def __init__(self, selected_design, label) -> None:
+            del selected_design, label
+
+        def __enter__(self):
+            return self
+
+        def commit(self) -> None:
+            pass
+
+        def __exit__(self, exc_type, exc, traceback) -> None:
+            del exc_type, exc, traceback
+
+    def bring_to_top(context) -> None:
+        assert context == "design-context"
+        state["window"] = target_window
+
+    runtime = server._Runtime("de", "slot-a")
+    runtime.namespace["de"] = types.SimpleNamespace(
+        db=types.SimpleNamespace(Transaction=Transaction)
+    )
+    runtime.namespace["de_app"] = types.SimpleNamespace(
+        current_window=lambda: state["window"],
+        get_design_in_uu_from_window=lambda window: design
+        if window is target_window
+        else (_ for _ in ()).throw(RuntimeError("not a design window")),
+    )
+    runtime.namespace["ael"] = types.SimpleNamespace(
+        call=types.SimpleNamespace(
+            de_get_design_context_from_name=lambda name: (
+                "design-context"
+                if name == "demo_lib:Main:schematic"
+                else None
+            ),
+            de_bring_context_to_top_or_open_new_window=bring_to_top,
+        )
+    )
+
+    result = runtime._dispatch(
+        "design.live_patch",
+        {
+            "design": "demo_lib:Main:schematic",
+            "activate": True,
+            "operations": [
+                {
+                    "op": "set_instance_parameter",
+                    "instance": "R1",
+                    "parameter": "R",
+                    "expected_before": "50 Ohm",
+                    "value": "75 Ohm",
+                }
+            ],
+        },
+    )
+
+    assert result["status"] == "passed"
+    assert parameter.value == "75 Ohm"
+
+
+def test_context_capture_active_design_reuses_context_registry(monkeypatch) -> None:
+    server = load_server(monkeypatch)
+    design = types.SimpleNamespace()
+    window = object()
+    captured = {}
+    registry = types.SimpleNamespace(
+        capture_design=lambda observed, observed_window, surface: captured.update(
+            design=observed,
+            window=observed_window,
+            surface=surface,
+        )
+        or {"context_id": "ctx_live", "target": {"kind": "design"}}
+    )
+    runtime = server._Runtime("de", "slot-a")
+    runtime.namespace["de_app"] = types.SimpleNamespace(
+        current_window=lambda: window,
+        get_design_in_uu_from_window=lambda observed: design
+        if observed is window
+        else None,
+    )
+    runtime.contexts = registry
+
+    result = runtime._context_capture_active_design()
+
+    assert result["context_id"] == "ctx_live"
+    assert captured == {
+        "design": design,
+        "window": window,
+        "surface": "agent-active-design",
+    }
+
+
+def test_design_live_finalize_enforces_discard_ownership(monkeypatch) -> None:
+    server = load_server(monkeypatch)
+    calls = []
+    design = types.SimpleNamespace(
+        lib_name="demo_lib",
+        cell_name="Main",
+        view_name="schematic",
+        save_design=lambda: calls.append("save"),
+        revert_design=lambda: calls.append("discard"),
+    )
+    window = object()
+    runtime = server._Runtime("de", "slot-a")
+    runtime.namespace["de_app"] = types.SimpleNamespace(
+        current_window=lambda: window,
+        get_design_in_uu_from_window=lambda observed: design
+        if observed is window
+        else None,
+    )
+    args = {
+        "design": "demo_lib:Main:schematic",
+        "action": "discard_unsaved",
+        "decision": {
+            "authorization": "agent-owned-session",
+            "reason": "Discard an agent-owned disposable candidate",
+        },
+    }
+
+    monkeypatch.delenv("ADS_AGENT_MANAGED_SESSION_ID", raising=False)
+    with pytest.raises(PermissionError, match="managed ADS session"):
+        runtime._dispatch("design.live_finalize", args)
+
+    monkeypatch.setenv("ADS_AGENT_MANAGED_SESSION_ID", "managed-1")
+    result = runtime._dispatch("design.live_finalize", args)
+
+    assert result["action"] == "discard_unsaved"
+    assert calls == ["discard"]
+
+
+def test_design_live_finalize_save_requires_explicit_decision(monkeypatch) -> None:
+    server = load_server(monkeypatch)
+    calls = []
+    design = types.SimpleNamespace(
+        lib_name="demo_lib",
+        cell_name="Main",
+        view_name="schematic",
+        save_design=lambda: calls.append("save"),
+    )
+    runtime = server._Runtime("de", "slot-a")
+    runtime.namespace["de_app"] = types.SimpleNamespace(
+        current_window=lambda: object(),
+        get_design_in_uu_from_window=lambda _window: design,
+    )
+
+    with pytest.raises(ValueError, match="decision object"):
+        runtime._dispatch(
+            "design.live_finalize",
+            {"design": "demo_lib:Main:schematic", "action": "save"},
+        )
+    result = runtime._dispatch(
+        "design.live_finalize",
+        {
+            "design": "demo_lib:Main:schematic",
+            "action": "save",
+            "decision": {
+                "authorization": "user-confirmed",
+                "reason": "User explicitly requested save",
+            },
+        },
+    )
+
+    assert result["action"] == "save"
+    assert calls == ["save"]
+
+
 def test_context_registry_commands_are_safe_and_handle_addressable(monkeypatch) -> None:
     server = load_server(monkeypatch)
     runtime = server._Runtime.__new__(server._Runtime)

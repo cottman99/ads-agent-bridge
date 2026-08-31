@@ -84,8 +84,8 @@ disposable workspace creation, minimal circuit simulation, and dataset readback
 have each passed.
 
 If `pipx` or a suitable Python is not yet available, use the versioned
-bootstrap for [Linux](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a46/install.sh)
-or [Windows PowerShell](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a46/install.ps1).
+bootstrap for [Linux](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a47/install.sh)
+or [Windows PowerShell](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a47/install.ps1).
 The bootstrap creates an isolated environment and does not replace an
 externally managed system Python.
 
@@ -109,6 +109,7 @@ matching Agent-owned session.
 | “Prove automation works before touching my project.” | Creates a disposable workspace, runs a minimal AC simulation, and reads the dataset through separate gates. |
 | “Use the schematic, layout, cell, folder, or DDS item I selected.” | Resolves the copied `ADS_CONTEXT` instead of guessing the foreground window. |
 | “Open this exact workspace and tell me what ADS is doing.” | Verifies workspace, process, ADS version, display, ownership, visible UI, and blocking dialogs. |
+| “Adjust this parameter in the design I am watching.” | Applies a typed, precondition-checked patch inside the exact active ADS design, reads it back immediately, and leaves save or discard as an explicit decision. |
 | “Apply these schematic edits safely.” | Modifies a non-overwriting copy and accepts it only after save, close, fresh reopen, and exact assertions. |
 | “Simulate this circuit, give me the data, and build the DDS plots.” | Generates the netlist, runs the circuit simulator, checks numeric dataset columns, exports CSV, and fresh-reopens a native multi-page DDS report with rectangular or polar plots. |
 | “Run this already-generated Momentum input.” | Preserves the source, solves a sibling copy, and checks a complete finite N-port result before promotion. |
