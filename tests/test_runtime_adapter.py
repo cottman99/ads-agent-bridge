@@ -227,8 +227,13 @@ def test_degraded_experience_disables_shortcuts_but_not_native_execution(monkeyp
     )
 
 
-def test_native_batch_continues_from_opaque_content_bound_context(tmp_path, monkeypatch):
+def test_native_batch_continues_from_opaque_content_bound_context(
+    tmp_path, monkeypatch
+):
     from eda_bridge_runtime import RequestEnvelope
+
+    from ads_agent_bridge import workspace_create
+    from ads_agent_bridge.continuation_context import create_continuation_context
 
     source = tmp_path / "source_wrk"
     output = tmp_path / "output_wrk"
@@ -245,8 +250,10 @@ def test_native_batch_continues_from_opaque_content_bound_context(tmp_path, monk
         },
         "content_state": {"kind": "source_fingerprint", "sha256": "a" * 64},
     }
-    monkeypatch.setattr(
-        runtime_adapter, "resolve_continuation_context", lambda _value: record
+    monkeypatch.setattr(workspace_create, "runtime_dir", lambda: tmp_path / "runtime")
+    token, _state = create_continuation_context(
+        identity=record["identity"],
+        source_fingerprint=record["content_state"]["sha256"],
     )
 
     def fake_execute(plan, **kwargs):
@@ -266,6 +273,7 @@ def test_native_batch_continues_from_opaque_content_bound_context(tmp_path, monk
             instance_id="ads2027", year=2027, product_version="2027"
         ),
     )
+
     def fake_create_continuation(**kwargs):
         captured["continued"] = kwargs
         return "EDA_CONTEXT:v2:opaque", {
@@ -295,7 +303,8 @@ def test_native_batch_continues_from_opaque_content_bound_context(tmp_path, monk
         purpose="Continue the exact governed ADS workspace mutation",
         target={
             "eda": "keysight-ads",
-            "continuation_context": "ctx_" + "1" * 20,
+            "context": token,
+            "context_id": "must-not-be-expanded-as-lifecycle-context",
         },
         operation="native.batch",
         payload={"mutating": True, "plan": plan},

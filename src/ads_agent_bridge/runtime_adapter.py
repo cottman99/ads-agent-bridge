@@ -416,12 +416,21 @@ class _AdsAdapterBase:
     def execute(self, request, context):
         _, AdapterResult, _, _, _ = _runtime_imports()
         context_id = request.target.get("context_id")
-        if context_id:
+        encoded_context = request.target.get("context")
+        native_continuation = False
+        if encoded_context:
+            from eda_bridge_runtime import EDAContext
+
+            decoded_context = EDAContext.decode(str(encoded_context))
+            native_continuation = decoded_context.target.get("binding") == (
+                "private-host-record"
+            )
+        if context_id and not native_continuation:
             from eda_bridge_runtime import EDAContext, RequestEnvelope
 
             stored = resolve_context(str(context_id))
-            if request.target.get("context"):
-                decoded = EDAContext.decode(str(request.target["context"]))
+            if encoded_context:
+                decoded = EDAContext.decode(str(encoded_context))
                 if stored.get("generation") != decoded.generation:
                     raise ValueError("ADS Runtime context is stale")
             data = request.to_dict()
@@ -437,9 +446,7 @@ class _AdsAdapterBase:
             request = RequestEnvelope.from_dict(data)
         continuation = continuation_reference(request.target, request.payload)
         if continuation and request.operation != "native.batch":
-            raise ValueError(
-                "ADS native continuation Context is bound to native.batch"
-            )
+            raise ValueError("ADS native continuation Context is bound to native.batch")
         continuation_record = (
             resolve_continuation_context(continuation) if continuation else None
         )
