@@ -195,6 +195,14 @@ def test_k6_requires_the_documented_ads2027_drc_flow(tmp_path: Path):
         "K6 lacks the documented DRC API flow",
     ]
 
+    ael_call_flow = {
+        "case_id": "K6",
+        "answer": "Established through the documented AEL-call Python bridge. Verify once; fallback to GUI.",
+        "code": "job = ael.call.dve_create_drc_job(); ael.call.dve_job_run_drc(job, design)",
+        "sources": ["ADS 2027 Automating Design Verification using Python"],
+    }
+    assert runner.validate("K6", "runtime", tmp_path, ael_call_flow, []) == []
+
 
 def test_codex_oauth_is_normalized_for_pi_without_changing_source(tmp_path: Path):
     runner = _runner()

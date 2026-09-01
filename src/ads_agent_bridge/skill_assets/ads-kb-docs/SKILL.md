@@ -31,8 +31,11 @@ If no default ADS instance is configured, run `ads-agent setup`. When several ve
 
 Query the configured installation through Runtime's `eda.read` lane. Discover
 capabilities once if this MCP process has not cached the documentation operation
-metadata. Select the documentation domain explicitly for API work. The
-equivalent direct CLI is:
+metadata. Domain filters are explicit narrowing tools, not API-language labels:
+omit them for product-wide capability checks because Python automation can be
+documented in an ADS guide instead of the Python reference tree. Before a
+negative capability claim, query the exact candidate symbol across the full
+corpus. The equivalent direct CLI for a known Python-reference lookup is:
 
 ```text
 ads-agent docs query "<technical query>" --domain python --limit 6
