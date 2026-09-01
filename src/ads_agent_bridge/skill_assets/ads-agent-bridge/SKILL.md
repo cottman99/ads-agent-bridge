@@ -49,6 +49,12 @@ An experience asset's `official_refs` are durable provenance labels, not live
 used, must be one of `ads`, `ael`, `python`, or `dds`; omit the domain filter
 when the exact domain is not known.
 
+Documentation domain filters are explicit and never inferred from words in the
+query. Before making a negative capability claim, query the exact proposed
+symbol without a domain filter: Python automation may be documented in an ADS
+product guide rather than the Python reference tree. A domain-limited miss is
+not corpus-wide evidence.
+
 Experience assets are advisory, not API, authorization, capability claims, or
 success evidence. Never execute Markdown. A missing or degraded library lowers
 guidance quality but must not block governed native execution.

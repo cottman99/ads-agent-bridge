@@ -169,6 +169,30 @@ def test_event_facts_records_each_completed_tool_once_with_elapsed_time():
     assert facts["timing_ms"] == {"tool_native_batch_ms": [2500.0]}
 
 
+def test_k6_accepts_either_evidence_backed_documentation_boundary(tmp_path: Path):
+    runner = _runner()
+    affirmative = {
+        "case_id": "K6",
+        "answer": (
+            "Yes. The documented flow uses create_drc_job and run_drc_job. "
+            "Verify the experimental import; fallback to the GUI."
+        ),
+        "code": "",
+        "sources": ["docs:design/design_verification"],
+    }
+    negative = {
+        "case_id": "K6",
+        "answer": (
+            "No documented API is established in this source. Verify the exact "
+            "symbol; fallback to the GUI."
+        ),
+        "code": "",
+        "sources": ["ads-doc:v1:example"],
+    }
+    assert runner.validate("K6", "runtime", tmp_path, affirmative, []) == []
+    assert runner.validate("K6", "runtime", tmp_path, negative, []) == []
+
+
 def test_codex_oauth_is_normalized_for_pi_without_changing_source(tmp_path: Path):
     runner = _runner()
     source = tmp_path / "codex-auth.json"

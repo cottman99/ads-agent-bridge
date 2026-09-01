@@ -594,10 +594,18 @@ def validate(case_id: str, arm: str, work: Path, answer: dict[str, Any], events:
         if not re.search(r"add_(rectangle|polygon|path)|db\.(rect|polygon|path)", combined):
             errors.append("K3 lacks recognizable geometry calls")
     elif case_id == "K6":
-        if not re.search(r"not documented|no documented|not established|could not verify|not verified|unverified", combined):
+        affirmative = bool(re.match(r"\s*yes\b", str(answer.get("answer", "")), re.IGNORECASE))
+        if affirmative:
+            if not ("create_drc_job" in combined and "run_drc_job" in combined):
+                errors.append("K6 affirmative answer lacks the documented DRC API flow")
+        elif not re.search(
+            r"not documented|no documented|not established|does not establish|"
+            r"could not verify|not verified|unverified",
+            combined,
+        ):
             errors.append("K6 lacks documented-capability boundary")
-        if "create_drc_job" in combined and not re.search(r"unverified|not verified|not documented|not established", combined):
-            errors.append("K6 presents create_drc_job as established")
+        if not answer.get("sources"):
+            errors.append("K6 lacks source evidence")
         if not re.search(r"verify|verification|fallback|manual|ael|gui", combined):
             errors.append("K6 lacks bounded verification or fallback")
     else:

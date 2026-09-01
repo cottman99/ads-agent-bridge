@@ -130,7 +130,9 @@ class _AdsAdapterBase:
                         "domains": ["ads", "ael", "python", "dds"],
                         "limit": [1, 20],
                         "domain_guidance": (
-                            "omit domains unless one exact listed domain is intended"
+                            "domains are explicit filters only; omit them for corpus-wide "
+                            "capability checks because Python automation may be documented "
+                            "in an ads guide"
                         ),
                     },
                     "state": {"available": True, "healthy": True},

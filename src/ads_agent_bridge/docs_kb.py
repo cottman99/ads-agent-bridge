@@ -644,12 +644,8 @@ def query(
     invalid_domains = sorted(set(explicit_domains) - DOCUMENT_DOMAINS)
     if invalid_domains:
         raise ValueError(f"Unsupported documentation domain: {', '.join(invalid_domains)}")
-    implicit_domains = list(dict.fromkeys(term for term in terms if term in DOCUMENT_DOMAINS))
-    selected_domains = list(dict.fromkeys(explicit_domains or (implicit_domains if len(implicit_domains) == 1 else [])))
-    search_terms = [term for term in terms if term not in DOCUMENT_DOMAINS]
-    if not search_terms:
-        search_terms = terms
-        selected_domains = explicit_domains
+    selected_domains = list(dict.fromkeys(explicit_domains))
+    search_terms = terms
     rows = _query_index(db_path, search_terms, limit, require_all=True, domains=selected_domains)
     search_mode = "bootstrap_index"
     if len(search_terms) > 1:
