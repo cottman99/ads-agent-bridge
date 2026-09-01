@@ -427,6 +427,8 @@ def test_degraded_experience_disables_shortcuts_but_not_native_execution(monkeyp
         "de": "ads.python.de",
         "dds": "ads.python.dds",
     }
+    assert "keysight.ads.dataset" in native_schema["ads_contract"]["allowed_imports"]
+    assert "keysight.edatoolbox" in native_schema["ads_contract"]["allowed_imports"]
 
 
 def test_native_batch_continues_from_opaque_content_bound_context(

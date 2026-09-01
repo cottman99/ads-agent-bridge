@@ -17,7 +17,14 @@ from eda_bridge_runtime import validate_native_batch, validate_python_program_po
 from .config import select_instance
 from .design_plan import _environment, _result, workspace_fingerprint
 
-_ALLOWED_IMPORTS = ("keysight.ads.de", "keysight.ads.dds", "json", "math")
+_ALLOWED_IMPORTS = (
+    "keysight.ads.dataset",
+    "keysight.ads.de",
+    "keysight.ads.dds",
+    "keysight.edatoolbox",
+    "json",
+    "math",
+)
 _RUNTIMES = {"de": "ads.python.de", "dds": "ads.python.dds"}
 
 

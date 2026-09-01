@@ -220,10 +220,20 @@ class _AdsAdapterBase:
                                 "effect",
                             ],
                             "allowed_imports": [
+                                "keysight.ads.dataset",
                                 "keysight.ads.de",
                                 "keysight.ads.dds",
+                                "keysight.edatoolbox",
                                 "json",
                                 "math",
+                            ],
+                            "safe_builtins_include": [
+                                "dir",
+                                "getattr",
+                                "hasattr",
+                                "isinstance",
+                                "repr",
+                                "sorted",
                             ],
                             "staged_write_paths": (
                                 "one sibling output workspace, plus one artifact directory "
