@@ -23,7 +23,7 @@
     {
       "id": "ads.native.circuit-simulate-and-validate",
       "path": "workflows/native-circuit-simulate.md",
-      "sha256": "654123621c94833140217e18318bbb9d98890dad16f7d748cc0cb40a374a9012",
+      "sha256": "e9fef15658ee90f3a2a98c8eeaa07098c3de9fdd19e016b8a3f95f609692227f",
       "kind": "workflow",
       "status": "validated",
       "summary": "Build, simulate, and freshly validate an ADS 2027 circuit through one governed native batch."

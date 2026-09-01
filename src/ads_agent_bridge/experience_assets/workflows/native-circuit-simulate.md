@@ -31,7 +31,22 @@ write/read it below `context["artifact_root"]`.
 In external ADS automation, open the staged workspace before opening its design.
 An existing schematic intended for mutation must be opened with
 `api.de.db.DesignMode.WRITE`; the default `open_design` mode is not a writable
-mutation contract. Generate the netlist from the design, run exactly one
+mutation contract. For the empty schematic returned by `workspace.create`, the
+validated opening pattern is:
+
+```python
+api.de.open_workspace(context["workspace"])
+design = api.db.open_design(returned_top_design, api.de.db.DesignMode.WRITE)
+```
+
+Do not call `de.Workspace.open(path)`, and do not clear the already-empty design.
+The validated component identifiers for the maintained AC example are
+`("ads_sources", "V_AC", "symbol")`, `("ads_rflib", "R", "symbol")`,
+`("ads_rflib", "C", "symbol")`, `("ads_rflib", "GROUND", "symbol")`, and
+`("ads_simulation", "AC", "symbol")`. Their relevant parameter keys are `R`,
+`C`, `Start`, `Stop`, `Dec`, and `Step`.
+
+Generate the netlist from the design, run exactly one
 `keysight.edatoolbox.ads.CircuitSimulator.run_netlist`, and validate the
 persisted dataset in the separate validation program. The validation return must
 contain `{"status": "passed"}`. Do not use native observe calls to rediscover

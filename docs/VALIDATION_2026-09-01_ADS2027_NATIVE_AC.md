@@ -7,6 +7,11 @@ created by `workspace.create`; the batch opened its existing schematic in
 netlist, ran `CircuitSimulator.run_netlist` once, and read `AC1.AC` through
 `keysight.ads.dataset`.
 
+The successful external-automation opening sequence was
+`api.de.open_workspace(context["workspace"])` followed by
+`api.db.open_design(top_design, api.de.db.DesignMode.WRITE)`. The class-style
+`de.Workspace.open(path)` form is not equivalent for this use.
+
 The batch passed fresh-process validation, preserved the source fingerprint,
 promoted a distinct output workspace and dataset artifact, and returned the
 finite first-sample magnitude `0.9998223944475859`. The direct end-to-end adapter
