@@ -36,6 +36,12 @@ only when its asset id/version/hash, applicability, runtime state, and parameter
 schema match. Otherwise generate one governed native ADS Python or AEL batch.
 Retain its receipt and independent validation.
 
+Experience intent and tag filters are exact metadata matches. When their exact
+values are unknown, call `experience.list` without filters to obtain the compact
+index, select the one asset matching the actual ADS version/profile/capability,
+then call `experience.get` once. Do not invent a taxonomy and treat an empty
+filtered result as proof that no applicable experience exists.
+
 Experience assets are advisory, not API, authorization, capability claims, or
 success evidence. Never execute Markdown. A missing or degraded library lowers
 guidance quality but must not block governed native execution.

@@ -174,6 +174,11 @@ class _AdsAdapterBase:
                     "input_schema": {
                         "required": [],
                         "optional": ["intents", "tags"],
+                        "filter_semantics": "exact metadata match",
+                        "discovery": (
+                            "omit intents and tags to list the compact asset index "
+                            "when exact metadata values are unknown"
+                        ),
                     },
                     "state": {"available": True, "healthy": True},
                 },
@@ -188,6 +193,10 @@ class _AdsAdapterBase:
                     "input_schema": {
                         "required": ["asset_id"],
                         "optional": ["max_chars"],
+                        "normal_use": (
+                            "read only the one version/profile-matched asset selected "
+                            "from experience.list"
+                        ),
                     },
                     "state": {"available": True, "healthy": True},
                 },
