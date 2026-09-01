@@ -56,6 +56,23 @@ def test_runtime_validation_rejects_cli_and_official_surface(tmp_path: Path):
     assert "runtime arm used CLI or shell" in errors
 
 
+def test_validation_ignores_surface_names_in_prompt_and_checks_actual_tools(
+    tmp_path: Path,
+):
+    runner = _runner()
+    answer = {
+        "case_id": "K1",
+        "answer": "Use Runtime MCP native.batch in automation mode and read a finite dataset sample.",
+        "code": "",
+        "sources": [],
+    }
+    events = [
+        {"type": "message_start", "prompt": "Do not invoke ads-agent CLI or official MCP"},
+        {"type": "tool_execution_start", "toolName": "eda_read"},
+    ]
+    assert runner.validate("K1", "runtime", tmp_path, answer, events) == []
+
+
 def test_codex_oauth_is_normalized_for_pi_without_changing_source(tmp_path: Path):
     runner = _runner()
     source = tmp_path / "codex-auth.json"

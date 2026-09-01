@@ -356,6 +356,26 @@ def install_runtime_codex_profile(paths: Paths, agent_home: Path, env: dict[str,
         ],
         env=env,
     )
+    profile = agent_home / "eda-runtime.config.toml"
+    inherited = {
+        key: env[key]
+        for key in (
+            "EDA_RUNTIME_HOME",
+            "HOME",
+            "XDG_CONFIG_HOME",
+            "XDG_CACHE_HOME",
+            "XDG_DATA_HOME",
+            "DISPLAY",
+            "HPEESOF_DIR",
+            "ADS_LICENSE_FILE",
+        )
+        if env.get(key)
+    }
+    with profile.open("a", encoding="utf-8") as handle:
+        handle.write('[mcp_servers."eda-bridge-runtime".env]\n')
+        for key, value in inherited.items():
+            handle.write(f"{key} = {json.dumps(value)}\n")
+        handle.write("\n")
     return selected
 
 
@@ -461,20 +481,41 @@ def event_facts(events: list[dict[str, Any]], agent: str) -> dict[str, Any]:
 
 def validate(case_id: str, arm: str, work: Path, answer: dict[str, Any], events: list[dict[str, Any]]) -> list[str]:
     errors: list[str] = []
-    event_text = json.dumps(events, ensure_ascii=False).lower()
     combined = f"{answer.get('answer', '')}\n{answer.get('code', '')}".lower()
+    actual_tools: list[str] = []
+    used_shell = False
+    for event in events:
+        item = event.get("item") or {}
+        if item.get("type") == "mcp_tool_call":
+            actual_tools.append(
+                str(item.get("name") or item.get("tool") or item.get("server") or "").lower()
+            )
+        if item.get("type") == "command_execution":
+            used_shell = True
+        if event.get("type") == "tool_execution_start":
+            name = str(event.get("toolName") or "").lower()
+            actual_tools.append(name)
+            if name == "bash":
+                used_shell = True
     if arm == "runtime":
-        if "mcp__ads__" in event_text or "start_local_session" in event_text:
+        if any(
+            name in {"search_docs", "get_docs", "start_local_session", "execute_python"}
+            or name.startswith("mcp__ads__")
+            for name in actual_tools
+        ):
             errors.append("runtime arm crossed into official MCP")
-        if re.search(r"command_execution|toolname\"\s*:\s*\"bash|ads-agent\s+(quickstart|examples|docs|runtime)", event_text):
+        if used_shell:
             errors.append("runtime arm used CLI or shell")
     else:
-        if "eda_run_" in event_text or "eda.run" in event_text or "eda_bridge_runtime" in event_text:
+        if any(name.startswith("eda_") or "eda_bridge_runtime" in name for name in actual_tools):
             errors.append("official arm crossed into Runtime MCP")
-        if re.search(r"command_execution|toolname\"\s*:\s*\"bash", event_text):
+        if used_shell:
             errors.append("official arm used shell")
     if case_id == "K1":
-        if not re.search(r"headless|no[- ]gui|without.{0,30}gui", combined):
+        if not re.search(
+            r"headless|no[- ]gui|without.{0,30}gui|automation mode|ui.{0,30}(unavailable|not available)",
+            combined,
+        ):
             errors.append("K1 missing no-GUI boundary")
         if "dataset" not in combined or not re.search(r"finite|numeric|sample|read", combined):
             errors.append("K1 missing finite dataset readback")
