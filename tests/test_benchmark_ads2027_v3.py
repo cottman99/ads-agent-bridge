@@ -108,6 +108,37 @@ def test_timing_facts_exclude_agent_supplied_wait_values():
     assert facts["timing_ms"] == {"client_transport_ms": [12.5]}
 
 
+def test_pi_timing_facts_ignore_capability_template_values():
+    runner = _runner()
+    events = [
+        {
+            "type": "tool_execution_end",
+            "result": {
+                "details": {
+                    "runtime": {
+                        "client_transport_ms": 7.5,
+                        "response": {
+                            "result": {
+                                "data": {
+                                    "bridge": {
+                                        "template": {"wait": {"timeout_ms": 300000}},
+                                        "timing": {"native_total_ms": 2500.0},
+                                    }
+                                }
+                            }
+                        },
+                    }
+                }
+            },
+        }
+    ]
+    facts = runner.event_facts(events, "pi")
+    assert facts["timing_ms"] == {
+        "client_transport_ms": [7.5],
+        "native_total_ms": [2500.0],
+    }
+
+
 def test_codex_oauth_is_normalized_for_pi_without_changing_source(tmp_path: Path):
     runner = _runner()
     source = tmp_path / "codex-auth.json"

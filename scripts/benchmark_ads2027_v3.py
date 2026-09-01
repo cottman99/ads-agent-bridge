@@ -443,21 +443,45 @@ def event_facts(events: list[dict[str, Any]], agent: str) -> dict[str, Any]:
     final_text = ""
     timing_ms: dict[str, list[float]] = {}
 
-    def walk(value: Any) -> None:
+    def collect_timing_object(value: Any) -> None:
         if isinstance(value, dict):
             for key, child in value.items():
-                if key.endswith("_ms") and isinstance(child, (int, float)):
+                if (key.endswith("_ms") or key.endswith("_seconds")) and isinstance(
+                    child, (int, float)
+                ):
                     timing_ms.setdefault(key, []).append(float(child))
-                walk(child)
+                elif isinstance(child, (dict, list)):
+                    collect_timing_object(child)
         elif isinstance(value, list):
             for child in value:
-                walk(child)
+                collect_timing_object(child)
+
+    def collect_runtime_result(value: Any) -> None:
+        if not isinstance(value, dict):
+            return
+        transport = value.get("client_transport_ms")
+        if isinstance(transport, (int, float)):
+            timing_ms.setdefault("client_transport_ms", []).append(float(transport))
+        response = value.get("response")
+        if not isinstance(response, dict):
+            return
+
+        def find_timing(node: Any) -> None:
+            if not isinstance(node, dict):
+                return
+            if isinstance(node.get("timing"), dict):
+                collect_timing_object(node["timing"])
+            for key in ("result", "data", "bridge"):
+                find_timing(node.get(key))
+
+        find_timing(response)
 
     for event in events:
         if agent == "codex":
             item = event.get("item") or {}
             if event.get("type") == "item.completed" and item.get("type") == "mcp_tool_call":
-                walk(item.get("result"))
+                result = item.get("result") or {}
+                collect_runtime_result(result.get("structured_content"))
             if item.get("type") == "mcp_tool_call":
                 tool_names.append(str(item.get("name") or item.get("tool") or item.get("server") or "mcp"))
             candidate = event.get("usage")
@@ -467,7 +491,8 @@ def event_facts(events: list[dict[str, Any]], agent: str) -> dict[str, Any]:
                         usage[key] = max(usage[key], candidate[key])
         else:
             if event.get("type") == "tool_execution_end":
-                walk(event.get("result"))
+                result = event.get("result") or {}
+                collect_runtime_result((result.get("details") or {}).get("runtime"))
             if event.get("type") == "tool_execution_start":
                 tool_names.append(str(event.get("toolName") or "tool"))
             if event.get("type") == "message_end" and (event.get("message") or {}).get("role") == "assistant":
