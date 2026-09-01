@@ -560,8 +560,16 @@ def _merge_reference_candidates(
     while uncovered and remaining and len(topic_supplements) < topic_quota:
         candidate = max(
             remaining,
-            key=lambda row: sum(
-                term in str(row["title"]).casefold() for term in uncovered
+            key=lambda row: (
+                sum(
+                    term
+                    in " ".join(
+                        str(row.get(field, "")).casefold()
+                        for field in ("title", "relative_path", "_content")
+                    )
+                    for term in terms
+                ),
+                sum(term in str(row["title"]).casefold() for term in uncovered),
             ),
         )
         gains = {
