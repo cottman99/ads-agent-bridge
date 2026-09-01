@@ -635,6 +635,45 @@ def test_multi_term_guide_match_keeps_reference_candidates_visible(tmp_path: Pat
     assert any(row["source_kind"] == "ael_reference" for row in result["results"][:3])
 
 
+def test_multi_term_query_preserves_uncovered_title_topics(tmp_path: Path, monkeypatch) -> None:
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "layout.html").write_text(
+        "<html><title>Layout</title><body>ADS 2027 Python API execute layout DRC design rule check</body></html>",
+        encoding="utf-8",
+    )
+    (docs / "drc.html").write_text(
+        "<html><title>Using the Design Rule Checker DRC</title><body>layout guide</body></html>",
+        encoding="utf-8",
+    )
+    (docs / "python-dve.html").write_text(
+        "<html><title>Automating Design Verification using Python</title>"
+        "<body>create_drc_job run_drc_job</body></html>",
+        encoding="utf-8",
+    )
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    instance = AdsInstance(
+        instance_id="ads-2027-topic-coverage-test",
+        install_root=str(tmp_path),
+        product_version="ADS 2027",
+        year=2027,
+        update=None,
+        platform="test",
+        support_tier="stable",
+        docs_roots={"ads": [str(docs)]},
+    )
+    build_full_index(instance)
+
+    result = query(instance, "ADS 2027 Python API execute layout DRC design rule check", limit=10)
+
+    assert result["search_mode"] == "bootstrap_index_hybrid"
+    assert "Automating Design Verification using Python" in {
+        row["title"] for row in result["results"]
+    }
+
+
 def test_longer_exact_symbol_title_beats_generic_exact_title(tmp_path: Path, monkeypatch) -> None:
     docs = tmp_path / "docs" / "reference" / "_autosummary"
     docs.mkdir(parents=True)
