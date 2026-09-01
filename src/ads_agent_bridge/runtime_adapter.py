@@ -6,6 +6,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from eda_bridge_runtime import native_batch_capability_contract
+
 from . import __version__
 from .bridge_client import request as bridge_request
 from .circuit_simulation import execute_simulation_plan
@@ -201,6 +203,33 @@ class _AdsAdapterBase:
                         "required": ["plan"],
                         "optional": ["continuation_context", "redact_paths"],
                         "plan_schema": "eda.native-batch/v1",
+                        "plan_contract": native_batch_capability_contract(),
+                        "ads_contract": {
+                            "runtime_by_profile": {
+                                "de": "ads.python.de",
+                                "dds": "ads.python.dds",
+                            },
+                            "resource_kind": "ads-workspace",
+                            "selectors": ["instance", "version", "profile"],
+                            "program_api": "api.de and api.db",
+                            "program_context": [
+                                "workspace",
+                                "profile",
+                                "version",
+                                "artifact_root",
+                                "effect",
+                            ],
+                            "allowed_imports": [
+                                "keysight.ads.de",
+                                "keysight.ads.dds",
+                                "json",
+                                "math",
+                            ],
+                            "staged_write_paths": (
+                                "one sibling output workspace, plus one artifact directory "
+                                "only when scope.artifacts is non-empty"
+                            ),
+                        },
                         "continuation_schema": "eda-context/v2",
                         "context_materializes": [
                             "scope.selectors.instance",

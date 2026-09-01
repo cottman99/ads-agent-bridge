@@ -418,6 +418,15 @@ def test_degraded_experience_disables_shortcuts_but_not_native_execution(monkeyp
         operations["native.batch"]["input_schema"]["continuation_schema"]
         == "eda-context/v2"
     )
+    native_schema = operations["native.batch"]["input_schema"]
+    assert native_schema["plan_contract"]["schema_version"] == "eda.native-batch/v1"
+    assert native_schema["plan_contract"]["program"]["entrypoint"] == (
+        "def run(api, context)"
+    )
+    assert native_schema["ads_contract"]["runtime_by_profile"] == {
+        "de": "ads.python.de",
+        "dds": "ads.python.dds",
+    }
 
 
 def test_native_batch_continues_from_opaque_content_bound_context(
