@@ -53,19 +53,23 @@ contain `{"status": "passed"}`. Do not use native observe calls to rediscover
 these validated mechanics.
 
 Use string concatenation below the pre-created artifact root; `os` and `open`
-are intentionally outside this governed program policy. The validated dataset
-readback is:
+are intentionally outside this governed program policy. By default,
+`CircuitSimulator.run_netlist` names the dataset after the schematic cell, not
+after the simulation-controller instance. In the validated example the cell is
+`ac_minimal`, so the file is `ac_minimal.ds`; `AC1.AC` is the varblock inside
+that dataset. The validated dataset readback is:
 
 ```python
 import keysight.ads.dataset as dataset
 
-path = context["artifact_root"] + "/AC1.ds"
+path = context["artifact_root"] + "/ac_minimal.ds"
 with dataset.open(path) as data:
     frame = data["AC1.AC"].to_dataframe().reset_index()
     sample = float(abs(frame["R1_v"].iloc[0]))
 ```
 
-For the maintained AC example, set `Dec` to `"5"` and `Step` to the empty
-string. Put `required_artifacts` inside the `validation` object, and use the same
-relative dataset filename in `scope.artifacts` and
-`validation.required_artifacts`.
+For another schematic cell, replace `ac_minimal.ds` with `<cell_name>.ds`; do
+not derive the filename from the controller name. For the maintained AC
+example, set `Dec` to `"5"` and `Step` to the empty string. Put
+`required_artifacts` inside the `validation` object, and use the same relative
+dataset filename in `scope.artifacts` and `validation.required_artifacts`.

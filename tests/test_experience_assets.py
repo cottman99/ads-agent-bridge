@@ -20,6 +20,11 @@ def test_packaged_experience_library_and_all_compiled_shortcuts_match():
     assert [item["id"] for item in ads_2027_native["assets"]] == [
         "ads.native.circuit-simulate-and-validate"
     ]
+    native_body = (root / "workflows" / "native-circuit-simulate.md").read_text(
+        encoding="utf-8"
+    )
+    assert "names the dataset after the schematic cell" in native_body
+    assert 'context["artifact_root"] + "/ac_minimal.ds"' in native_body
     for operation, profile in (
         ("design.apply", "de"),
         ("circuit.simulate", "de"),

@@ -7,6 +7,10 @@ created by `workspace.create`; the batch opened its existing schematic in
 netlist, ran `CircuitSimulator.run_netlist` once, and read `AC1.AC` through
 `keysight.ads.dataset`.
 
+The persisted dataset was `ac_minimal.ds`, named after the schematic cell
+`ac_minimal`. `AC1.AC` was the varblock inside that file; `AC1.ds` was not the
+validated filename. Future experience guidance must preserve this distinction.
+
 The successful external-automation opening sequence was
 `api.de.open_workspace(context["workspace"])` followed by
 `api.db.open_design(top_design, api.de.db.DesignMode.WRITE)`. The class-style
