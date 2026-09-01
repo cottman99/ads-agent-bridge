@@ -579,7 +579,9 @@ def validate(case_id: str, arm: str, work: Path, answer: dict[str, Any], events:
             combined,
         ):
             errors.append("K1 missing no-GUI boundary")
-        if "dataset" not in combined or not re.search(r"finite|numeric|sample|read", combined):
+        if not re.search(r"dataset|\.ds\b", combined) or not re.search(
+            r"finite|numeric|sample|read", combined
+        ):
             errors.append("K1 missing finite dataset readback")
         if arm == "runtime" and not re.search(r"eda\.(read|submit|run_plan)|runtime mcp|native\.batch|workspace\.create", combined):
             errors.append("K1 did not identify the current Runtime MCP route")
@@ -591,7 +593,10 @@ def validate(case_id: str, arm: str, work: Path, answer: dict[str, Any], events:
         for label, pattern in {"rectangle": r"rectangle|db\.rect", "polygon": r"polygon|db\.polygon", "path": r"path|db\.path"}.items():
             if not re.search(pattern, combined):
                 errors.append(f"K3 missing {label}")
-        if not re.search(r"add_(rectangle|polygon|path)|db\.(rect|polygon|path)", combined):
+        if not re.search(
+            r"add_(rectangle|polygon|path)|db(?:_uu)?\.(rect|polygon|path)",
+            combined,
+        ):
             errors.append("K3 lacks recognizable geometry calls")
     elif case_id == "K6":
         answer_text = str(answer.get("answer", ""))
@@ -813,6 +818,30 @@ def run_suite(paths: Paths, args: argparse.Namespace) -> list[dict[str, Any]]:
 
 def summarize(paths: Paths, phase: str) -> dict[str, Any]:
     records = [json.loads(path.read_text(encoding="utf-8")) for path in sorted((paths.runs / phase).glob("**/result.json"))]
+    for record in records:
+        run_dir = (
+            paths.runs
+            / phase
+            / record["campaign"]
+            / f"trial-{record['trial']:02d}"
+            / record["case"]
+            / record["agent"]
+            / record["arm"]
+        )
+        events = load_events(run_dir / "events.jsonl")
+        audited_errors = validate(
+            record["case"],
+            record["arm"],
+            run_dir / "work",
+            record["answer"],
+            events,
+        )
+        record["recorded_status"] = record["status"]
+        record["recorded_validation_errors"] = record["validation_errors"]
+        record["validation_errors"] = audited_errors
+        record["status"] = (
+            "pass" if record["returncode"] == 0 and not audited_errors else "fail"
+        )
     aggregate = {}
     for agent in AGENTS:
         for arm in ARMS:

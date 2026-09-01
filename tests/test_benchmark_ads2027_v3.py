@@ -204,6 +204,35 @@ def test_k6_requires_the_documented_ads2027_drc_flow(tmp_path: Path):
     assert runner.validate("K6", "runtime", tmp_path, ael_call_flow, []) == []
 
 
+def test_k1_accepts_a_named_ds_artifact_with_finite_readback(tmp_path: Path):
+    answer = {
+        "case_id": "K1",
+        "answer": (
+            "Use Runtime MCP workspace.create then native.batch headlessly. "
+            "Retain <cell>.ds and freshly validate one finite sample."
+        ),
+        "code": "",
+        "sources": ["runtime capabilities"],
+    }
+
+    assert _runner().validate("K1", "runtime", tmp_path, answer, []) == []
+
+
+def test_k3_accepts_documented_db_uu_shape_constructors(tmp_path: Path):
+    answer = {
+        "case_id": "K3",
+        "answer": "Caller supplies design, layer, and points.",
+        "code": (
+            "rectangle = db_uu.Rect(design, layer, ll, ur)\n"
+            "polygon = db_uu.Polygon(design, layer, polygon_geometry)\n"
+            "path = db_uu.Path(design, layer, width, points)"
+        ),
+        "sources": ["ADS 2027 Python reference"],
+    }
+
+    assert _runner().validate("K3", "runtime", tmp_path, answer, []) == []
+
+
 def test_codex_oauth_is_normalized_for_pi_without_changing_source(tmp_path: Path):
     runner = _runner()
     source = tmp_path / "codex-auth.json"
