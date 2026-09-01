@@ -10,7 +10,6 @@ from __future__ import annotations
 import argparse
 import base64
 import hashlib
-import importlib.util
 import json
 import math
 import os
@@ -18,7 +17,6 @@ import re
 import shutil
 import statistics
 import subprocess
-import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -402,6 +400,7 @@ def prompt_for(contract: dict[str, Any], arm: str, case_id: str, work: Path) -> 
             surface,
             "Shell, browser, web, external repositories, prior outputs, and direct process execution are unavailable. Do not perform duplicate work. Calibration and formal runs use fresh directories.",
             "For a knowledge case, call the assigned MCP documentation/search surface and ground the answer in its returned evidence instead of answering from memory. For an execution case, use only the assigned MCP execution surface.",
+            "If the assigned execution surface requires an idempotency key, derive a unique key from this RUN_DIRECTORY; never reuse a key from another run.",
             f"RUN_DIRECTORY={work}",
             contract["cases"][case_id]["prompt"].replace("RUN_DIRECTORY", str(work)),
         )

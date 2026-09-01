@@ -420,7 +420,7 @@ def test_degraded_experience_disables_shortcuts_but_not_native_execution(monkeyp
     )
     native_schema = operations["native.batch"]["input_schema"]
     assert native_schema["plan_contract"]["schema_version"] == "eda.native-batch/v1"
-    assert native_schema["plan_contract"]["program"]["entrypoint"] == (
+    assert native_schema["plan_contract"]["program"]["source_must_define"] == (
         "def run(api, context)"
     )
     assert native_schema["ads_contract"]["runtime_by_profile"] == {
@@ -429,6 +429,13 @@ def test_degraded_experience_disables_shortcuts_but_not_native_execution(monkeyp
     }
     assert "keysight.ads.dataset" in native_schema["ads_contract"]["allowed_imports"]
     assert "keysight.edatoolbox" in native_schema["ads_contract"]["allowed_imports"]
+    assert native_schema["ads_contract"]["program_context"]["type"] == "dict"
+    assert native_schema["ads_contract"]["program_context"]["access"] == (
+        'context["<key>"]'
+    )
+    assert native_schema["ads_contract"]["validation_return"]["required"] == {
+        "status": "passed"
+    }
 
 
 def test_native_batch_continues_from_opaque_content_bound_context(

@@ -211,14 +211,33 @@ class _AdsAdapterBase:
                             },
                             "resource_kind": "ads-workspace",
                             "selectors": ["instance", "version", "profile"],
-                            "program_api": "api.de and api.db",
-                            "program_context": [
-                                "workspace",
-                                "profile",
-                                "version",
-                                "artifact_root",
-                                "effect",
-                            ],
+                            "program_signature": "def run(api, context)",
+                            "validation_signature": "def validate(api, context)",
+                            "program_api": {
+                                "type": "object",
+                                "members": ["api.de", "api.db"],
+                            },
+                            "program_context": {
+                                "type": "dict",
+                                "access": "context[\"<key>\"]",
+                                "keys": [
+                                    "workspace",
+                                    "profile",
+                                    "version",
+                                    "artifact_root",
+                                    "effect",
+                                ],
+                                "workspace": (
+                                    "staged workspace path used for all workspace mutations"
+                                ),
+                                "artifact_root": (
+                                    "pre-created only when scope.artifacts is non-empty"
+                                ),
+                            },
+                            "validation_return": {
+                                "required": {"status": "passed"},
+                                "purpose": "prove persisted staged output in a fresh process",
+                            },
                             "allowed_imports": [
                                 "keysight.ads.dataset",
                                 "keysight.ads.de",

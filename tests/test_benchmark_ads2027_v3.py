@@ -56,6 +56,20 @@ def test_runtime_validation_rejects_cli_and_official_surface(tmp_path: Path):
     assert "runtime arm used CLI or shell" in errors
 
 
+def test_prompt_requires_run_unique_idempotency_key(tmp_path: Path):
+    runner = _runner()
+    contract = json.loads(
+        (
+            Path(__file__).parents[1]
+            / "docs"
+            / "benchmarks"
+            / "ads2027-v3-contract.json"
+        ).read_text(encoding="utf-8")
+    )
+    prompt = runner.prompt_for(contract, "runtime", "E3", tmp_path)
+    assert "derive a unique key from this RUN_DIRECTORY" in prompt
+
+
 def test_validation_ignores_surface_names_in_prompt_and_checks_actual_tools(
     tmp_path: Path,
 ):
