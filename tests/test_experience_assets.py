@@ -25,6 +25,7 @@ def test_packaged_experience_library_and_all_compiled_shortcuts_match():
     )
     assert "names the dataset after the schematic cell" in native_body
     assert 'context["artifact_root"] + "/ac_minimal.ds"' in native_body
+    assert 'wire.add_wire_label("R1_v")' in native_body
     for operation, profile in (
         ("design.apply", "de"),
         ("circuit.simulate", "de"),

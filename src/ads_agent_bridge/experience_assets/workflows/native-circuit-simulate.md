@@ -46,6 +46,26 @@ The validated component identifiers for the maintained AC example are
 `("ads_simulation", "AC", "symbol")`. Their relevant parameter keys are `R`,
 `C`, `Start`, `Stop`, `Dec`, and `Step`.
 
+For this maintained example, preserve the validated placement and connection
+pattern instead of inventing alternate pin coordinates or label APIs:
+
+```python
+design.add_instance(("ads_sources", "V_AC", "symbol"), (-2, 0), name="SRC1", angle=-90)
+r1 = design.add_instance(("ads_rflib", "R", "symbol"), (0, 0), name="R1", angle=0)
+c1 = design.add_instance(("ads_rflib", "C", "symbol"), (2, 0), name="C1", angle=-90)
+design.add_instance(("ads_rflib", "GROUND", "symbol"), (-2, -1), name="G1", angle=-90)
+design.add_instance(("ads_rflib", "GROUND", "symbol"), (2, -1), name="G2", angle=-90)
+design.add_wire([(-2.0, 0.0), (0.0, 0.0)])
+wire = design.add_wire([(1.0, 0.0), (2.0, 0.0)])
+wire.add_wire_label("R1_v")
+ac1 = design.add_instance(("ads_simulation", "AC", "symbol"), (-4, 1), name="AC1", angle=0)
+```
+
+Set the documented parameters after construction, save the design, and then
+generate its netlist. In particular, `R1_v` was validated through
+`wire.add_wire_label`; a different net-label API or coordinate pattern is not
+evidence-equivalent.
+
 Generate the netlist from the design, run exactly one
 `keysight.edatoolbox.ads.CircuitSimulator.run_netlist`, and validate the
 persisted dataset in the separate validation program. The validation return must
