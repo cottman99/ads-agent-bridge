@@ -254,10 +254,19 @@ class _AdsAdapterBase:
                                 "repr",
                                 "sorted",
                             ],
-                            "staged_write_paths": (
-                                "one sibling output workspace, plus one artifact directory "
-                                "only when scope.artifacts is non-empty"
-                            ),
+                            "staged_write_paths": {
+                                "without_artifacts": [
+                                    "absolute distinct sibling output workspace"
+                                ],
+                                "with_artifacts": [
+                                    "absolute distinct sibling output workspace",
+                                    "absolute final artifact directory",
+                                ],
+                                "scope_artifacts": (
+                                    "relative file paths below context[\"artifact_root\"]"
+                                ),
+                                "never": "library names or relative write_paths",
+                            },
                         },
                         "continuation_schema": "eda-context/v2",
                         "continuation_usage": {

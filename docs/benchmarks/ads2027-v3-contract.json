@@ -53,7 +53,7 @@
     "E3": {
       "class": "execution",
       "title": "Disposable no-GUI AC simulation with finite dataset evidence",
-      "prompt": "Create a new disposable ADS 2027 workspace strictly below RUN_DIRECTORY, build a minimal AC circuit, run exactly one simulation without launching the ADS GUI, read the generated dataset, and return one finite numeric sample. Use only the assigned MCP product surface and its normal current workflow. Do not use a product CLI, shell, direct ADS Python process, direct simulator process, the other benchmark surface, or earlier run artifacts. Do not claim success unless the persisted workspace, dataset readback, and finite sample are proven. Return only the required JSON object.",
+      "prompt": "Create a new disposable ADS 2027 workspace strictly below RUN_DIRECTORY. In a new schematic, build the same bounded circuit for this comparison: one V_AC source, one 3.0 kOhm resistor, one 1.0 uF capacitor, grounds, a wire label R1_v, and one AC controller sweeping 1 Hz to 1 MHz with 5 points per decade. Run exactly one simulation without launching the ADS GUI, read varblock AC1.AC from the generated dataset, and return the finite magnitude of the first R1_v sample. Use only the assigned MCP product surface and its normal current workflow. Do not use a product CLI, shell, direct ADS Python process, direct simulator process, the other benchmark surface, or earlier run artifacts. Do not claim success unless the persisted workspace, dataset readback, and finite sample are proven. Return only the required JSON object.",
       "common_acceptance": {
         "new_workspace_below_run_directory": true,
         "simulation_count": 1,
