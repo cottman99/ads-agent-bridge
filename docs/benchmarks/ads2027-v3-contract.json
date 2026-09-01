@@ -38,7 +38,7 @@
     "K1": {
       "class": "knowledge",
       "title": "Choose the supported no-GUI execution route",
-      "prompt": "An engineer wants a disposable ADS 2027 workspace, a minimal AC circuit, one simulation, one finite dataset sample, and all generated artifacts below the assigned run directory. There is no pre-existing DE or DDS session. Using only the assigned product surface, identify the supported route and its important boundary. This is knowledge-only: do not execute or create artifacts. Do not prescribe a legacy CLI path when the assigned surface provides MCP tools. Return only the required JSON object."
+      "prompt": "An engineer wants a disposable ADS 2027 workspace, a minimal AC circuit, one simulation, one finite dataset sample, and all generated artifacts below the assigned run directory. There is no pre-existing DE or DDS session, and the ADS GUI must not be launched. Using only the assigned product surface, identify the supported route and explicitly state the no-GUI boundary. This is knowledge-only: do not execute or create artifacts. Do not prescribe a legacy CLI path when the assigned surface provides MCP tools. Return only the required JSON object."
     },
     "K3": {
       "class": "knowledge",
