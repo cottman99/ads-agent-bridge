@@ -136,6 +136,12 @@ def _decode_reference(value: str) -> str:
     return context_id
 
 
+def continuation_ref(value: str) -> str:
+    """Return the short host-local reference for an existing continuation."""
+
+    return _decode_reference(value)
+
+
 def resolve_continuation_context(value: str) -> dict[str, Any]:
     context_id = _decode_reference(value)
     path = _context_path(context_id)
@@ -281,4 +287,3 @@ def materialize_native_batch_plan(
     plan["scope"] = scope
     plan["transaction"] = transaction
     return plan, str(record["content_state"]["sha256"])
-

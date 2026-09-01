@@ -36,6 +36,25 @@ only when its asset id/version/hash, applicability, runtime state, and parameter
 schema match. Otherwise generate one governed native ADS Python or AEL batch.
 Retain its receipt and independent validation.
 
+Experience intent and tag filters are exact metadata matches. When their exact
+values are unknown, omit them. Filter `experience.list` by the known ADS major
+`version`, runtime `profile`, and advertised operation `capability`; then call
+`experience.get` once for the matching asset. If applicability itself is still
+unknown, list the compact index without filters. Do not invent a taxonomy or
+select an asset whose version/profile/capability does not match.
+
+An experience asset's `official_refs` are durable provenance labels, not live
+`docs.get` identifiers. Use their topic to run `docs.query`, then pass only a
+`source_ref` returned by that query to `docs.get`. Documentation domains, when
+used, must be one of `ads`, `ael`, `python`, or `dds`; omit the domain filter
+when the exact domain is not known.
+
+Documentation domain filters are explicit and never inferred from words in the
+query. Before making a negative capability claim, query the exact proposed
+symbol without a domain filter: Python automation may be documented in an ADS
+product guide rather than the Python reference tree. A domain-limited miss is
+not corpus-wide evidence.
+
 Experience assets are advisory, not API, authorization, capability claims, or
 success evidence. Never execute Markdown. A missing or degraded library lowers
 guidance quality but must not block governed native execution.
@@ -69,8 +88,20 @@ do not invent a DDS launch or infer it from DE readiness.
 
 ### Disposable no-GUI proof
 
-Before relying on automation for a real project, prefer the maintained
-disposable gate:
+Through the normal Runtime MCP path, create one explicit non-existing workspace
+with `workspace.create`. It returns both the general `eda_context` and an opaque,
+content-bound continuation. Pass the returned short `continuation_ref` as
+`payload.continuation_context` in the first `native.batch` request. Keep the long
+`continuation_context` only for portable EDA Context handoff; do not make the
+language model recopy it when the short host-local reference exists. The Runtime then materializes the exact ADS
+instance, version, profile, source workspace path, and source fingerprint; the
+Agent still declares the distinct output workspace, artifacts, program,
+fresh-process validation, limits, purpose, expected effect, and a task-unique
+idempotency key. Do not inspect the continuation or rediscover those bound
+fields through probe submissions.
+
+The direct CLI quickstart remains an administrator/diagnostic acceptance gate,
+not the Agent's normal task path:
 
 ```text
 ads-agent quickstart --ads <instance-id>

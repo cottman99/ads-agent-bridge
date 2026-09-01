@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 0.1.0a49 - 2026-09-01
+
+- Publish the complete Runtime MCP native-batch contract, compact continuation
+  references, and a validated ADS 2027 AC simulation experience with exact
+  topology, wiring, dataset naming, and fresh-process validation evidence.
+- Improve corpus-wide and multi-topic ADS documentation retrieval while
+  keeping domain filters explicit, including corrected ADS 2027 Python DRC
+  guidance.
+- Add and audit the current-architecture comparison against the official ADS
+  MCP across Codex and Pi Agent: Runtime passed 22/24 overall and 18/18
+  knowledge runs; the official MCP passed 18/24 overall and all 6 focused
+  execution runs, with its direct execution path remaining faster.
+
 ## 0.1.0a48 - 2026-08-31
 
 - Extend the supervised live-design lane with bounded component and wire

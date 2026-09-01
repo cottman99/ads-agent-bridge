@@ -81,6 +81,7 @@ def test_create_workspace_returns_opaque_context(tmp_path, monkeypatch):
 
     continuation = EDAContext.decode(result["continuation_context"])
     assert continuation.target == {"binding": "private-host-record"}
+    assert result["continuation_ref"] == continuation.locator["context_id"]
     assert result["continuation_state"] == {
         "schema_version": "ads-continuation-state/v1",
         "state": "content-bound",

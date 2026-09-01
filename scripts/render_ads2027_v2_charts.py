@@ -10,10 +10,9 @@ from typing import Any
 
 CASE_ORDER = ("K1", "K3", "K6", "E3")
 ROW_ORDER = (
-    ("codex", "bridge_a29", "Codex · Bridge a29"),
-    ("codex", "bridge_a48", "Codex · Bridge a48"),
+    ("codex", "runtime", "Codex · EDA Runtime"),
     ("codex", "official", "Codex · Official MCP"),
-    ("pi", "bridge_a48", "Pi Agent · Bridge a48"),
+    ("pi", "runtime", "Pi Agent · EDA Runtime"),
     ("pi", "official", "Pi Agent · Official MCP"),
 )
 
@@ -110,16 +109,16 @@ def render_headless(rows: list[dict[str, Any]]) -> str:
         svg_text(
             40,
             68,
-            "Median end-to-end wall time; whiskers show the three-run range. Every E3 run passed.",
+            "Agent end-to-end median; whiskers show the three-run range. Labels include strict pass count.",
             "subtitle",
         ),
     ]
-    left, top, scale = 260, 120, 7.0
-    for tick in range(0, 101, 20):
+    left, top, scale = 280, 120, 3.7
+    for tick in range(0, 201, 40):
         x = left + tick * scale
-        body.append(f'<line x1="{x}" y1="{top - 12}" x2="{x}" y2="430" class="grid"/>')
-        body.append(svg_text(x, 452, f"{tick}s", "axis", "middle"))
-    colors = {"bridge_a29": "#94a3b8", "bridge_a48": "#2f6fed", "official": "#e3a12f"}
+        body.append(f'<line x1="{x}" y1="{top - 12}" x2="{x}" y2="350" class="grid"/>')
+        body.append(svg_text(x, 374, f"{tick}s", "axis", "middle"))
+    colors = {"runtime": "#2f6fed", "official": "#e3a12f"}
     for index, ((agent, arm, label), row) in enumerate(
         zip(ROW_ORDER, selected, strict=True)
     ):
@@ -150,15 +149,16 @@ def render_headless(rows: list[dict[str, Any]]) -> str:
     body.append(
         svg_text(
             40,
-            495,
-            "ADS 2027 · gpt-5.6-terra medium · serial counterbalanced · 3 repetitions per row · 2026-09-01",
+            418,
+            "ADS 2027 · Runtime MCP + current Skills vs official MCP · 3 fresh repetitions per row · 2026-09-01",
             "note",
         )
     )
     return svg_shell(
         "ADS 2027 headless AC execution benchmark",
-        "Five rows compare median wall time and range for Codex or Pi Agent using Bridge a29, Bridge a48, or the official ADS MCP. All headless execution runs passed.",
+        "Four rows compare Agent end-to-end wall time and strict execution pass counts for Codex or Pi Agent using EDA Runtime MCP or the official ADS MCP.",
         body,
+        height=450,
     )
 
 
@@ -218,26 +218,56 @@ def render_knowledge(rows: list[dict[str, Any]]) -> str:
         body.append(
             f'<text x="{x + 80}" y="{y + 30}" text-anchor="middle" class="value" style="fill:{total_color}">{total}/9</text>'
         )
-    body.append(svg_text(300, 452, "Passes:", "axis"))
+    body.append(svg_text(300, 382, "Passes:", "axis"))
     for index, passes in enumerate((0, 1, 2, 3)):
         x = 345 + index * 70
         body.append(
-            f'<rect x="{x}" y="440" width="24" height="16" rx="2" fill="{fills[passes]}" stroke="#627086"/>'
+            f'<rect x="{x}" y="370" width="24" height="16" rx="2" fill="{fills[passes]}" stroke="#627086"/>'
         )
-        body.append(svg_text(x + 30, 453, str(passes), "axis"))
+        body.append(svg_text(x + 30, 383, str(passes), "axis"))
     body.append(
         svg_text(
             40,
-            495,
-            "K1 route · K3 rectangle/polygon/path · K6 reject unverified Python DRC · 3 repetitions · 2026-09-01",
+            435,
+            "K1 complete route · K3 ADS 2027 geometry · K6 documented Python DRC · 3 repetitions · 2026-09-01",
             "note",
         )
     )
     return svg_shell(
         "ADS 2027 knowledge reliability benchmark",
-        "A matrix shows strict passes out of three for route selection, geometry API use, and the Python DRC capability boundary across Codex and Pi Agent product combinations.",
+        "A matrix shows audited strict passes out of three for route selection, ADS 2027 geometry API use, and documented Python DRC across Codex and Pi Agent product combinations.",
         body,
+        height=470,
     )
+
+
+def tool_layer_summary(source: dict[str, Any]) -> dict[str, float]:
+    passed_e3 = [
+        run for run in source["runs"] if run["case"] == "E3" and run["status"] == "pass"
+    ]
+    runtime = [run for run in passed_e3 if run["arm"] == "runtime"]
+    official = [run for run in passed_e3 if run["arm"] == "official"]
+    native = [
+        value for run in runtime for value in run["timing_ms"].get("native_total_ms", [])
+    ]
+    workspace = [
+        value
+        for run in runtime
+        for value in run["timing_ms"].get("tool_workspace_create_ms", [])
+    ]
+    execute = [
+        sum(run["timing_ms"].get("tool_execute_python_ms", [])) for run in official
+    ]
+    session = [
+        sum(run["timing_ms"].get("tool_start_local_session_ms", []))
+        for run in official
+    ]
+    return {
+        "runtime_native_total_median_ms": round(statistics.median(native), 3),
+        "runtime_workspace_create_median_ms": round(statistics.median(workspace), 3),
+        "official_execute_python_median_ms": round(statistics.median(execute), 3),
+        "official_start_local_session_median_ms": round(statistics.median(session), 3),
+    }
 
 
 def main() -> int:
@@ -245,13 +275,13 @@ def main() -> int:
     source = json.loads(args.input.read_text(encoding="utf-8"))
     rows = aggregate(source)
     public = {
-        "schema": "ads-agent-public-benchmark/v2",
-        "benchmark_id": "ads2027-current-regression-20260901",
+        "schema": "ads-agent-public-benchmark/v3",
+        "benchmark_id": "ads2027-runtime-mcp-vs-official-20260901",
         "date": "2026-09-01",
         "identities": {
             "ads": "ADS 2027",
-            "bridge_historical": "ads-agent-bridge 0.1.0a29",
-            "bridge_current": "ads-agent-bridge 0.1.0a48",
+            "runtime": "eda-bridge-runtime 0.1.0a37 + e524b61",
+            "ads_adapter": "ads-agent-bridge 0.1.0a48 + e3374e8",
             "official_mcp_sha256": "b68afcc4e904fae576a3c139898f877261fe9266a5235313ec46d48a2d0e4783",
             "codex": "Codex CLI 0.145.0",
             "pi": "Pi Agent 0.84.4",
@@ -264,8 +294,12 @@ def main() -> int:
             "calibration_excluded": True,
             "fresh_agent_home_per_run": True,
             "isolation_violations": 0,
+            "runtime_surface": "EDA Runtime MCP plus current Runtime and ADS Skills",
+            "official_surface": "ADS 2027 official MCP",
             "pi_official_transport": "thin MCP forwarding extension; no added domain knowledge",
+            "audited_after_formal_run": True,
         },
+        "tool_layer": tool_layer_summary(source),
         "rows": rows,
     }
     args.public_summary.parent.mkdir(parents=True, exist_ok=True)

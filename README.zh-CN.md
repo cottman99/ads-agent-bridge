@@ -82,8 +82,8 @@ MCP/插件；只运行 ADS 的主机不需要 Agent 侧插件。
 工作区创建、最小电路仿真和数据集回读分别通过后才会成功。
 
 如果机器上还没有 `pipx` 或合适的 Python，可使用版本化的
-[Linux 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a47/install.sh)
-或 [Windows PowerShell 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a47/install.ps1)。
+[Linux 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a49/install.sh)
+或 [Windows PowerShell 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a49/install.ps1)。
 它会创建隔离环境，不替换外部管理的系统 Python。
 
 之后再打开真实工作区：
@@ -142,25 +142,27 @@ CSV 回读、原生 DDS 方程与曲线创建、已生成 Momentum 输入的执�
 原生数据集、CSV，以及全新重开确认、包含矩形图和极坐标图的两页 DDS 报告。见
 [脱敏工作流证据](docs/VALIDATION_2026-08-30_CIRCUIT_TO_DDS.md)。
 
-两个 ADS 2027 对比已在 2026-09-01 使用 Codex 与 Pi Agent 重测。无 GUI
-执行的结果很直接：E3 共 **15/15** 次完成，官方 MCP 在这个最小任务上
-更快；Bridge a48 仍把 Codex 中位耗时从 a29 的 **82.3 秒**降到
-**64.8 秒**。[方法与数据](docs/BENCHMARK_ADS2027_HEADLESS_AC.md)
+修正后的 ADS 2027 对比使用当前 EDA Runtime MCP + Runtime/ADS Skills，
+不再使用历史产品 CLI，并与官方 MCP 分别交给 Codex 和 Pi Agent。对于
+完全相同的无 GUI AC 任务，Runtime 完成 **4/6**，官方 MCP 完成 **6/6**，
+且官方路径更快。成功的 Runtime 原生执行本身中位数为 **2.379 秒**；更大的
+Agent 总耗时差距来自能力发现、计划构造和重试。
+[方法与数据](docs/BENCHMARK_ADS2027_HEADLESS_AC.md)
 
 ![Codex 与 Pi Agent 下的 ADS 2027 无 GUI AC 执行耗时](docs/assets/readme/ads2027-headless-ac-benchmark.svg)
 
-知识结果必须逐题看。Bridge a48 在 Codex/Pi 的 **6/6** 次中都拒绝把
-未经确认的 Python DRC 路径当成可运行能力；官方 MCP 在 **6/6** 次中都
-把它判断为已建立，因此严格通过 **0/6**。Pi + Bridge 的 K1 则遗漏了
-数据集回读说明，而官方路径 K1 完成 **6/6**。
+知识结果则相反：Runtime 完成 **18/18**，官方 MCP 完成 **12/18**。
+ADS 2027 确实记录了 Python DRC 自动化；之前的否定答案基准是错的，修正后
+两条路径的 K6 合计 **12/12**。官方剩余失败来自 K1 路径描述不完整和 K3
+使用了非当前版本的几何调用。
 [方法与数据](docs/BENCHMARK_ADS2027_KNOWLEDGE.md)
 
 ![按任务、产品入口与 Agent 展示的 ADS 2027 知识可靠性](docs/assets/readme/ads2027-knowledge-benchmark.svg)
 
 这些是小型工程回归集，不是完整产品对比，也不代表所有场景的产品排名。
-更新后的聚合数据以
-[JSON](docs/benchmarks/ads2027-v2-public-summary.json) 形式公开；8 月的 v1
-文件继续作为历史基线保留。
+审计后的聚合数据以
+[JSON](docs/benchmarks/ads2027-v3-public-summary.json) 形式公开；v1/v2
+文件继续作为历史基线保留，但不再代表当前架构对比。
 
 ## 本机与远程使用同一条路径
 

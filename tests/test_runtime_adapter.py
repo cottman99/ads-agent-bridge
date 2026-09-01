@@ -412,12 +412,59 @@ def test_degraded_experience_disables_shortcuts_but_not_native_execution(monkeyp
         )["operations"]
     }
     assert operations["design.apply"]["state"]["available"] is False
+    experience_list = operations["experience.list"]["input_schema"]
+    assert experience_list["filter_semantics"] == "exact metadata match"
+    assert "omit intents and tags" in experience_list["discovery"]
+    assert experience_list["applicability_filters"]["profile"] == ["de", "dds"]
     assert operations["native.batch"]["state"]["available"] is True
     assert operations["native.batch"]["returns_context"] is True
     assert (
         operations["native.batch"]["input_schema"]["continuation_schema"]
         == "eda-context/v2"
     )
+    native_schema = operations["native.batch"]["input_schema"]
+    assert native_schema["runtime_request_required_for_mutation"] == [
+        "purpose",
+        "expected_effect",
+        "idempotency_key",
+    ]
+    assert native_schema["plan_contract"]["schema_version"] == "eda.native-batch/v1"
+    assert native_schema["plan_contract"]["program"]["source_must_define"] == (
+        "def run(api, context)"
+    )
+    assert native_schema["ads_contract"]["runtime_by_profile"] == {
+        "de": "ads.python.de",
+        "dds": "ads.python.dds",
+    }
+    assert "keysight.ads.dataset" in native_schema["ads_contract"]["allowed_imports"]
+    assert "keysight.edatoolbox" in native_schema["ads_contract"]["allowed_imports"]
+    assert native_schema["ads_contract"]["program_context"]["type"] == "dict"
+    assert native_schema["ads_contract"]["program_context"]["access"] == (
+        'context["<key>"]'
+    )
+    assert native_schema["ads_contract"]["validation_return"]["required"] == {
+        "status": "passed"
+    }
+    continuation = native_schema["continuation_usage"]
+    assert "workspace.create" in continuation["normal_greenfield_flow"]
+    assert continuation["opaque"] is True
+    assert "scope.read_paths" in continuation["runtime_materializes"]
+    docs_query = operations["docs.query"]["input_schema"]
+    assert docs_query["domains"] == ["ads", "ael", "python", "dds"]
+    assert docs_query["limit"] == [1, 20]
+    docs_get = operations["docs.get"]["input_schema"]
+    assert docs_get["max_chars"] == [200, 12000]
+    assert "docs.query" in docs_get["source_ref"]
+    write_scope = native_schema["ads_contract"]["staged_write_paths"]
+    assert write_scope["without_artifacts"] == [
+        "absolute distinct sibling output workspace"
+    ]
+    assert "relative write_paths" in write_scope["never"]
+    template = native_schema["staged_mutation_template"]
+    assert template["payload"]["plan"]["validation"]["required_artifacts"] == [
+        "<same relative artifact file>"
+    ]
+    assert template["runtime_fields"]["wait"]["timeout_ms"] == 300000
 
 
 def test_native_batch_continues_from_opaque_content_bound_context(
@@ -477,6 +524,7 @@ def test_native_batch_continues_from_opaque_content_bound_context(
     monkeypatch.setattr(
         runtime_adapter, "create_continuation_context", fake_create_continuation
     )
+    monkeypatch.setattr(runtime_adapter, "continuation_ref", lambda _value: "ctx_" + "2" * 20)
     plan = {
         "schema_version": "eda.native-batch/v1",
         "batch_id": "continue_demo",
@@ -517,6 +565,7 @@ def test_native_batch_continues_from_opaque_content_bound_context(
     assert captured["continued"]["identity"]["workspace"] == str(output)
     assert captured["continued"]["source_fingerprint"] == "b" * 64
     assert result.result["bridge"]["continuation_context"].startswith("EDA_CONTEXT:v2:")
+    assert result.result["bridge"]["continuation_ref"] == "ctx_" + "2" * 20
     assert result.result["bridge"]["continuation_state"] == {
         "schema_version": "ads-continuation-state/v1",
         "state": "content-bound",

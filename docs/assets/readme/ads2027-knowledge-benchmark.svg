@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="520" viewBox="0 0 1120 520" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="470" viewBox="0 0 1120 470" role="img" aria-labelledby="title desc">
   <title id="title">ADS 2027 knowledge reliability benchmark</title>
-  <desc id="desc">A matrix shows strict passes out of three for route selection, geometry API use, and the Python DRC capability boundary across Codex and Pi Agent product combinations.</desc>
+  <desc id="desc">A matrix shows audited strict passes out of three for route selection, ADS 2027 geometry API use, and documented Python DRC across Codex and Pi Agent product combinations.</desc>
   <style>
     .title{font:700 25px Inter,Segoe UI,sans-serif;fill:#152233}
     .subtitle{font:14px Inter,Segoe UI,sans-serif;fill:#526071}
@@ -17,59 +17,50 @@
   <text x="560" y="103" class="label" text-anchor="middle">Geometry API</text>
   <text x="740" y="103" class="label" text-anchor="middle">DRC boundary</text>
   <text x="920" y="103" class="label" text-anchor="middle">Knowledge total</text>
-  <text x="40" y="150" class="label" text-anchor="start">Codex · Bridge a29</text>
+  <text x="40" y="150" class="label" text-anchor="start">Codex · EDA Runtime</text>
   <rect x="300" y="120" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
   <text x="380" y="150" text-anchor="middle" class="value" fill="#ffffff" style="fill:#ffffff">3/3</text>
-  <rect x="480" y="120" width="160" height="48" rx="5" fill="#91b3f7" stroke="#627086"/>
-  <text x="560" y="150" text-anchor="middle" class="value" fill="#152233" style="fill:#152233">2/3</text>
+  <rect x="480" y="120" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
+  <text x="560" y="150" text-anchor="middle" class="value" fill="#ffffff" style="fill:#ffffff">3/3</text>
   <rect x="660" y="120" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
   <text x="740" y="150" text-anchor="middle" class="value" fill="#ffffff" style="fill:#ffffff">3/3</text>
-  <rect x="840" y="120" width="160" height="48" rx="5" fill="#91b3f7" stroke="#627086"/>
-  <text x="920" y="150" text-anchor="middle" class="value" style="fill:#152233">8/9</text>
-  <text x="40" y="212" class="label" text-anchor="start">Codex · Bridge a48</text>
-  <rect x="300" y="182" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
-  <text x="380" y="212" text-anchor="middle" class="value" fill="#ffffff" style="fill:#ffffff">3/3</text>
+  <rect x="840" y="120" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
+  <text x="920" y="150" text-anchor="middle" class="value" style="fill:#ffffff">9/9</text>
+  <text x="40" y="212" class="label" text-anchor="start">Codex · Official MCP</text>
+  <rect x="300" y="182" width="160" height="48" rx="5" fill="#91b3f7" stroke="#627086"/>
+  <text x="380" y="212" text-anchor="middle" class="value" fill="#152233" style="fill:#152233">2/3</text>
   <rect x="480" y="182" width="160" height="48" rx="5" fill="#91b3f7" stroke="#627086"/>
   <text x="560" y="212" text-anchor="middle" class="value" fill="#152233" style="fill:#152233">2/3</text>
   <rect x="660" y="182" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
   <text x="740" y="212" text-anchor="middle" class="value" fill="#ffffff" style="fill:#ffffff">3/3</text>
   <rect x="840" y="182" width="160" height="48" rx="5" fill="#91b3f7" stroke="#627086"/>
-  <text x="920" y="212" text-anchor="middle" class="value" style="fill:#152233">8/9</text>
-  <text x="40" y="274" class="label" text-anchor="start">Codex · Official MCP</text>
+  <text x="920" y="212" text-anchor="middle" class="value" style="fill:#152233">7/9</text>
+  <text x="40" y="274" class="label" text-anchor="start">Pi Agent · EDA Runtime</text>
   <rect x="300" y="244" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
   <text x="380" y="274" text-anchor="middle" class="value" fill="#ffffff" style="fill:#ffffff">3/3</text>
   <rect x="480" y="244" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
   <text x="560" y="274" text-anchor="middle" class="value" fill="#ffffff" style="fill:#ffffff">3/3</text>
-  <rect x="660" y="244" width="160" height="48" rx="5" fill="#ffffff" stroke="#627086"/>
-  <text x="740" y="274" text-anchor="middle" class="value" fill="#152233" style="fill:#152233">0/3</text>
-  <rect x="840" y="244" width="160" height="48" rx="5" fill="#dce8ff" stroke="#627086"/>
-  <text x="920" y="274" text-anchor="middle" class="value" style="fill:#152233">6/9</text>
-  <text x="40" y="336" class="label" text-anchor="start">Pi Agent · Bridge a48</text>
-  <rect x="300" y="306" width="160" height="48" rx="5" fill="#ffffff" stroke="#627086"/>
-  <text x="380" y="336" text-anchor="middle" class="value" fill="#152233" style="fill:#152233">0/3</text>
-  <rect x="480" y="306" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
-  <text x="560" y="336" text-anchor="middle" class="value" fill="#ffffff" style="fill:#ffffff">3/3</text>
+  <rect x="660" y="244" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
+  <text x="740" y="274" text-anchor="middle" class="value" fill="#ffffff" style="fill:#ffffff">3/3</text>
+  <rect x="840" y="244" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
+  <text x="920" y="274" text-anchor="middle" class="value" style="fill:#ffffff">9/9</text>
+  <text x="40" y="336" class="label" text-anchor="start">Pi Agent · Official MCP</text>
+  <rect x="300" y="306" width="160" height="48" rx="5" fill="#dce8ff" stroke="#627086"/>
+  <text x="380" y="336" text-anchor="middle" class="value" fill="#152233" style="fill:#152233">1/3</text>
+  <rect x="480" y="306" width="160" height="48" rx="5" fill="#dce8ff" stroke="#627086"/>
+  <text x="560" y="336" text-anchor="middle" class="value" fill="#152233" style="fill:#152233">1/3</text>
   <rect x="660" y="306" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
   <text x="740" y="336" text-anchor="middle" class="value" fill="#ffffff" style="fill:#ffffff">3/3</text>
   <rect x="840" y="306" width="160" height="48" rx="5" fill="#dce8ff" stroke="#627086"/>
-  <text x="920" y="336" text-anchor="middle" class="value" style="fill:#152233">6/9</text>
-  <text x="40" y="398" class="label" text-anchor="start">Pi Agent · Official MCP</text>
-  <rect x="300" y="368" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
-  <text x="380" y="398" text-anchor="middle" class="value" fill="#ffffff" style="fill:#ffffff">3/3</text>
-  <rect x="480" y="368" width="160" height="48" rx="5" fill="#2f6fed" stroke="#627086"/>
-  <text x="560" y="398" text-anchor="middle" class="value" fill="#ffffff" style="fill:#ffffff">3/3</text>
-  <rect x="660" y="368" width="160" height="48" rx="5" fill="#ffffff" stroke="#627086"/>
-  <text x="740" y="398" text-anchor="middle" class="value" fill="#152233" style="fill:#152233">0/3</text>
-  <rect x="840" y="368" width="160" height="48" rx="5" fill="#dce8ff" stroke="#627086"/>
-  <text x="920" y="398" text-anchor="middle" class="value" style="fill:#152233">6/9</text>
-  <text x="300" y="452" class="axis" text-anchor="start">Passes:</text>
-  <rect x="345" y="440" width="24" height="16" rx="2" fill="#ffffff" stroke="#627086"/>
-  <text x="375" y="453" class="axis" text-anchor="start">0</text>
-  <rect x="415" y="440" width="24" height="16" rx="2" fill="#dce8ff" stroke="#627086"/>
-  <text x="445" y="453" class="axis" text-anchor="start">1</text>
-  <rect x="485" y="440" width="24" height="16" rx="2" fill="#91b3f7" stroke="#627086"/>
-  <text x="515" y="453" class="axis" text-anchor="start">2</text>
-  <rect x="555" y="440" width="24" height="16" rx="2" fill="#2f6fed" stroke="#627086"/>
-  <text x="585" y="453" class="axis" text-anchor="start">3</text>
-  <text x="40" y="495" class="note" text-anchor="start">K1 route · K3 rectangle/polygon/path · K6 reject unverified Python DRC · 3 repetitions · 2026-09-01</text>
+  <text x="920" y="336" text-anchor="middle" class="value" style="fill:#152233">5/9</text>
+  <text x="300" y="382" class="axis" text-anchor="start">Passes:</text>
+  <rect x="345" y="370" width="24" height="16" rx="2" fill="#ffffff" stroke="#627086"/>
+  <text x="375" y="383" class="axis" text-anchor="start">0</text>
+  <rect x="415" y="370" width="24" height="16" rx="2" fill="#dce8ff" stroke="#627086"/>
+  <text x="445" y="383" class="axis" text-anchor="start">1</text>
+  <rect x="485" y="370" width="24" height="16" rx="2" fill="#91b3f7" stroke="#627086"/>
+  <text x="515" y="383" class="axis" text-anchor="start">2</text>
+  <rect x="555" y="370" width="24" height="16" rx="2" fill="#2f6fed" stroke="#627086"/>
+  <text x="585" y="383" class="axis" text-anchor="start">3</text>
+  <text x="40" y="435" class="note" text-anchor="start">K1 complete route · K3 ADS 2027 geometry · K6 documented Python DRC · 3 repetitions · 2026-09-01</text>
 </svg>

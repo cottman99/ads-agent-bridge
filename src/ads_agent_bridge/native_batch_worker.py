@@ -12,7 +12,14 @@ from types import SimpleNamespace
 import keysight.ads.de as de
 from keysight.ads.de import db_uu as db
 
-_ALLOWED_IMPORTS = ("keysight.ads.de", "keysight.ads.dds", "json", "math")
+_ALLOWED_IMPORTS = (
+    "keysight.ads.dataset",
+    "keysight.ads.de",
+    "keysight.ads.dds",
+    "keysight.edatoolbox",
+    "json",
+    "math",
+)
 _SAFE_BUILTINS = {
     name: getattr(builtins, name)
     for name in (
@@ -23,10 +30,15 @@ _SAFE_BUILTINS = {
         "all",
         "any",
         "bool",
+        "complex",
         "dict",
+        "dir",
         "enumerate",
         "float",
+        "getattr",
+        "hasattr",
         "int",
+        "isinstance",
         "len",
         "list",
         "max",
@@ -34,9 +46,11 @@ _SAFE_BUILTINS = {
         "range",
         "round",
         "set",
+        "sorted",
         "str",
         "sum",
         "tuple",
+        "repr",
         "zip",
     )
 }

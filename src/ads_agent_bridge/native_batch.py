@@ -17,7 +17,14 @@ from eda_bridge_runtime import validate_native_batch, validate_python_program_po
 from .config import select_instance
 from .design_plan import _environment, _result, workspace_fingerprint
 
-_ALLOWED_IMPORTS = ("keysight.ads.de", "keysight.ads.dds", "json", "math")
+_ALLOWED_IMPORTS = (
+    "keysight.ads.dataset",
+    "keysight.ads.de",
+    "keysight.ads.dds",
+    "keysight.edatoolbox",
+    "json",
+    "math",
+)
 _RUNTIMES = {"de": "ads.python.de", "dds": "ads.python.dds"}
 
 
@@ -128,6 +135,7 @@ def execute_native_batch(
     redact_paths: bool = True,
     expected_source_fingerprint: str | None = None,
 ) -> dict[str, Any]:
+    native_started = time.monotonic()
     plan = _validate_ads_plan(value)
     scope = plan["scope"]
     selectors = scope["selectors"]
@@ -175,9 +183,11 @@ def execute_native_batch(
     invocation = stage_root / "invocation.json"
     deadline = time.monotonic() + plan["limits"]["timeout_seconds"]
     try:
+        staging_started = time.monotonic()
         shutil.copytree(source, staged_workspace)
         if scope["artifacts"]:
             staged_artifacts.mkdir()
+        staging_ms = round((time.monotonic() - staging_started) * 1000, 3)
         context = {
             "workspace": str(staged_workspace),
             "profile": str(selectors["profile"]),
@@ -185,6 +195,7 @@ def execute_native_batch(
             "artifact_root": str(staged_artifacts),
             "effect": effect,
         }
+        program_started = time.monotonic()
         program_result = _run_program(
             instance=instance,
             program=plan["program"],
@@ -194,6 +205,7 @@ def execute_native_batch(
             deadline=deadline,
             max_output_bytes=plan["limits"]["max_output_bytes"],
         )
+        program_ms = round((time.monotonic() - program_started) * 1000, 3)
         if workspace_fingerprint(source) != source_before:
             raise RuntimeError("ADS native batch changed the source workspace")
         if effect == "observe":
@@ -206,8 +218,16 @@ def execute_native_batch(
                 "source_fingerprint": source_before,
                 "program_result": program_result,
                 "fresh_process": True,
+                "timing": {
+                    "staging_ms": staging_ms,
+                    "program_ms": program_ms,
+                    "native_total_ms": round(
+                        (time.monotonic() - native_started) * 1000, 3
+                    ),
+                },
             }
 
+        validation_started = time.monotonic()
         validation_result = _run_program(
             instance=instance,
             program=plan["validation"]["program"],
@@ -217,6 +237,7 @@ def execute_native_batch(
             deadline=deadline,
             max_output_bytes=plan["limits"]["max_output_bytes"],
         )
+        validation_ms = round((time.monotonic() - validation_started) * 1000, 3)
         if validation_result.get("status") != "passed":
             raise RuntimeError("ADS native batch fresh-process validation did not pass")
         for relative in plan["validation"]["required_artifacts"]:
@@ -224,10 +245,12 @@ def execute_native_batch(
                 raise RuntimeError(
                     f"ADS native batch required artifact is missing: {relative}"
                 )
+        promotion_started = time.monotonic()
         output_fingerprint = workspace_fingerprint(staged_workspace)
         os.replace(staged_workspace, output)
         if final_artifacts is not None:
             os.replace(staged_artifacts, final_artifacts)
+        promotion_ms = round((time.monotonic() - promotion_started) * 1000, 3)
         return {
             "status": "passed",
             "batch_id": plan["batch_id"],
@@ -241,6 +264,15 @@ def execute_native_batch(
             "validation_result": validation_result,
             "fresh_process": True,
             "artifacts": scope["artifacts"],
+            "timing": {
+                "staging_ms": staging_ms,
+                "program_ms": program_ms,
+                "validation_ms": validation_ms,
+                "promotion_ms": promotion_ms,
+                "native_total_ms": round(
+                    (time.monotonic() - native_started) * 1000, 3
+                ),
+            },
         }
     finally:
         if stage_root.exists():

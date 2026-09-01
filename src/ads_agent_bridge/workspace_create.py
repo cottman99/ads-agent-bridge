@@ -159,7 +159,7 @@ def create_workspace(
     context_id, generation = _write_context(target)
     # Preserve the general workspace Context for lifecycle operations while
     # also returning a content-bound Context that can bootstrap native.batch.
-    from .continuation_context import create_continuation_context
+    from .continuation_context import continuation_ref, create_continuation_context
 
     continuation_context, continuation_state = create_continuation_context(
         identity={
@@ -215,5 +215,6 @@ def create_workspace(
         "eda_context": token,
         "context_id": context_id,
         "continuation_context": continuation_context,
+        "continuation_ref": continuation_ref(continuation_context),
         "continuation_state": continuation_state,
     }

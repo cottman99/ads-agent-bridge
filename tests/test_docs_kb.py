@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+import ads_agent_bridge.docs_kb as docs_kb
 from ads_agent_bridge.docs_kb import (
     _context_excerpt,
     _markdown_record,
@@ -149,6 +150,62 @@ def test_multi_term_query_does_not_return_domain_only_match(tmp_path: Path, monk
     assert result["enrichment_status"] == "not_started"
     assert result["coverage"]["path_index"] == "complete"
     assert result["coverage"]["negative_results_are_runtime_proof"] is False
+
+
+def test_natural_language_domain_word_does_not_silently_filter_corpus(
+    tmp_path: Path, monkeypatch
+) -> None:
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "index.html").write_text("<title>ADS documentation</title>", encoding="utf-8")
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    monkeypatch.setattr(
+        "ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache
+    )
+    instance = AdsInstance(
+        instance_id="ads-2027-test",
+        install_root=str(tmp_path),
+        product_version="ADS 2027",
+        year=2027,
+        update=None,
+        platform="test",
+        support_tier="fallback",
+        docs_roots={"ads": [str(docs)]},
+    )
+    ensure_fast_index(instance)
+    calls: list[tuple[list[str], list[str]]] = []
+
+    def fake_query_index(
+        _db_path: Path,
+        terms: list[str],
+        _limit: int,
+        *,
+        require_all: bool,
+        domains: list[str],
+    ) -> list[dict[str, object]]:
+        calls.append((terms, domains))
+        if require_all:
+            return []
+        return [
+            {
+                "domain": "ads",
+                "source_ref": "ads-doc:v1:verification.html",
+                "title": "Automating Design Verification using Python",
+                "relative_path": "verification.html",
+                "_content": "create_drc_job run_drc_job Python",
+            }
+        ]
+
+    monkeypatch.setattr(docs_kb, "_query_index", fake_query_index)
+
+    result = query(instance, "create_drc_job run_drc_job Python")
+
+    assert result["domains"] == []
+    assert result["results"][0]["relative_path"] == "verification.html"
+    assert calls
+    assert all(domains == [] for _terms, domains in calls)
+    assert all("python" in terms for terms, _domains in calls)
 
 
 def test_fast_index_searches_python_page_prefix_without_full_enrichment(tmp_path: Path, monkeypatch) -> None:
@@ -576,6 +633,45 @@ def test_multi_term_guide_match_keeps_reference_candidates_visible(tmp_path: Pat
     assert result["search_mode"] == "bootstrap_index_hybrid"
     assert result["results"][0]["source_kind"] == "guide"
     assert any(row["source_kind"] == "ael_reference" for row in result["results"][:3])
+
+
+def test_multi_term_query_preserves_uncovered_title_topics(tmp_path: Path, monkeypatch) -> None:
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "layout.html").write_text(
+        "<html><title>Layout</title><body>ADS 2027 Python API execute layout DRC design rule check</body></html>",
+        encoding="utf-8",
+    )
+    (docs / "drc.html").write_text(
+        "<html><title>Using the Design Rule Checker DRC</title><body>layout guide</body></html>",
+        encoding="utf-8",
+    )
+    (docs / "python-dve.html").write_text(
+        "<html><title>Automating Design Verification using Python</title>"
+        "<body>create_drc_job run_drc_job</body></html>",
+        encoding="utf-8",
+    )
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    instance = AdsInstance(
+        instance_id="ads-2027-topic-coverage-test",
+        install_root=str(tmp_path),
+        product_version="ADS 2027",
+        year=2027,
+        update=None,
+        platform="test",
+        support_tier="stable",
+        docs_roots={"ads": [str(docs)]},
+    )
+    build_full_index(instance)
+
+    result = query(instance, "ADS 2027 Python API execute layout DRC design rule check", limit=10)
+
+    assert result["search_mode"] == "bootstrap_index_hybrid"
+    assert "Automating Design Verification using Python" in {
+        row["title"] for row in result["results"]
+    }
 
 
 def test_longer_exact_symbol_title_beats_generic_exact_title(tmp_path: Path, monkeypatch) -> None:

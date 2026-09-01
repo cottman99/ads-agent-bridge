@@ -1,0 +1,210 @@
+{
+  "schema": "ads-agent-public-benchmark/v3",
+  "benchmark_id": "ads2027-runtime-mcp-vs-official-20260901",
+  "date": "2026-09-01",
+  "identities": {
+    "ads": "ADS 2027",
+    "runtime": "eda-bridge-runtime 0.1.0a37 + e524b61",
+    "ads_adapter": "ads-agent-bridge 0.1.0a48 + e3374e8",
+    "official_mcp_sha256": "b68afcc4e904fae576a3c139898f877261fe9266a5235313ec46d48a2d0e4783",
+    "codex": "Codex CLI 0.145.0",
+    "pi": "Pi Agent 0.84.4",
+    "model": "gpt-5.6-terra",
+    "reasoning_effort": "medium"
+  },
+  "protocol": {
+    "execution": "serial-counterbalanced",
+    "repetitions": 3,
+    "calibration_excluded": true,
+    "fresh_agent_home_per_run": true,
+    "isolation_violations": 0,
+    "runtime_surface": "EDA Runtime MCP plus current Runtime and ADS Skills",
+    "official_surface": "ADS 2027 official MCP",
+    "pi_official_transport": "thin MCP forwarding extension; no added domain knowledge",
+    "audited_after_formal_run": true
+  },
+  "tool_layer": {
+    "runtime_native_total_median_ms": 2378.789,
+    "runtime_workspace_create_median_ms": 783.549,
+    "official_execute_python_median_ms": 813.555,
+    "official_start_local_session_median_ms": 783.162
+  },
+  "rows": [
+    {
+      "agent": "codex",
+      "arm": "runtime",
+      "case": "K1",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 42.243,
+      "min_wall_seconds": 37.764,
+      "max_wall_seconds": 51.906,
+      "median_total_tokens": 141532
+    },
+    {
+      "agent": "codex",
+      "arm": "runtime",
+      "case": "K3",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 48.997,
+      "min_wall_seconds": 45.789,
+      "max_wall_seconds": 77.979,
+      "median_total_tokens": 213714
+    },
+    {
+      "agent": "codex",
+      "arm": "runtime",
+      "case": "K6",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 44.065,
+      "min_wall_seconds": 36.572,
+      "max_wall_seconds": 48.208,
+      "median_total_tokens": 156609
+    },
+    {
+      "agent": "codex",
+      "arm": "runtime",
+      "case": "E3",
+      "passes": 1,
+      "runs": 3,
+      "median_wall_seconds": 155.902,
+      "min_wall_seconds": 129.144,
+      "max_wall_seconds": 187.08,
+      "median_total_tokens": 425712
+    },
+    {
+      "agent": "codex",
+      "arm": "official",
+      "case": "K1",
+      "passes": 2,
+      "runs": 3,
+      "median_wall_seconds": 39.885,
+      "min_wall_seconds": 39.638,
+      "max_wall_seconds": 40.785,
+      "median_total_tokens": 124628
+    },
+    {
+      "agent": "codex",
+      "arm": "official",
+      "case": "K3",
+      "passes": 2,
+      "runs": 3,
+      "median_wall_seconds": 40.867,
+      "min_wall_seconds": 37.366,
+      "max_wall_seconds": 48.177,
+      "median_total_tokens": 167428
+    },
+    {
+      "agent": "codex",
+      "arm": "official",
+      "case": "K6",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 31.955,
+      "min_wall_seconds": 31.764,
+      "max_wall_seconds": 37.116,
+      "median_total_tokens": 122139
+    },
+    {
+      "agent": "codex",
+      "arm": "official",
+      "case": "E3",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 62.309,
+      "min_wall_seconds": 56.364,
+      "max_wall_seconds": 63.286,
+      "median_total_tokens": 326704
+    },
+    {
+      "agent": "pi",
+      "arm": "runtime",
+      "case": "K1",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 36.324,
+      "min_wall_seconds": 33.968,
+      "max_wall_seconds": 53.945,
+      "median_total_tokens": 73632
+    },
+    {
+      "agent": "pi",
+      "arm": "runtime",
+      "case": "K3",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 40.125,
+      "min_wall_seconds": 29.194,
+      "max_wall_seconds": 45.077,
+      "median_total_tokens": 91233
+    },
+    {
+      "agent": "pi",
+      "arm": "runtime",
+      "case": "K6",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 35.127,
+      "min_wall_seconds": 34.061,
+      "max_wall_seconds": 44.342,
+      "median_total_tokens": 58159
+    },
+    {
+      "agent": "pi",
+      "arm": "runtime",
+      "case": "E3",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 92.266,
+      "min_wall_seconds": 74.84,
+      "max_wall_seconds": 190.35,
+      "median_total_tokens": 194135
+    },
+    {
+      "agent": "pi",
+      "arm": "official",
+      "case": "K1",
+      "passes": 1,
+      "runs": 3,
+      "median_wall_seconds": 33.314,
+      "min_wall_seconds": 24.002,
+      "max_wall_seconds": 34.578,
+      "median_total_tokens": 28471
+    },
+    {
+      "agent": "pi",
+      "arm": "official",
+      "case": "K3",
+      "passes": 1,
+      "runs": 3,
+      "median_wall_seconds": 23.827,
+      "min_wall_seconds": 21.726,
+      "max_wall_seconds": 29.367,
+      "median_total_tokens": 40497
+    },
+    {
+      "agent": "pi",
+      "arm": "official",
+      "case": "K6",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 17.491,
+      "min_wall_seconds": 16.723,
+      "max_wall_seconds": 17.844,
+      "median_total_tokens": 13383
+    },
+    {
+      "agent": "pi",
+      "arm": "official",
+      "case": "E3",
+      "passes": 3,
+      "runs": 3,
+      "median_wall_seconds": 50.553,
+      "min_wall_seconds": 48.699,
+      "max_wall_seconds": 59.051,
+      "median_total_tokens": 49722
+    }
+  ]
+}

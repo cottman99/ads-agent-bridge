@@ -543,21 +543,63 @@ def _merge_reference_candidates(
     strict_rows: list[dict[str, object]],
     relaxed_rows: list[dict[str, object]],
     limit: int,
+    terms: list[str],
 ) -> tuple[list[dict[str, object]], bool]:
     if not strict_rows or limit < 2:
         return strict_rows, False
+    existing_refs = {str(row["source_ref"]) for row in strict_rows}
+    title_coverage = {
+        term
+        for term in terms
+        if any(term in str(row["title"]).casefold() for row in strict_rows[:limit])
+    }
+    uncovered = set(terms) - title_coverage
+    topic_supplements: list[dict[str, object]] = []
+    topic_quota = min(2, max(1, limit // 4))
+    remaining = [row for row in relaxed_rows if str(row["source_ref"]) not in existing_refs]
+    while uncovered and remaining and len(topic_supplements) < topic_quota:
+        candidate = max(
+            remaining,
+            key=lambda row: (
+                sum(
+                    term
+                    in " ".join(
+                        str(row.get(field, "")).casefold()
+                        for field in ("title", "relative_path", "_content")
+                    )
+                    for term in terms
+                ),
+                sum(term in str(row["title"]).casefold() for term in uncovered),
+            ),
+        )
+        gains = {
+            term for term in uncovered if term in str(candidate["title"]).casefold()
+        }
+        if not gains:
+            break
+        topic_supplements.append(candidate)
+        existing_refs.add(str(candidate["source_ref"]))
+        uncovered -= gains
+        remaining = [
+            row for row in remaining if str(row["source_ref"]) not in existing_refs
+        ]
     reference_quota = min(3, limit // 2)
     existing_references = sum(_is_reference_result(row) for row in strict_rows[:limit])
     needed = max(0, reference_quota - existing_references)
-    existing_refs = {str(row["source_ref"]) for row in strict_rows}
     supplements = [
         row
         for row in relaxed_rows
         if _is_reference_result(row) and str(row["source_ref"]) not in existing_refs
     ][:needed]
-    if not supplements:
+    if not supplements and not topic_supplements:
         return strict_rows[:limit], False
-    ordered = [strict_rows[0], *supplements, *strict_rows[1:], *relaxed_rows]
+    ordered = [
+        strict_rows[0],
+        *topic_supplements,
+        *supplements,
+        *strict_rows[1:],
+        *relaxed_rows,
+    ]
     merged: list[dict[str, object]] = []
     seen: set[str] = set()
     for row in ordered:
@@ -644,12 +686,8 @@ def query(
     invalid_domains = sorted(set(explicit_domains) - DOCUMENT_DOMAINS)
     if invalid_domains:
         raise ValueError(f"Unsupported documentation domain: {', '.join(invalid_domains)}")
-    implicit_domains = list(dict.fromkeys(term for term in terms if term in DOCUMENT_DOMAINS))
-    selected_domains = list(dict.fromkeys(explicit_domains or (implicit_domains if len(implicit_domains) == 1 else [])))
-    search_terms = [term for term in terms if term not in DOCUMENT_DOMAINS]
-    if not search_terms:
-        search_terms = terms
-        selected_domains = explicit_domains
+    selected_domains = list(dict.fromkeys(explicit_domains))
+    search_terms = terms
     rows = _query_index(db_path, search_terms, limit, require_all=True, domains=selected_domains)
     search_mode = "bootstrap_index"
     if len(search_terms) > 1:
@@ -661,7 +699,9 @@ def query(
             domains=selected_domains,
         )
         if rows:
-            rows, supplemented = _merge_reference_candidates(rows, relaxed_rows, limit)
+            rows, supplemented = _merge_reference_candidates(
+                rows, relaxed_rows, limit, search_terms
+            )
             if supplemented:
                 search_mode = "bootstrap_index_hybrid"
         else:

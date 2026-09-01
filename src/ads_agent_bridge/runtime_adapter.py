@@ -6,11 +6,14 @@ import time
 from pathlib import Path
 from typing import Any
 
+from eda_bridge_runtime import native_batch_capability_contract
+
 from . import __version__
 from .bridge_client import request as bridge_request
 from .circuit_simulation import execute_simulation_plan
 from .config import select_instance
 from .continuation_context import (
+    continuation_ref,
     continuation_reference,
     create_continuation_context,
     materialize_native_batch_plan,
@@ -124,6 +127,13 @@ class _AdsAdapterBase:
                     "input_schema": {
                         "required": ["query"],
                         "optional": ["instance", "domains", "limit"],
+                        "domains": ["ads", "ael", "python", "dds"],
+                        "limit": [1, 20],
+                        "domain_guidance": (
+                            "domains are explicit filters only; omit them for corpus-wide "
+                            "capability checks because Python automation may be documented "
+                            "in an ads guide"
+                        ),
                     },
                     "state": {"available": True, "healthy": True},
                 },
@@ -138,6 +148,8 @@ class _AdsAdapterBase:
                     "input_schema": {
                         "required": ["source_ref"],
                         "optional": ["instance", "focus", "max_chars"],
+                        "source_ref": "use only a source_ref returned by docs.query",
+                        "max_chars": [200, 12000],
                     },
                     "state": {"available": True, "healthy": True},
                 },
@@ -171,7 +183,23 @@ class _AdsAdapterBase:
                     "returns_context": False,
                     "input_schema": {
                         "required": [],
-                        "optional": ["intents", "tags"],
+                        "optional": [
+                            "intents",
+                            "tags",
+                            "version",
+                            "profile",
+                            "capability",
+                        ],
+                        "filter_semantics": "exact metadata match",
+                        "applicability_filters": {
+                            "version": "ADS major version such as 2027",
+                            "profile": ["de", "dds"],
+                            "capability": "advertised operation id such as native.batch",
+                        },
+                        "discovery": (
+                            "omit intents and tags to list the compact asset index "
+                            "when exact metadata values are unknown"
+                        ),
                     },
                     "state": {"available": True, "healthy": True},
                 },
@@ -186,6 +214,14 @@ class _AdsAdapterBase:
                     "input_schema": {
                         "required": ["asset_id"],
                         "optional": ["max_chars"],
+                        "normal_use": (
+                            "read only the one version/profile-matched asset selected "
+                            "from experience.list"
+                        ),
+                        "official_refs": (
+                            "provenance labels, not docs.get source_ref values; query docs "
+                            "by the referenced topic"
+                        ),
                     },
                     "state": {"available": True, "healthy": True},
                 },
@@ -200,8 +236,155 @@ class _AdsAdapterBase:
                     "input_schema": {
                         "required": ["plan"],
                         "optional": ["continuation_context", "redact_paths"],
+                        "runtime_request_required_for_mutation": [
+                            "purpose",
+                            "expected_effect",
+                            "idempotency_key",
+                        ],
                         "plan_schema": "eda.native-batch/v1",
+                        "plan_contract": native_batch_capability_contract(),
+                        "ads_contract": {
+                            "runtime_by_profile": {
+                                "de": "ads.python.de",
+                                "dds": "ads.python.dds",
+                            },
+                            "resource_kind": "ads-workspace",
+                            "selectors": ["instance", "version", "profile"],
+                            "program_signature": "def run(api, context)",
+                            "validation_signature": "def validate(api, context)",
+                            "program_api": {
+                                "type": "object",
+                                "members": ["api.de", "api.db"],
+                            },
+                            "program_context": {
+                                "type": "dict",
+                                "access": "context[\"<key>\"]",
+                                "keys": [
+                                    "workspace",
+                                    "profile",
+                                    "version",
+                                    "artifact_root",
+                                    "effect",
+                                ],
+                                "workspace": (
+                                    "staged workspace path used for all workspace mutations"
+                                ),
+                                "artifact_root": (
+                                    "pre-created only when scope.artifacts is non-empty"
+                                ),
+                            },
+                            "validation_return": {
+                                "required": {"status": "passed"},
+                                "purpose": "prove persisted staged output in a fresh process",
+                            },
+                            "allowed_imports": [
+                                "keysight.ads.dataset",
+                                "keysight.ads.de",
+                                "keysight.ads.dds",
+                                "keysight.edatoolbox",
+                                "json",
+                                "math",
+                            ],
+                            "safe_builtins_include": [
+                                "dir",
+                                "getattr",
+                                "hasattr",
+                                "isinstance",
+                                "repr",
+                                "sorted",
+                            ],
+                            "staged_write_paths": {
+                                "without_artifacts": [
+                                    "absolute distinct sibling output workspace"
+                                ],
+                                "with_artifacts": [
+                                    "absolute distinct sibling output workspace",
+                                    "absolute final artifact directory",
+                                ],
+                                "scope_artifacts": (
+                                    "relative file paths below context[\"artifact_root\"]"
+                                ),
+                                "never": "library names or relative write_paths",
+                            },
+                        },
                         "continuation_schema": "eda-context/v2",
+                        "staged_mutation_template": {
+                            "payload": {
+                                "continuation_context": "<continuation_ref>",
+                                "plan": {
+                                    "schema_version": "eda.native-batch/v1",
+                                    "runtime": "ads.python.de",
+                                    "effect": "staged_mutation",
+                                    "program": {
+                                        "language": "python",
+                                        "source": "def run(api, context): ...",
+                                    },
+                                    "scope": {
+                                        "resource_kind": "ads-workspace",
+                                        "selectors": {},
+                                        "read_paths": [],
+                                        "write_paths": [
+                                            "<absolute sibling output workspace>",
+                                            "<absolute artifact directory>",
+                                        ],
+                                        "artifacts": ["<relative artifact file>"],
+                                    },
+                                    "transaction": {
+                                        "strategy": "adapter_staging",
+                                        "source_fingerprints": {},
+                                        "fresh_reopen": True,
+                                        "promotion": "on_validation",
+                                    },
+                                    "validation": {
+                                        "program": {
+                                            "language": "python",
+                                            "source": "def validate(api, context): ...",
+                                        },
+                                        "required_artifacts": [
+                                            "<same relative artifact file>"
+                                        ],
+                                    },
+                                    "limits": {
+                                        "timeout_seconds": 300,
+                                        "max_output_bytes": 1048576,
+                                    },
+                                },
+                            },
+                            "runtime_fields": {
+                                "purpose": "<concise engineering reason>",
+                                "expected_effect": "<declared mutation outcome>",
+                                "idempotency_key": "<task-unique stable key>",
+                                "wait": {
+                                    "timeout_ms": 300000,
+                                    "poll_interval_ms": 1000,
+                                },
+                            },
+                            "without_artifacts": (
+                                "use one write_path, artifacts [], and required_artifacts []"
+                            ),
+                        },
+                        "continuation_usage": {
+                            "normal_greenfield_flow": (
+                                "pass the short response continuation_ref from workspace.create "
+                                "as payload.continuation_context to the first native.batch"
+                            ),
+                            "agent_supplies": (
+                                "scope.write_paths, scope.artifacts, program, validation, "
+                                "limits, purpose, expected_effect, and idempotency_key"
+                            ),
+                            "runtime_materializes": [
+                                "scope.selectors.instance",
+                                "scope.selectors.version",
+                                "scope.selectors.profile",
+                                "scope.read_paths",
+                                "transaction.source_fingerprints",
+                            ],
+                            "opaque": True,
+                            "long_token_fallback": (
+                                "continuation_context remains available for portable EDA_CONTEXT "
+                                "handoff; do not make an Agent recopy it when continuation_ref exists"
+                            ),
+                        },
                         "context_materializes": [
                             "scope.selectors.instance",
                             "scope.selectors.version",
@@ -593,6 +776,21 @@ class _AdsAdapterBase:
             result = list_assets(
                 intents=list(request.payload.get("intents") or []),
                 tags=list(request.payload.get("tags") or []),
+                version=(
+                    str(request.payload["version"])
+                    if request.payload.get("version")
+                    else None
+                ),
+                profile=(
+                    str(request.payload["profile"])
+                    if request.payload.get("profile")
+                    else None
+                ),
+                capability=(
+                    str(request.payload["capability"])
+                    if request.payload.get("capability")
+                    else None
+                ),
             )
             return AdapterResult(status="passed", result={"bridge": result})
         if request.operation == "experience.get":
@@ -645,6 +843,7 @@ class _AdsAdapterBase:
                 source_fingerprint=str(source_fingerprint or ""),
             )
             result["continuation_context"] = continuation_token
+            result["continuation_ref"] = continuation_ref(continuation_token)
             result["continuation_state"] = continuation_state
             return AdapterResult(status="passed", result={"bridge": result})
         if request.operation == "design.apply":

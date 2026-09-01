@@ -101,8 +101,8 @@ disposable workspace creation, minimal circuit simulation, and dataset readback
 have each passed.
 
 If `pipx` or a suitable Python is not yet available, use the versioned
-bootstrap for [Linux](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a48/install.sh)
-or [Windows PowerShell](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a48/install.ps1).
+bootstrap for [Linux](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a49/install.sh)
+or [Windows PowerShell](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a49/install.ps1).
 The bootstrap creates an isolated environment and does not replace an
 externally managed system Python.
 
@@ -169,19 +169,21 @@ a deterministic native dataset, CSV, and a freshly reopened two-page DDS report
 containing rectangular and polar plots. See the
 [sanitized workflow evidence](docs/VALIDATION_2026-08-30_CIRCUIT_TO_DDS.md).
 
-Two narrow ADS 2027 comparisons were refreshed on 2026-09-01 with both Codex
-and Pi Agent. The execution result is deliberately plain: all **15/15** E3
-runs completed, while the official MCP was faster for this minimal headless
-task. Bridge a48 still reduced the Codex median from **82.3 s** in a29 to
-**64.8 s**. [Method and data](docs/BENCHMARK_ADS2027_HEADLESS_AC.md)
+The corrected ADS 2027 comparison uses the current EDA Runtime MCP plus
+Runtime/ADS Skills—not the historical product CLI—against the official MCP,
+with Codex and Pi Agent. For the exact headless AC task, Runtime completed
+**4/6** and the official MCP **6/6**; the official route was also faster.
+Successful Runtime native execution itself had a **2.379 s** median, while the
+much larger Agent-time gap came from discovery, plan construction, and retries.
+[Method and data](docs/BENCHMARK_ADS2027_HEADLESS_AC.md)
 
 ![ADS 2027 headless AC execution timing across Codex and Pi Agent](docs/assets/readme/ads2027-headless-ac-benchmark.svg)
 
-The knowledge result is case-specific rather than a single product score.
-Bridge a48 rejected the unverified Python DRC route in **6/6** Codex/Pi runs;
-the official MCP instead treated it as established in **6/6** and therefore
-passed **0/6**. Pi + Bridge omitted the required dataset-readback statement in
-K1, while the official route completed K1 in **6/6** runs.
+The knowledge result points the other way: Runtime completed **18/18** audited
+K1/K3/K6 runs, versus **12/18** for the official MCP. ADS 2027 does document
+Python DRC automation; the earlier negative benchmark oracle was wrong, and
+both surfaces now pass K6 in **12/12** combined runs. The remaining official
+misses were incomplete K1 route descriptions and non-current K3 geometry calls.
 [Method and data](docs/BENCHMARK_ADS2027_KNOWLEDGE.md)
 
 ![ADS 2027 knowledge reliability by task, product surface, and Agent](docs/assets/readme/ads2027-knowledge-benchmark.svg)
@@ -189,9 +191,10 @@ K1, while the official route completed K1 in **6/6** runs.
 These are small, isolated regression suites, not a universal product ranking.
 They do not compare installation, the DE/DDS plug-in, GUI session control,
 dialog handling, or every ADS solver workflow; this is not a full-product comparison.
-The refreshed aggregate data is available as
-[JSON](docs/benchmarks/ads2027-v2-public-summary.json); the August v1 files
-remain available as historical baselines.
+The audited aggregate data is available as
+[JSON](docs/benchmarks/ads2027-v3-public-summary.json). The v1/v2 files remain
+available as historical baselines but are superseded for current-product
+comparison.
 
 ## Local and remote use follow one path
 

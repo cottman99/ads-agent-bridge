@@ -21,6 +21,14 @@
       "summary": "Run a bounded ADS circuit simulation and accept the job only when its dataset and declared artifacts validate."
     },
     {
+      "id": "ads.native.circuit-simulate-and-validate",
+      "path": "workflows/native-circuit-simulate.md",
+      "sha256": "770a68be309109b0346b73b30a65ce66af14acea4583764bae82d0fe8e12f6dd",
+      "kind": "workflow",
+      "status": "validated",
+      "summary": "Build, simulate, and freshly validate an ADS 2027 circuit through one governed native batch."
+    },
+    {
       "id": "ads.dds.create-native-display",
       "path": "workflows/dds-create.md",
       "sha256": "d1c507827c0bee3b5411b54f226a28b2c206abc17e9b3c8bdf354f2036f9f2e3",

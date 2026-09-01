@@ -64,6 +64,21 @@ def test_ads_native_batch_rejects_shell_import():
         _validate_ads_plan(plan)
 
 
+@pytest.mark.parametrize(
+    "module",
+    ["keysight.ads.dataset", "keysight.edatoolbox", "keysight.edatoolbox.ads"],
+)
+def test_ads_native_batch_accepts_required_official_simulation_imports(module):
+    plan = _observe()
+    source = f"import {module}\ndef run(api, context):\n    return {{'status': 'passed'}}\n"
+    plan["program"] = {
+        "language": "python",
+        "source": source,
+        "sha256": hashlib.sha256(source.encode()).hexdigest(),
+    }
+    assert _validate_ads_plan(plan)["program"]["source"] == source
+
+
 def test_continuation_fingerprint_is_checked_before_program_runs(tmp_path, monkeypatch):
     workspace = tmp_path / "source_wrk"
     workspace.mkdir()
