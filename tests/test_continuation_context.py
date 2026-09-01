@@ -68,6 +68,10 @@ def test_private_record_returns_opaque_handle(tmp_path, monkeypatch):
     assert "workspace" not in decoded.target
     assert "source_fingerprint" not in json.dumps(decoded.__dict__)
     context_id = decoded.locator["context_id"]
+    assert continuation_context.continuation_ref(token) == context_id
+    assert continuation_context.resolve_continuation_context(context_id)["identity"] == (
+        _record(workspace)["identity"]
+    )
     record_path = private_root / "contexts" / f"{context_id}.json"
     private_record = json.loads(record_path.read_text(encoding="utf-8"))
     assert private_record["identity"]["workspace"] == str(workspace.resolve())

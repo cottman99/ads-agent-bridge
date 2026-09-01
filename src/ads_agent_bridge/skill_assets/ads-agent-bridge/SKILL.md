@@ -83,8 +83,10 @@ do not invent a DDS launch or infer it from DE readiness.
 
 Through the normal Runtime MCP path, create one explicit non-existing workspace
 with `workspace.create`. It returns both the general `eda_context` and an opaque,
-content-bound `continuation_context`. Pass that continuation unchanged in the
-first `native.batch` request. The Runtime then materializes the exact ADS
+content-bound continuation. Pass the returned short `continuation_ref` as
+`payload.continuation_context` in the first `native.batch` request. Keep the long
+`continuation_context` only for portable EDA Context handoff; do not make the
+language model recopy it when the short host-local reference exists. The Runtime then materializes the exact ADS
 instance, version, profile, source workspace path, and source fingerprint; the
 Agent still declares the distinct output workspace, artifacts, program,
 fresh-process validation, limits, purpose, expected effect, and a task-unique

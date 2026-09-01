@@ -14,6 +14,12 @@ fingerprint remain in a private record on the ADS worker host.
 ADS version, or source fingerprint. Subsequent successful batches return the
 next content-bound continuation Context in the same field.
 
+The same responses also return `continuation_ref`, a short unpredictable
+host-local reference to that exact private record. Agents should pass this short
+value as `payload.continuation_context`; the long `EDA_CONTEXT` remains the
+portable handoff form. Both resolve to the same record and authorization,
+content-state, identity, staging, and validation checks remain unchanged.
+
 The next governed native batch may put that handle in
 `target.continuation_context` or `target.context`. It may omit only identity and
 content-state fields already bound by the Context:

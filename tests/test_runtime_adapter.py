@@ -513,6 +513,7 @@ def test_native_batch_continues_from_opaque_content_bound_context(
     monkeypatch.setattr(
         runtime_adapter, "create_continuation_context", fake_create_continuation
     )
+    monkeypatch.setattr(runtime_adapter, "continuation_ref", lambda _value: "ctx_" + "2" * 20)
     plan = {
         "schema_version": "eda.native-batch/v1",
         "batch_id": "continue_demo",
@@ -553,6 +554,7 @@ def test_native_batch_continues_from_opaque_content_bound_context(
     assert captured["continued"]["identity"]["workspace"] == str(output)
     assert captured["continued"]["source_fingerprint"] == "b" * 64
     assert result.result["bridge"]["continuation_context"].startswith("EDA_CONTEXT:v2:")
+    assert result.result["bridge"]["continuation_ref"] == "ctx_" + "2" * 20
     assert result.result["bridge"]["continuation_state"] == {
         "schema_version": "ads-continuation-state/v1",
         "state": "content-bound",

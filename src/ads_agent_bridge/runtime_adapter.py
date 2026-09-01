@@ -13,6 +13,7 @@ from .bridge_client import request as bridge_request
 from .circuit_simulation import execute_simulation_plan
 from .config import select_instance
 from .continuation_context import (
+    continuation_ref,
     continuation_reference,
     create_continuation_context,
     materialize_native_batch_plan,
@@ -291,8 +292,8 @@ class _AdsAdapterBase:
                         "continuation_schema": "eda-context/v2",
                         "continuation_usage": {
                             "normal_greenfield_flow": (
-                                "pass payload.continuation_context returned by "
-                                "workspace.create to the first native.batch"
+                                "pass the short response continuation_ref from workspace.create "
+                                "as payload.continuation_context to the first native.batch"
                             ),
                             "agent_supplies": (
                                 "scope.write_paths, scope.artifacts, program, validation, "
@@ -306,6 +307,10 @@ class _AdsAdapterBase:
                                 "transaction.source_fingerprints",
                             ],
                             "opaque": True,
+                            "long_token_fallback": (
+                                "continuation_context remains available for portable EDA_CONTEXT "
+                                "handoff; do not make an Agent recopy it when continuation_ref exists"
+                            ),
                         },
                         "context_materializes": [
                             "scope.selectors.instance",
@@ -750,6 +755,7 @@ class _AdsAdapterBase:
                 source_fingerprint=str(source_fingerprint or ""),
             )
             result["continuation_context"] = continuation_token
+            result["continuation_ref"] = continuation_ref(continuation_token)
             result["continuation_state"] = continuation_state
             return AdapterResult(status="passed", result={"bridge": result})
         if request.operation == "design.apply":
