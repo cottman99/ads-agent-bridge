@@ -56,6 +56,32 @@ def test_runtime_validation_rejects_cli_and_official_surface(tmp_path: Path):
     assert "runtime arm used CLI or shell" in errors
 
 
+def test_codex_oauth_is_normalized_for_pi_without_changing_source(tmp_path: Path):
+    runner = _runner()
+    source = tmp_path / "codex-auth.json"
+    destination = tmp_path / "pi-auth.json"
+    payload = {"exp": 2_000_000_000}
+    encoded = __import__("base64").urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+    original = {
+        "tokens": {
+            "access_token": f"x.{encoded}.x",
+            "refresh_token": "refresh",
+            "account_id": "account",
+        }
+    }
+    source.write_text(json.dumps(original), encoding="utf-8")
+    runner.copy_agent_auth(source, destination, "pi")
+    normalized = json.loads(destination.read_text(encoding="utf-8"))["openai-codex"]
+    assert normalized == {
+        "type": "oauth",
+        "refresh": "refresh",
+        "access": f"x.{encoded}.x",
+        "expires": 2_000_000_000_000,
+        "accountId": "account",
+    }
+    assert json.loads(source.read_text(encoding="utf-8")) == original
+
+
 def test_execution_validation_requires_real_artifacts_and_one_simulation(
     tmp_path: Path,
 ):

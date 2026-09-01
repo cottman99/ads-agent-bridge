@@ -8,6 +8,7 @@ MCP, not an Agent exploring and invoking the ads-agent CLI.
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import importlib.util
 import json
@@ -138,6 +139,39 @@ def product_env(paths: Paths, display: str) -> dict[str, str]:
         }
     )
     return env
+
+
+def copy_agent_auth(source: Path, destination: Path, agent: str) -> None:
+    """Copy credentials without exposing them; normalize Codex OAuth for Pi."""
+    if agent == "codex":
+        shutil.copy2(source, destination)
+        return
+    value = json.loads(source.read_text(encoding="utf-8"))
+    if "openai-codex" in value:
+        normalized = value
+    else:
+        tokens = value.get("tokens") or {}
+        access = tokens.get("access_token")
+        refresh = tokens.get("refresh_token")
+        if not access or not refresh:
+            raise ValueError("Pi auth source has neither Pi nor Codex OAuth credentials")
+        try:
+            payload = access.split(".")[1]
+            payload += "=" * (-len(payload) % 4)
+            expires = int(json.loads(base64.urlsafe_b64decode(payload))["exp"] * 1000)
+        except (IndexError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+            expires = 0
+        normalized = {
+            "openai-codex": {
+                "type": "oauth",
+                "refresh": refresh,
+                "access": access,
+                "expires": expires,
+                "accountId": tokens.get("account_id"),
+            }
+        }
+    destination.write_text(json.dumps(normalized), encoding="utf-8")
+    destination.chmod(0o600)
 
 
 def package_path(paths: Paths, package: str, relative: str) -> Path:
@@ -340,13 +374,14 @@ def prompt_for(contract: dict[str, Any], arm: str, case_id: str, work: Path) -> 
         "Your only product surface is the configured EDA Runtime MCP and the current Runtime/ADS Skills. "
         "Use Runtime MCP tools directly. Do not invoke or discuss ads-agent CLI or the official ADS MCP."
         if arm == "runtime"
-        else "Your only product surface is the configured official ADS MCP. Do not invoke or discuss EDA Runtime, ads-agent, or ADS Agent Bridge."
+        else "Your only product surface is the configured official ADS MCP. Select exact tool names from the tools actually exposed to you; it includes documentation/search and session/Python execution capabilities. Do not invoke or discuss EDA Runtime, ads-agent, or ADS Agent Bridge."
     )
     return "\n\n".join(
         (
             "You are taking part in a controlled ADS 2027 comparison. Solve the engineering request through the assigned current product surface, not through a memorized benchmark recipe.",
             surface,
             "Shell, browser, web, external repositories, prior outputs, and direct process execution are unavailable. Do not perform duplicate work. Calibration and formal runs use fresh directories.",
+            "For a knowledge case, call the assigned MCP documentation/search surface and ground the answer in its returned evidence instead of answering from memory. For an execution case, use only the assigned MCP execution surface.",
             f"RUN_DIRECTORY={work}",
             contract["cases"][case_id]["prompt"].replace("RUN_DIRECTORY", str(work)),
         )
@@ -503,7 +538,7 @@ def execute_one(
     agent_home.mkdir(parents=True, exist_ok=False)
     work.mkdir(parents=True, exist_ok=False)
     auth = paths.auth_source if agent == "codex" else paths.pi_auth_source
-    shutil.copy2(auth, agent_home / "auth.json")
+    copy_agent_auth(auth, agent_home / "auth.json", agent)
     schema_path = run_dir / "output-schema.json"
     answer_path = run_dir / "answer.json"
     events_path = run_dir / "events.jsonl"
@@ -529,7 +564,7 @@ def execute_one(
             "--output-last-message", str(answer_path),
         ]
         if arm == "runtime":
-            command.extend(["--profile", "eda-runtime", "--approve-for-me"])
+            command.extend(["--profile", "eda-runtime"])
         else:
             command.append("--dangerously-bypass-approvals-and-sandbox")
         command.append(prompt)
@@ -555,7 +590,7 @@ def execute_one(
             ads = str(paths.ads_root)
             env["ADS_MCP_COMMAND"] = str(paths.official_mcp)
             env["LD_LIBRARY_PATH"] = ":".join((f"{ads}/tools/python/lib", f"{ads}/lib/linux_x86_64", f"{ads}/lib/linux_x86_64/gccrt15"))
-            env["PATH"] = f"{ads}/bin:{ads}/tools/python/bin:/usr/local/bin:/usr/bin:/bin"
+            env["PATH"] = f"{paths.pi_node_bin.parent}:{ads}/bin:{ads}/tools/python/bin:/usr/local/bin:/usr/bin:/bin"
             command.extend(["--extension", str(paths.pi_official_extension)])
         command.append(
             prompt + "\n\nYour final response must be only one JSON object conforming exactly to this schema:\n"
