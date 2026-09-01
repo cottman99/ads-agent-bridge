@@ -19,7 +19,7 @@ two vendor panels use different timing boundaries and are not a vendor ranking.
 
 `ads2027-headless-ac-benchmark.svg` and
 `ads2027-knowledge-benchmark.svg` are generated from the sanitized 2026-09-01
-three-run ADS 2027 benchmark aggregate by
+three-run current-architecture ADS 2027 benchmark aggregate by
 `scripts/render_ads2027_v2_charts.py`. The first is an E3 median/range chart;
 the second is a per-case reliability matrix. Neither contains private paths,
 credentials, vendor documentation excerpts, or customer data.

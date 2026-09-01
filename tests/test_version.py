@@ -99,7 +99,7 @@ def test_public_capability_claims_keep_plugin_and_comparison_scope_explicit():
     for readme in (english, chinese):
         assert "docs/CAPABILITY_MATRIX.md" in readme
         assert "docs/BENCHMARK_ADS2027_HEADLESS_AC.md" in readme
-        assert "docs/benchmarks/ads2027-v2-public-summary.json" in readme
+        assert "docs/benchmarks/ads2027-v3-public-summary.json" in readme
         assert "Copy ADS Context" in readme
         assert "ADS_CONTEXT" in readme
 
@@ -111,7 +111,7 @@ def test_public_capability_claims_keep_plugin_and_comparison_scope_explicit():
     assert "not Bridge capabilities" in matrix
     assert "BENCHMARK_ADS2027_HEADLESS_AC.md" in matrix
 
-    execution_summary = root / "docs" / "benchmarks" / "ads2027-v2-public-summary.json"
+    execution_summary = root / "docs" / "benchmarks" / "ads2027-v3-public-summary.json"
     execution_chart = (
         root / "docs" / "assets" / "readme" / "ads2027-headless-ac-benchmark.svg"
     )

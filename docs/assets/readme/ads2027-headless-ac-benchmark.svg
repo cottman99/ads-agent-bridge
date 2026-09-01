@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="520" viewBox="0 0 1120 520" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="450" viewBox="0 0 1120 450" role="img" aria-labelledby="title desc">
   <title id="title">ADS 2027 headless AC execution benchmark</title>
-  <desc id="desc">Five rows compare median wall time and range for Codex or Pi Agent using Bridge a29, Bridge a48, or the official ADS MCP. All headless execution runs passed.</desc>
+  <desc id="desc">Four rows compare Agent end-to-end wall time and strict execution pass counts for Codex or Pi Agent using EDA Runtime MCP or the official ADS MCP.</desc>
   <style>
     .title{font:700 25px Inter,Segoe UI,sans-serif;fill:#152233}
     .subtitle{font:14px Inter,Segoe UI,sans-serif;fill:#526071}
@@ -12,48 +12,42 @@
   </style>
   <rect width="1120" height="100%" fill="#ffffff"/>
   <text x="40" y="42" class="title" text-anchor="start">ADS 2027 headless AC execution</text>
-  <text x="40" y="68" class="subtitle" text-anchor="start">Median end-to-end wall time; whiskers show the three-run range. Every E3 run passed.</text>
-  <line x1="260.0" y1="108" x2="260.0" y2="430" class="grid"/>
-  <text x="260" y="452" class="axis" text-anchor="middle">0s</text>
-  <line x1="400.0" y1="108" x2="400.0" y2="430" class="grid"/>
-  <text x="400" y="452" class="axis" text-anchor="middle">20s</text>
-  <line x1="540.0" y1="108" x2="540.0" y2="430" class="grid"/>
-  <text x="540" y="452" class="axis" text-anchor="middle">40s</text>
-  <line x1="680.0" y1="108" x2="680.0" y2="430" class="grid"/>
-  <text x="680" y="452" class="axis" text-anchor="middle">60s</text>
-  <line x1="820.0" y1="108" x2="820.0" y2="430" class="grid"/>
-  <text x="820" y="452" class="axis" text-anchor="middle">80s</text>
-  <line x1="960.0" y1="108" x2="960.0" y2="430" class="grid"/>
-  <text x="960" y="452" class="axis" text-anchor="middle">100s</text>
-  <text x="40" y="140" class="label" text-anchor="start">Codex · Bridge a29</text>
-  <rect x="260" y="120" width="575.8" height="28" rx="4" fill="#94a3b8"/>
-  <line x1="725.9" y1="134" x2="970.6" y2="134" stroke="#152233" stroke-width="2"/>
-  <line x1="725.9" y1="128" x2="725.9" y2="140" stroke="#152233" stroke-width="2"/>
-  <line x1="970.6" y1="128" x2="970.6" y2="140" stroke="#152233" stroke-width="2"/>
-  <text x="980.591" y="140" class="value" text-anchor="start">82.3s · 3/3</text>
-  <text x="40" y="202" class="label" text-anchor="start">Codex · Bridge a48</text>
-  <rect x="260" y="182" width="453.6" height="28" rx="4" fill="#2f6fed"/>
-  <line x1="698.6" y1="196" x2="810.6" y2="196" stroke="#152233" stroke-width="2"/>
-  <line x1="698.6" y1="190" x2="698.6" y2="202" stroke="#152233" stroke-width="2"/>
-  <line x1="810.6" y1="190" x2="810.6" y2="202" stroke="#152233" stroke-width="2"/>
-  <text x="820.648" y="202" class="value" text-anchor="start">64.8s · 3/3</text>
-  <text x="40" y="264" class="label" text-anchor="start">Codex · Official MCP</text>
-  <rect x="260" y="244" width="371.8" height="28" rx="4" fill="#e3a12f"/>
-  <line x1="610.8" y1="258" x2="654.2" y2="258" stroke="#152233" stroke-width="2"/>
-  <line x1="610.8" y1="252" x2="610.8" y2="264" stroke="#152233" stroke-width="2"/>
-  <line x1="654.2" y1="252" x2="654.2" y2="264" stroke="#152233" stroke-width="2"/>
-  <text x="664.219" y="264" class="value" text-anchor="start">53.1s · 3/3</text>
-  <text x="40" y="326" class="label" text-anchor="start">Pi Agent · Bridge a48</text>
-  <rect x="260" y="306" width="307.6" height="28" rx="4" fill="#2f6fed"/>
-  <line x1="546.2" y1="320" x2="629.8" y2="320" stroke="#152233" stroke-width="2"/>
-  <line x1="546.2" y1="314" x2="546.2" y2="326" stroke="#152233" stroke-width="2"/>
-  <line x1="629.8" y1="314" x2="629.8" y2="326" stroke="#152233" stroke-width="2"/>
-  <text x="639.824" y="326" class="value" text-anchor="start">43.9s · 3/3</text>
-  <text x="40" y="388" class="label" text-anchor="start">Pi Agent · Official MCP</text>
-  <rect x="260" y="368" width="263.7" height="28" rx="4" fill="#e3a12f"/>
-  <line x1="513.4" y1="382" x2="527.2" y2="382" stroke="#152233" stroke-width="2"/>
-  <line x1="513.4" y1="376" x2="513.4" y2="388" stroke="#152233" stroke-width="2"/>
-  <line x1="527.2" y1="376" x2="527.2" y2="388" stroke="#152233" stroke-width="2"/>
-  <text x="537.169" y="388" class="value" text-anchor="start">37.7s · 3/3</text>
-  <text x="40" y="495" class="note" text-anchor="start">ADS 2027 · gpt-5.6-terra medium · serial counterbalanced · 3 repetitions per row · 2026-09-01</text>
+  <text x="40" y="68" class="subtitle" text-anchor="start">Agent end-to-end median; whiskers show the three-run range. Labels include strict pass count.</text>
+  <line x1="280.0" y1="108" x2="280.0" y2="350" class="grid"/>
+  <text x="280" y="374" class="axis" text-anchor="middle">0s</text>
+  <line x1="428.0" y1="108" x2="428.0" y2="350" class="grid"/>
+  <text x="428" y="374" class="axis" text-anchor="middle">40s</text>
+  <line x1="576.0" y1="108" x2="576.0" y2="350" class="grid"/>
+  <text x="576" y="374" class="axis" text-anchor="middle">80s</text>
+  <line x1="724.0" y1="108" x2="724.0" y2="350" class="grid"/>
+  <text x="724" y="374" class="axis" text-anchor="middle">120s</text>
+  <line x1="872.0" y1="108" x2="872.0" y2="350" class="grid"/>
+  <text x="872" y="374" class="axis" text-anchor="middle">160s</text>
+  <line x1="1020.0" y1="108" x2="1020.0" y2="350" class="grid"/>
+  <text x="1020" y="374" class="axis" text-anchor="middle">200s</text>
+  <text x="40" y="140" class="label" text-anchor="start">Codex · EDA Runtime</text>
+  <rect x="280" y="120" width="576.8" height="28" rx="4" fill="#2f6fed"/>
+  <line x1="757.8" y1="134" x2="972.2" y2="134" stroke="#152233" stroke-width="2"/>
+  <line x1="757.8" y1="128" x2="757.8" y2="140" stroke="#152233" stroke-width="2"/>
+  <line x1="972.2" y1="128" x2="972.2" y2="140" stroke="#152233" stroke-width="2"/>
+  <text x="982.196" y="140" class="value" text-anchor="start">155.9s · 1/3</text>
+  <text x="40" y="202" class="label" text-anchor="start">Codex · Official MCP</text>
+  <rect x="280" y="182" width="230.5" height="28" rx="4" fill="#e3a12f"/>
+  <line x1="488.5" y1="196" x2="514.2" y2="196" stroke="#152233" stroke-width="2"/>
+  <line x1="488.5" y1="190" x2="488.5" y2="202" stroke="#152233" stroke-width="2"/>
+  <line x1="514.2" y1="190" x2="514.2" y2="202" stroke="#152233" stroke-width="2"/>
+  <text x="524.158" y="202" class="value" text-anchor="start">62.3s · 3/3</text>
+  <text x="40" y="264" class="label" text-anchor="start">Pi Agent · EDA Runtime</text>
+  <rect x="280" y="244" width="341.4" height="28" rx="4" fill="#2f6fed"/>
+  <line x1="556.9" y1="258" x2="984.3" y2="258" stroke="#152233" stroke-width="2"/>
+  <line x1="556.9" y1="252" x2="556.9" y2="264" stroke="#152233" stroke-width="2"/>
+  <line x1="984.3" y1="252" x2="984.3" y2="264" stroke="#152233" stroke-width="2"/>
+  <text x="994.295" y="264" class="value" text-anchor="start">92.3s · 3/3</text>
+  <text x="40" y="326" class="label" text-anchor="start">Pi Agent · Official MCP</text>
+  <rect x="280" y="306" width="187.0" height="28" rx="4" fill="#e3a12f"/>
+  <line x1="460.2" y1="320" x2="498.5" y2="320" stroke="#152233" stroke-width="2"/>
+  <line x1="460.2" y1="314" x2="460.2" y2="326" stroke="#152233" stroke-width="2"/>
+  <line x1="498.5" y1="314" x2="498.5" y2="326" stroke="#152233" stroke-width="2"/>
+  <text x="508.489" y="326" class="value" text-anchor="start">50.6s · 3/3</text>
+  <text x="40" y="418" class="note" text-anchor="start">ADS 2027 · Runtime MCP + current Skills vs official MCP · 3 fresh repetitions per row · 2026-09-01</text>
 </svg>

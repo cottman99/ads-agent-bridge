@@ -1,65 +1,60 @@
 # ADS 2027 knowledge reliability benchmark
 
 This benchmark asks whether an Agent reaches a usable ADS 2027 answer from its
-assigned knowledge surface without inventing capability. Three tasks isolate
-route selection (K1), layout geometry signatures (K3), and the Python layout
-DRC boundary (K6).
+assigned current product surface. K1 checks the complete no-GUI route, K3 checks
+version-matched layout geometry signatures, and K6 checks the documented Python
+layout-DRC flow.
 
 ## Result
 
-Each cell is the strict pass count from three serial repetitions on 2026-09-01.
+Each cell is the audited strict pass count from three fresh repetitions on
+2026-09-01.
 
-| Agent and product surface | K1 route | K3 geometry | K6 DRC boundary | Total |
+| Agent and product surface | K1 route | K3 geometry | K6 Python DRC | Total |
 | --- | ---: | ---: | ---: | ---: |
-| Codex · Bridge a29 | 3/3 | 2/3 | 3/3 | 8/9 |
-| Codex · Bridge a48 | 3/3 | 2/3 | 3/3 | 8/9 |
-| Codex · official ADS MCP | 3/3 | 3/3 | 0/3 | 6/9 |
-| Pi Agent · Bridge a48 | 0/3 | 3/3 | 3/3 | 6/9 |
-| Pi Agent · official ADS MCP | 3/3 | 3/3 | 0/3 | 6/9 |
+| Codex · EDA Runtime | 3/3 | 3/3 | 3/3 | **9/9** |
+| Codex · official ADS MCP | 2/3 | 2/3 | 3/3 | 7/9 |
+| Pi Agent · EDA Runtime | 3/3 | 3/3 | 3/3 | **9/9** |
+| Pi Agent · official ADS MCP | 1/3 | 1/3 | 3/3 | 5/9 |
 
 ![ADS 2027 knowledge reliability by case](assets/readme/ads2027-knowledge-benchmark.svg)
 
-The result is not a one-number ranking:
+Runtime completed all 18/18 knowledge runs; the official MCP completed 12/18.
+The result is still case-specific:
 
-- Bridge a48 rejected the unverified Python DRC route in all 6/6 current
-  Codex/Pi runs. The official MCP presented `create_drc_job` as established in
-  all 6/6 K6 runs and therefore passed 0/6.
-- The official surface completed K1 in 6/6 current runs. Pi + Bridge selected
-  the correct quickstart route but omitted the required dataset/finite-readback
-  statement in all three repetitions, so those answers failed strictly.
-- Both current surfaces were strong on K3 under Pi. Under Codex, Bridge a48 had
-  one run that stopped without the requested geometry example.
+- K6 is now 12/12 across both products and Agents. ADS 2027 does document
+  Python DRC automation, through the experimental DVE API and an AEL-call flow.
+  The earlier v2 benchmark's negative oracle was wrong.
+- Runtime returned valid K3 code in 6/6. One answer used the documented
+  `db_uu.Rect`, `Polygon`, and `Path` constructors; the audit corrected the
+  original validator, which only recognized `Design.add_*` spelling.
+- Three official K3 answers used `create_rect/create_polygon/create_path`, which
+  are not the ADS 2027 interfaces returned by the version-matched reference.
+- Three official K1 answers did not identify the complete
+  `start_local_session` plus `execute_python` route, even when the surrounding
+  headless plan was plausible.
 
 ## Timing
 
-| Agent and product surface | Knowledge passes | Median wall time | Median total tokens |
+| Product surface | Knowledge passes | Median Agent time | Median total tokens |
 | --- | ---: | ---: | ---: |
-| Codex · Bridge a29 | 8/9 | 46.0 s | 124,680 |
-| Codex · Bridge a48 | 8/9 | 43.2 s | **102,878** |
-| Codex · official ADS MCP | 6/9 | **41.6 s** | 155,654 |
-| Pi Agent · Bridge a48 | 6/9 | 28.8 s | 24,559 |
-| Pi Agent · official ADS MCP | 6/9 | **26.8 s** | **15,188** |
+| EDA Runtime MCP + Skills | **18/18** | 43.2 s | 117,730 |
+| Official ADS MCP | 12/18 | **32.6 s** | **69,043** |
 
-Faster failed answers remain failures; latency is reported separately from
-reliability. Pi used substantially less Agent context on both product surfaces,
-but its shorter Bridge K1 answers omitted one required boundary detail.
+Runtime was more reliable here, while the official MCP was materially lighter
+and faster. Faster failed answers remain failures; knowledge latency is not ADS
+solver latency.
 
-## Controls
+## Controls and audit
 
-The model (`gpt-5.6-terra`), reasoning level (medium), ADS host, prompts,
-three-run serial counterbalancing, output contracts, and deterministic
-post-run validator were held constant. Every run used a fresh Agent home and
-could access only its assigned product surface. Web, prior outputs, global
-rules/memories, and cross-arm access were excluded; isolation violations were
-zero.
+The model, reasoning effort, ADS host, prompts, serial counterbalancing, output
+schemas, and three repetitions were held constant. Every run had a fresh Agent
+home and only its assigned MCP product surface. The audit preserved the raw
+formal results, then corrected four validator false negatives: three K1 answers
+used the explicit `.ds` artifact name instead of the word “dataset”, and one K3
+answer used documented constructor receivers.
 
-Bridge arms used their packaged Skills and version-bound local docs index. The
-official arms used the unchanged ADS 2027 MCP executable. Pi reached it through
-a thin schema/call/result forwarding extension because Pi Agent does not ship a
-built-in MCP client; the adapter supplied no ADS domain knowledge.
-
-The public aggregate and identities are in
-[`benchmarks/ads2027-v2-public-summary.json`](benchmarks/ads2027-v2-public-summary.json).
-The previous
-[`v1 summary`](benchmarks/ads2027-knowledge-v1-summary.json) remains available
-as a frozen historical baseline.
+The sanitized aggregate and exact identities are in
+[`benchmarks/ads2027-v3-public-summary.json`](benchmarks/ads2027-v3-public-summary.json).
+Older v1/v2 summaries remain historical evidence and are not the current
+architecture comparison.
