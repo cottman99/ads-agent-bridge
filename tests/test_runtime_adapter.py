@@ -443,6 +443,12 @@ def test_degraded_experience_disables_shortcuts_but_not_native_execution(monkeyp
     assert "workspace.create" in continuation["normal_greenfield_flow"]
     assert continuation["opaque"] is True
     assert "scope.read_paths" in continuation["runtime_materializes"]
+    docs_query = operations["docs.query"]["input_schema"]
+    assert docs_query["domains"] == ["ads", "ael", "python", "dds"]
+    assert docs_query["limit"] == [1, 20]
+    docs_get = operations["docs.get"]["input_schema"]
+    assert docs_get["max_chars"] == [200, 12000]
+    assert "docs.query" in docs_get["source_ref"]
     write_scope = native_schema["ads_contract"]["staged_write_paths"]
     assert write_scope["without_artifacts"] == [
         "absolute distinct sibling output workspace"

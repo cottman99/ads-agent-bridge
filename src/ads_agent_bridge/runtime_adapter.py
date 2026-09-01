@@ -126,6 +126,11 @@ class _AdsAdapterBase:
                     "input_schema": {
                         "required": ["query"],
                         "optional": ["instance", "domains", "limit"],
+                        "domains": ["ads", "ael", "python", "dds"],
+                        "limit": [1, 20],
+                        "domain_guidance": (
+                            "omit domains unless one exact listed domain is intended"
+                        ),
                     },
                     "state": {"available": True, "healthy": True},
                 },
@@ -140,6 +145,8 @@ class _AdsAdapterBase:
                     "input_schema": {
                         "required": ["source_ref"],
                         "optional": ["instance", "focus", "max_chars"],
+                        "source_ref": "use only a source_ref returned by docs.query",
+                        "max_chars": [200, 12000],
                     },
                     "state": {"available": True, "healthy": True},
                 },
@@ -196,6 +203,10 @@ class _AdsAdapterBase:
                         "normal_use": (
                             "read only the one version/profile-matched asset selected "
                             "from experience.list"
+                        ),
+                        "official_refs": (
+                            "provenance labels, not docs.get source_ref values; query docs "
+                            "by the referenced topic"
                         ),
                     },
                     "state": {"available": True, "healthy": True},

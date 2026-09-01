@@ -42,6 +42,12 @@ index, select the one asset matching the actual ADS version/profile/capability,
 then call `experience.get` once. Do not invent a taxonomy and treat an empty
 filtered result as proof that no applicable experience exists.
 
+An experience asset's `official_refs` are durable provenance labels, not live
+`docs.get` identifiers. Use their topic to run `docs.query`, then pass only a
+`source_ref` returned by that query to `docs.get`. Documentation domains, when
+used, must be one of `ads`, `ael`, `python`, or `dds`; omit the domain filter
+when the exact domain is not known.
+
 Experience assets are advisory, not API, authorization, capability claims, or
 success evidence. Never execute Markdown. A missing or degraded library lowers
 guidance quality but must not block governed native execution.
