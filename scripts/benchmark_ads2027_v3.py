@@ -612,8 +612,21 @@ def validate(case_id: str, arm: str, work: Path, answer: dict[str, Any], events:
             errors.append("K6 lacks bounded verification or fallback")
     else:
         root = work.resolve()
-        workspace = Path(str(answer.get("workspace", ""))).resolve()
-        dataset = Path(str(answer.get("dataset", ""))).resolve()
+
+        def resolve_run_artifact(value: object, *, directory: bool | None) -> Path:
+            supplied = Path(str(value or ""))
+            if supplied.is_absolute():
+                return supplied.resolve()
+            matches = [
+                path.resolve()
+                for path in work.rglob(supplied.name)
+                if path.name == supplied.name
+                and (directory is None or path.is_dir() == directory)
+            ]
+            return matches[0] if len(matches) == 1 else (work / supplied).resolve()
+
+        workspace = resolve_run_artifact(answer.get("workspace"), directory=True)
+        dataset = resolve_run_artifact(answer.get("dataset"), directory=None)
         if root not in workspace.parents or not workspace.is_dir():
             errors.append("workspace missing or outside run directory")
         if root not in dataset.parents or not dataset.exists():

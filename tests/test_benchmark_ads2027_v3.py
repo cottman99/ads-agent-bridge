@@ -253,3 +253,26 @@ def test_execution_validation_requires_real_artifacts_and_one_simulation(
     assert "E3 acceptance mismatch: simulation_count" in runner.validate(
         "E3", "official", tmp_path / "work", answer, []
     )
+
+
+def test_execution_validation_resolves_one_relative_runtime_artifact(tmp_path: Path):
+    runner = _runner()
+    work = tmp_path / "work"
+    workspace = work / "accepted_wrk"
+    dataset = work / "artifacts" / "ac_minimal.ds"
+    workspace.mkdir(parents=True)
+    dataset.parent.mkdir()
+    dataset.write_text("dataset evidence", encoding="utf-8")
+    answer = {
+        "case_id": "E3",
+        "workspace": str(workspace),
+        "dataset": "ac_minimal.ds",
+        "simulation_count": 1,
+        "simulation_completed": True,
+        "dataset_read_back": True,
+        "numeric_sample": 0.5,
+        "gui_launched": False,
+        "evidence": ["fresh readback"],
+    }
+
+    assert runner.validate("E3", "runtime", work, answer, []) == []
