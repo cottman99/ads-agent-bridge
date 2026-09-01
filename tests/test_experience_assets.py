@@ -2,7 +2,7 @@ from pathlib import Path
 
 from eda_bridge_runtime import validate_experience_library
 
-from ads_agent_bridge.experience_shortcuts import validate_shortcut
+from ads_agent_bridge.experience_shortcuts import list_assets, validate_shortcut
 
 
 def test_packaged_experience_library_and_all_compiled_shortcuts_match():
@@ -14,6 +14,12 @@ def test_packaged_experience_library_and_all_compiled_shortcuts_match():
         item["id"] == "ads.native.circuit-simulate-and-validate"
         for item in manifest["assets"]
     )
+    ads_2027_native = list_assets(
+        version="ADS 2027", profile="de", capability="native.batch"
+    )
+    assert [item["id"] for item in ads_2027_native["assets"]] == [
+        "ads.native.circuit-simulate-and-validate"
+    ]
     for operation, profile in (
         ("design.apply", "de"),
         ("circuit.simulate", "de"),

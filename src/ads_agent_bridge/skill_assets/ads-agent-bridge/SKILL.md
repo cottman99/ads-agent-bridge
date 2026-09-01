@@ -37,10 +37,11 @@ schema match. Otherwise generate one governed native ADS Python or AEL batch.
 Retain its receipt and independent validation.
 
 Experience intent and tag filters are exact metadata matches. When their exact
-values are unknown, call `experience.list` without filters to obtain the compact
-index, select the one asset matching the actual ADS version/profile/capability,
-then call `experience.get` once. Do not invent a taxonomy and treat an empty
-filtered result as proof that no applicable experience exists.
+values are unknown, omit them. Filter `experience.list` by the known ADS major
+`version`, runtime `profile`, and advertised operation `capability`; then call
+`experience.get` once for the matching asset. If applicability itself is still
+unknown, list the compact index without filters. Do not invent a taxonomy or
+select an asset whose version/profile/capability does not match.
 
 An experience asset's `official_refs` are durable provenance labels, not live
 `docs.get` identifiers. Use their topic to run `docs.query`, then pass only a

@@ -181,8 +181,19 @@ class _AdsAdapterBase:
                     "returns_context": False,
                     "input_schema": {
                         "required": [],
-                        "optional": ["intents", "tags"],
+                        "optional": [
+                            "intents",
+                            "tags",
+                            "version",
+                            "profile",
+                            "capability",
+                        ],
                         "filter_semantics": "exact metadata match",
+                        "applicability_filters": {
+                            "version": "ADS major version such as 2027",
+                            "profile": ["de", "dds"],
+                            "capability": "advertised operation id such as native.batch",
+                        },
                         "discovery": (
                             "omit intents and tags to list the compact asset index "
                             "when exact metadata values are unknown"
@@ -763,6 +774,21 @@ class _AdsAdapterBase:
             result = list_assets(
                 intents=list(request.payload.get("intents") or []),
                 tags=list(request.payload.get("tags") or []),
+                version=(
+                    str(request.payload["version"])
+                    if request.payload.get("version")
+                    else None
+                ),
+                profile=(
+                    str(request.payload["profile"])
+                    if request.payload.get("profile")
+                    else None
+                ),
+                capability=(
+                    str(request.payload["capability"])
+                    if request.payload.get("capability")
+                    else None
+                ),
             )
             return AdapterResult(status="passed", result={"bridge": result})
         if request.operation == "experience.get":

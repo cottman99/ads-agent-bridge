@@ -139,8 +139,33 @@ def shortcut_receipt(
     }
 
 
-def list_assets(*, intents: list[str] | None = None, tags: list[str] | None = None):
-    return list_experience_assets(_ROOT, intents=intents, tags=tags)
+def list_assets(
+    *,
+    intents: list[str] | None = None,
+    tags: list[str] | None = None,
+    version: str | None = None,
+    profile: str | None = None,
+    capability: str | None = None,
+):
+    result = list_experience_assets(_ROOT, intents=intents, tags=tags)
+
+    def normalized_version(value: str) -> str:
+        text = str(value or "").strip().casefold()
+        return text[4:].strip() if text.startswith("ads ") else text
+
+    selected = []
+    for asset in result["assets"]:
+        applies = asset["applies_to"]
+        if version and normalized_version(version) not in {
+            normalized_version(item) for item in applies["versions"]
+        }:
+            continue
+        if profile and str(profile) not in applies["profiles"]:
+            continue
+        if capability and str(capability) not in applies["capabilities"]:
+            continue
+        selected.append(asset)
+    return {**result, "assets": selected}
 
 
 def get_asset(asset_id: str, *, max_chars: int = 8000):

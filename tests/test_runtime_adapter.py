@@ -415,6 +415,7 @@ def test_degraded_experience_disables_shortcuts_but_not_native_execution(monkeyp
     experience_list = operations["experience.list"]["input_schema"]
     assert experience_list["filter_semantics"] == "exact metadata match"
     assert "omit intents and tags" in experience_list["discovery"]
+    assert experience_list["applicability_filters"]["profile"] == ["de", "dds"]
     assert operations["native.batch"]["state"]["available"] is True
     assert operations["native.batch"]["returns_context"] is True
     assert (
