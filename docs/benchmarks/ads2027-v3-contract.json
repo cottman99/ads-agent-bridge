@@ -1,0 +1,68 @@
+{
+  "schema": "ads-agent-benchmark-contract/v3",
+  "benchmark_id": "ads2027-runtime-mcp-vs-official-v3",
+  "purpose": "Compare the current EDA Runtime MCP product path with the official ADS MCP under equivalent Agent, task, host, and evidence controls.",
+  "runtime": {
+    "host_os": "Linux",
+    "ads_version": "ADS 2027",
+    "agents": ["Codex", "Pi Agent"],
+    "model": "gpt-5.6-terra",
+    "reasoning_effort": "medium",
+    "display": ":4",
+    "execution": "serial-counterbalanced"
+  },
+  "arms": {
+    "runtime": {
+      "surface": "EDA Runtime MCP with the current Runtime and ADS Skills",
+      "normal_path": "typed Runtime MCP only; documentation, experience, certified workflow, or governed native execution as applicable",
+      "forbidden": ["ads-agent CLI task execution", "direct shell execution", "official ADS MCP"]
+    },
+    "official": {
+      "surface": "ADS 2027 official MCP",
+      "normal_path": "official documentation tools and official session/Python execution tools",
+      "forbidden": ["EDA Runtime MCP", "ads-agent Bridge", "direct shell execution"]
+    }
+  },
+  "controls": {
+    "fresh_agent_home_per_run": true,
+    "only_auth_is_inherited": true,
+    "same_agent_model_reasoning_host_ads_installation_and_prompt": true,
+    "only_assigned_mcp_surface_is_exposed": true,
+    "shell_browser_web_memories_prior_outputs_and_cross_arm_access_forbidden": true,
+    "formal_runs": 3,
+    "calibration_runs_are_excluded": true,
+    "exactly_one_effective_simulation_per_execution_run": true,
+    "timing_layers": ["agent_total", "mcp_transport", "runtime_worker", "ads_adapter_or_official_tool"]
+  },
+  "cases": {
+    "K1": {
+      "class": "knowledge",
+      "title": "Choose the supported no-GUI execution route",
+      "prompt": "An engineer wants a disposable ADS 2027 workspace, a minimal AC circuit, one simulation, one finite dataset sample, and all generated artifacts below the assigned run directory. There is no pre-existing DE or DDS session. Using only the assigned product surface, identify the supported route and its important boundary. This is knowledge-only: do not execute or create artifacts. Do not prescribe a legacy CLI path when the assigned surface provides MCP tools. Return only the required JSON object."
+    },
+    "K3": {
+      "class": "knowledge",
+      "title": "Version-matched ADS layout geometry evidence",
+      "prompt": "Using only the ADS 2027 documentation source exposed by the assigned product surface, provide a compact runnable Python example that creates a rectangle, polygon, and path in an already opened writable layout design. Use documented receivers and constructor signatures, include imports, identify caller-supplied values, and do not execute ADS or invent methods. Return only the required JSON object."
+    },
+    "K6": {
+      "class": "knowledge",
+      "title": "Documented Python DRC boundary",
+      "prompt": "Using only the ADS 2027 documentation source exposed by the assigned product surface, determine whether a documented ADS Python API for executing layout DRC is established. If it is not established, say so plainly; do not present create_drc_job or another unverified symbol as runnable. Give one bounded verification step and one safe fallback. Return only the required JSON object."
+    },
+    "E3": {
+      "class": "execution",
+      "title": "Disposable no-GUI AC simulation with finite dataset evidence",
+      "prompt": "Create a new disposable ADS 2027 workspace strictly below RUN_DIRECTORY, build a minimal AC circuit, run exactly one simulation without launching the ADS GUI, read the generated dataset, and return one finite numeric sample. Use only the assigned MCP product surface and its normal current workflow. Do not use a product CLI, shell, direct ADS Python process, direct simulator process, the other benchmark surface, or earlier run artifacts. Do not claim success unless the persisted workspace, dataset readback, and finite sample are proven. Return only the required JSON object.",
+      "common_acceptance": {
+        "new_workspace_below_run_directory": true,
+        "simulation_count": 1,
+        "simulation_completed": true,
+        "dataset_read_back": true,
+        "finite_numeric_sample": true,
+        "gui_launched": false
+      },
+      "additional_runtime_evidence": ["typed MCP receipt", "declared scope", "source preservation or greenfield ownership", "fresh validation when mutation uses staging"]
+    }
+  }
+}
