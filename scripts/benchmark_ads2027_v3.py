@@ -454,9 +454,10 @@ def event_facts(events: list[dict[str, Any]], agent: str) -> dict[str, Any]:
                 walk(child)
 
     for event in events:
-        walk(event)
         if agent == "codex":
             item = event.get("item") or {}
+            if event.get("type") == "item.completed" and item.get("type") == "mcp_tool_call":
+                walk(item.get("result"))
             if item.get("type") == "mcp_tool_call":
                 tool_names.append(str(item.get("name") or item.get("tool") or item.get("server") or "mcp"))
             candidate = event.get("usage")
@@ -465,6 +466,8 @@ def event_facts(events: list[dict[str, Any]], agent: str) -> dict[str, Any]:
                     if isinstance(candidate.get(key), int):
                         usage[key] = max(usage[key], candidate[key])
         else:
+            if event.get("type") == "tool_execution_end":
+                walk(event.get("result"))
             if event.get("type") == "tool_execution_start":
                 tool_names.append(str(event.get("toolName") or "tool"))
             if event.get("type") == "message_end" and (event.get("message") or {}).get("role") == "assistant":

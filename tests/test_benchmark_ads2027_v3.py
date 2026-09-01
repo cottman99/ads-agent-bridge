@@ -92,6 +92,22 @@ def test_validation_ignores_surface_names_in_prompt_and_checks_actual_tools(
     assert runner.validate("K1", "runtime", tmp_path, answer, events) == []
 
 
+def test_timing_facts_exclude_agent_supplied_wait_values():
+    runner = _runner()
+    events = [
+        {
+            "type": "item.completed",
+            "item": {
+                "type": "mcp_tool_call",
+                "arguments": {"wait": {"timeout_ms": 300000}},
+                "result": {"structured_content": {"client_transport_ms": 12.5}},
+            },
+        }
+    ]
+    facts = runner.event_facts(events, "codex")
+    assert facts["timing_ms"] == {"client_transport_ms": [12.5]}
+
+
 def test_codex_oauth_is_normalized_for_pi_without_changing_source(tmp_path: Path):
     runner = _runner()
     source = tmp_path / "codex-auth.json"
