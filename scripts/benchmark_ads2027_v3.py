@@ -442,6 +442,19 @@ def event_facts(events: list[dict[str, Any]], agent: str) -> dict[str, Any]:
     tool_names: list[str] = []
     final_text = ""
     timing_ms: dict[str, list[float]] = {}
+    tool_started: dict[str, tuple[float, str]] = {}
+
+    def tool_label(name: str, arguments: Any) -> str:
+        operation = arguments.get("operation") if isinstance(arguments, dict) else None
+        selected = str(operation or name or "tool").lower()
+        return re.sub(r"[^a-z0-9]+", "_", selected).strip("_")[:80] or "tool"
+
+    def record_tool_elapsed(call_id: str, finished_ms: Any) -> None:
+        if call_id not in tool_started or not isinstance(finished_ms, (int, float)):
+            return
+        started_ms, label = tool_started.pop(call_id)
+        elapsed = max(0.0, float(finished_ms) - started_ms)
+        timing_ms.setdefault(f"tool_{label}_ms", []).append(round(elapsed, 3))
 
     def collect_timing_object(value: Any) -> None:
         if isinstance(value, dict):
@@ -479,10 +492,21 @@ def event_facts(events: list[dict[str, Any]], agent: str) -> dict[str, Any]:
     for event in events:
         if agent == "codex":
             item = event.get("item") or {}
+            call_id = str(item.get("id") or "")
+            received_ms = event.get("_benchmark_received_ms")
+            if (
+                event.get("type") == "item.started"
+                and item.get("type") == "mcp_tool_call"
+                and isinstance(received_ms, (int, float))
+            ):
+                tool_started[call_id] = (
+                    float(received_ms),
+                    tool_label(str(item.get("tool") or item.get("name") or "mcp"), item.get("arguments")),
+                )
             if event.get("type") == "item.completed" and item.get("type") == "mcp_tool_call":
                 result = item.get("result") or {}
                 collect_runtime_result(result.get("structured_content"))
-            if item.get("type") == "mcp_tool_call":
+                record_tool_elapsed(call_id, received_ms)
                 tool_names.append(str(item.get("name") or item.get("tool") or item.get("server") or "mcp"))
             candidate = event.get("usage")
             if isinstance(candidate, dict):
@@ -493,8 +517,18 @@ def event_facts(events: list[dict[str, Any]], agent: str) -> dict[str, Any]:
             if event.get("type") == "tool_execution_end":
                 result = event.get("result") or {}
                 collect_runtime_result((result.get("details") or {}).get("runtime"))
-            if event.get("type") == "tool_execution_start":
+                record_tool_elapsed(
+                    str(event.get("toolCallId") or ""),
+                    event.get("_benchmark_received_ms"),
+                )
                 tool_names.append(str(event.get("toolName") or "tool"))
+            if event.get("type") == "tool_execution_start":
+                received_ms = event.get("_benchmark_received_ms")
+                if isinstance(received_ms, (int, float)):
+                    tool_started[str(event.get("toolCallId") or "")] = (
+                        float(received_ms),
+                        tool_label(str(event.get("toolName") or "tool"), event.get("args")),
+                    )
             if event.get("type") == "message_end" and (event.get("message") or {}).get("role") == "assistant":
                 message = event["message"]
                 native = message.get("usage") or {}
@@ -667,8 +701,32 @@ def execute_one(
             + json.dumps(output_schema(case_id), separators=(",", ":"))
         )
     started = time.monotonic()
-    with events_path.open("w", encoding="utf-8") as stdout, stderr_path.open("w", encoding="utf-8") as stderr:
-        completed = subprocess.run(command, env=env, cwd=work, text=True, stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr)
+    with events_path.open("w", encoding="utf-8") as stdout, stderr_path.open(
+        "w", encoding="utf-8"
+    ) as stderr:
+        process = subprocess.Popen(
+            command,
+            env=env,
+            cwd=work,
+            text=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=stderr,
+            bufsize=1,
+        )
+        assert process.stdout is not None
+        for line in process.stdout:
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                stdout.write(line)
+            else:
+                event["_benchmark_received_ms"] = round(
+                    (time.monotonic() - started) * 1000, 3
+                )
+                stdout.write(json.dumps(event, ensure_ascii=False) + "\n")
+            stdout.flush()
+        returncode = process.wait()
     wall_seconds = time.monotonic() - started
     events = load_events(events_path)
     facts = event_facts(events, agent)
@@ -691,8 +749,8 @@ def execute_one(
         "case": case_id,
         "agent": agent,
         "arm": arm,
-        "status": "pass" if completed.returncode == 0 and not errors else "fail",
-        "returncode": completed.returncode,
+        "status": "pass" if returncode == 0 and not errors else "fail",
+        "returncode": returncode,
         "wall_seconds": round(wall_seconds, 3),
         "usage": usage,
         "total_tokens": usage["input_tokens"] + usage["output_tokens"],
