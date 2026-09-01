@@ -48,7 +48,7 @@
     "K6": {
       "class": "knowledge",
       "title": "Documented Python DRC boundary",
-      "prompt": "Using only the ADS 2027 documentation source exposed by the assigned product surface, determine whether a documented ADS Python API for executing layout DRC is established. If it is not established, say so plainly; do not present create_drc_job or another unverified symbol as runnable. Give one bounded verification step and one safe fallback. Return only the required JSON object."
+      "prompt": "Using only the ADS 2027 documentation source exposed by the assigned product surface, determine whether a documented ADS Python API for executing layout DRC is established. Report the documented callable flow if one is established; otherwise say that the documentation search did not establish one. Give one bounded verification step and one safe fallback. Return only the required JSON object."
     },
     "E3": {
       "class": "execution",

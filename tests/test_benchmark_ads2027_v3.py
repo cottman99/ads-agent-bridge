@@ -169,7 +169,7 @@ def test_event_facts_records_each_completed_tool_once_with_elapsed_time():
     assert facts["timing_ms"] == {"tool_native_batch_ms": [2500.0]}
 
 
-def test_k6_accepts_either_evidence_backed_documentation_boundary(tmp_path: Path):
+def test_k6_requires_the_documented_ads2027_drc_flow(tmp_path: Path):
     runner = _runner()
     affirmative = {
         "case_id": "K6",
@@ -190,7 +190,10 @@ def test_k6_accepts_either_evidence_backed_documentation_boundary(tmp_path: Path
         "sources": ["ads-doc:v1:example"],
     }
     assert runner.validate("K6", "runtime", tmp_path, affirmative, []) == []
-    assert runner.validate("K6", "runtime", tmp_path, negative, []) == []
+    assert runner.validate("K6", "runtime", tmp_path, negative, []) == [
+        "K6 contradicts the documented ADS 2027 Python DRC capability",
+        "K6 lacks the documented DRC API flow",
+    ]
 
 
 def test_codex_oauth_is_normalized_for_pi_without_changing_source(tmp_path: Path):
