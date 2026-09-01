@@ -39,6 +39,11 @@ def test_schedule_is_serial_and_counterbalanced():
     assert [row[3] for row in observed[4:6]] == ["official", "runtime"]
 
 
+def test_run_campaign_has_an_isolated_directory_component():
+    runner = _runner()
+    assert "campaign" in runner.execute_one.__annotations__
+
+
 def test_runtime_validation_rejects_cli_and_official_surface(tmp_path: Path):
     runner = _runner()
     answer = {

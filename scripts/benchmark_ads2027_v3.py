@@ -101,6 +101,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--reasoning-effort", default="medium")
     parser.add_argument("--display", default=":4")
     parser.add_argument("--phase", choices=("calibration", "formal"), default="calibration")
+    parser.add_argument("--campaign", default="current")
     parser.add_argument("--arms", nargs="+", choices=ARMS, default=list(ARMS))
     parser.add_argument("--agents", nargs="+", choices=AGENTS, default=list(AGENTS))
     parser.add_argument("--cases", nargs="+", choices=CASES, default=list(CASES))
@@ -564,6 +565,7 @@ def execute_one(
     contract: dict[str, Any],
     *,
     phase: str,
+    campaign: str,
     trial: int,
     case_id: str,
     agent: str,
@@ -572,7 +574,7 @@ def execute_one(
     reasoning_effort: str,
     display: str,
 ) -> dict[str, Any]:
-    run_dir = paths.runs / phase / f"trial-{trial:02d}" / case_id / agent / arm
+    run_dir = paths.runs / phase / campaign / f"trial-{trial:02d}" / case_id / agent / arm
     agent_home = run_dir / f"{agent}-home"
     work = run_dir / "work"
     agent_home.mkdir(parents=True, exist_ok=False)
@@ -656,6 +658,7 @@ def execute_one(
     record = {
         "schema": "ads-agent-benchmark-run/v3",
         "phase": phase,
+        "campaign": campaign,
         "trial": trial,
         "case": case_id,
         "agent": agent,
@@ -689,7 +692,8 @@ def run_suite(paths: Paths, args: argparse.Namespace) -> list[dict[str, Any]]:
     records = []
     for trial, case_id, agent, arm in schedule(list(args.arms), list(args.agents), list(args.cases), args.repetitions):
         record = execute_one(
-            paths, contract, phase=args.phase, trial=trial, case_id=case_id,
+            paths, contract, phase=args.phase, campaign=args.campaign,
+            trial=trial, case_id=case_id,
             agent=agent, arm=arm, model=args.model,
             reasoning_effort=args.reasoning_effort, display=args.display,
         )
@@ -721,6 +725,8 @@ def main() -> int:
     args = parse_args()
     if not 1 <= args.repetitions <= 10:
         raise SystemExit("--repetitions must be between 1 and 10")
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", args.campaign):
+        raise SystemExit("--campaign must be a bounded filesystem-safe label")
     paths = Paths(
         root=args.root.resolve(), ads_root=args.ads_root.resolve(),
         official_mcp=args.official_mcp.resolve(), auth_source=args.auth_source.resolve(),
