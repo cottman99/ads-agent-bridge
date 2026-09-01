@@ -223,6 +223,11 @@ class _AdsAdapterBase:
                     "input_schema": {
                         "required": ["plan"],
                         "optional": ["continuation_context", "redact_paths"],
+                        "runtime_request_required_for_mutation": [
+                            "purpose",
+                            "expected_effect",
+                            "idempotency_key",
+                        ],
                         "plan_schema": "eda.native-batch/v1",
                         "plan_contract": native_batch_capability_contract(),
                         "ads_contract": {
@@ -290,6 +295,61 @@ class _AdsAdapterBase:
                             },
                         },
                         "continuation_schema": "eda-context/v2",
+                        "staged_mutation_template": {
+                            "payload": {
+                                "continuation_context": "<continuation_ref>",
+                                "plan": {
+                                    "schema_version": "eda.native-batch/v1",
+                                    "runtime": "ads.python.de",
+                                    "effect": "staged_mutation",
+                                    "program": {
+                                        "language": "python",
+                                        "source": "def run(api, context): ...",
+                                    },
+                                    "scope": {
+                                        "resource_kind": "ads-workspace",
+                                        "selectors": {},
+                                        "read_paths": [],
+                                        "write_paths": [
+                                            "<absolute sibling output workspace>",
+                                            "<absolute artifact directory>",
+                                        ],
+                                        "artifacts": ["<relative artifact file>"],
+                                    },
+                                    "transaction": {
+                                        "strategy": "adapter_staging",
+                                        "source_fingerprints": {},
+                                        "fresh_reopen": True,
+                                        "promotion": "on_validation",
+                                    },
+                                    "validation": {
+                                        "program": {
+                                            "language": "python",
+                                            "source": "def validate(api, context): ...",
+                                        },
+                                        "required_artifacts": [
+                                            "<same relative artifact file>"
+                                        ],
+                                    },
+                                    "limits": {
+                                        "timeout_seconds": 300,
+                                        "max_output_bytes": 1048576,
+                                    },
+                                },
+                            },
+                            "runtime_fields": {
+                                "purpose": "<concise engineering reason>",
+                                "expected_effect": "<declared mutation outcome>",
+                                "idempotency_key": "<task-unique stable key>",
+                                "wait": {
+                                    "timeout_ms": 300000,
+                                    "poll_interval_ms": 1000,
+                                },
+                            },
+                            "without_artifacts": (
+                                "use one write_path, artifacts [], and required_artifacts []"
+                            ),
+                        },
                         "continuation_usage": {
                             "normal_greenfield_flow": (
                                 "pass the short response continuation_ref from workspace.create "

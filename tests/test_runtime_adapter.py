@@ -422,6 +422,11 @@ def test_degraded_experience_disables_shortcuts_but_not_native_execution(monkeyp
         == "eda-context/v2"
     )
     native_schema = operations["native.batch"]["input_schema"]
+    assert native_schema["runtime_request_required_for_mutation"] == [
+        "purpose",
+        "expected_effect",
+        "idempotency_key",
+    ]
     assert native_schema["plan_contract"]["schema_version"] == "eda.native-batch/v1"
     assert native_schema["plan_contract"]["program"]["source_must_define"] == (
         "def run(api, context)"
@@ -454,6 +459,11 @@ def test_degraded_experience_disables_shortcuts_but_not_native_execution(monkeyp
         "absolute distinct sibling output workspace"
     ]
     assert "relative write_paths" in write_scope["never"]
+    template = native_schema["staged_mutation_template"]
+    assert template["payload"]["plan"]["validation"]["required_artifacts"] == [
+        "<same relative artifact file>"
+    ]
+    assert template["runtime_fields"]["wait"]["timeout_ms"] == 300000
 
 
 def test_native_batch_continues_from_opaque_content_bound_context(

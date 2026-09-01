@@ -51,3 +51,21 @@ Generate the netlist from the design, run exactly one
 persisted dataset in the separate validation program. The validation return must
 contain `{"status": "passed"}`. Do not use native observe calls to rediscover
 these validated mechanics.
+
+Use string concatenation below the pre-created artifact root; `os` and `open`
+are intentionally outside this governed program policy. The validated dataset
+readback is:
+
+```python
+import keysight.ads.dataset as dataset
+
+path = context["artifact_root"] + "/AC1.ds"
+with dataset.open(path) as data:
+    frame = data["AC1.AC"].to_dataframe().reset_index()
+    sample = float(abs(frame["R1_v"].iloc[0]))
+```
+
+For the maintained AC example, set `Dec` to `"5"` and `Step` to the empty
+string. Put `required_artifacts` inside the `validation` object, and use the same
+relative dataset filename in `scope.artifacts` and
+`validation.required_artifacts`.
