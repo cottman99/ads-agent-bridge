@@ -436,6 +436,10 @@ def test_degraded_experience_disables_shortcuts_but_not_native_execution(monkeyp
     assert native_schema["ads_contract"]["validation_return"]["required"] == {
         "status": "passed"
     }
+    continuation = native_schema["continuation_usage"]
+    assert "workspace.create" in continuation["normal_greenfield_flow"]
+    assert continuation["opaque"] is True
+    assert "scope.read_paths" in continuation["runtime_materializes"]
 
 
 def test_native_batch_continues_from_opaque_content_bound_context(

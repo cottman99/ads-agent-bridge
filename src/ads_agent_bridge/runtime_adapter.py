@@ -260,6 +260,24 @@ class _AdsAdapterBase:
                             ),
                         },
                         "continuation_schema": "eda-context/v2",
+                        "continuation_usage": {
+                            "normal_greenfield_flow": (
+                                "pass payload.continuation_context returned by "
+                                "workspace.create to the first native.batch"
+                            ),
+                            "agent_supplies": (
+                                "scope.write_paths, scope.artifacts, program, validation, "
+                                "limits, purpose, expected_effect, and idempotency_key"
+                            ),
+                            "runtime_materializes": [
+                                "scope.selectors.instance",
+                                "scope.selectors.version",
+                                "scope.selectors.profile",
+                                "scope.read_paths",
+                                "transaction.source_fingerprints",
+                            ],
+                            "opaque": True,
+                        },
                         "context_materializes": [
                             "scope.selectors.instance",
                             "scope.selectors.version",

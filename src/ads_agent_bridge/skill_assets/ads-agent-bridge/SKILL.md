@@ -69,8 +69,18 @@ do not invent a DDS launch or infer it from DE readiness.
 
 ### Disposable no-GUI proof
 
-Before relying on automation for a real project, prefer the maintained
-disposable gate:
+Through the normal Runtime MCP path, create one explicit non-existing workspace
+with `workspace.create`. It returns both the general `eda_context` and an opaque,
+content-bound `continuation_context`. Pass that continuation unchanged in the
+first `native.batch` request. The Runtime then materializes the exact ADS
+instance, version, profile, source workspace path, and source fingerprint; the
+Agent still declares the distinct output workspace, artifacts, program,
+fresh-process validation, limits, purpose, expected effect, and a task-unique
+idempotency key. Do not inspect the continuation or rediscover those bound
+fields through probe submissions.
+
+The direct CLI quickstart remains an administrator/diagnostic acceptance gate,
+not the Agent's normal task path:
 
 ```text
 ads-agent quickstart --ads <instance-id>
