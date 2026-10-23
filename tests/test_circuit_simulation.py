@@ -44,9 +44,7 @@ def test_simulation_refuses_existing_output(tmp_path: Path, monkeypatch):
         circuit_simulation.execute_simulation_plan(plan)
 
 
-@pytest.mark.parametrize(
-    "name", ["../escape.ds", "nested/result.ds", "result.txt", "a b.ds"]
-)
+@pytest.mark.parametrize("name", ["../escape.ds", "nested/result.ds", "result.txt", "a b.ds"])
 def test_simulation_plan_rejects_unsafe_dataset_name(tmp_path: Path, name: str):
     plan = _plan(tmp_path)
     plan["dataset_name"] = name

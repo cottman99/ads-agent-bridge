@@ -1,7 +1,8 @@
 from pathlib import Path
 
-from ads_agent_bridge.examples import list_examples, run_example
 from test_discovery import make_ads_root
+
+from ads_agent_bridge.examples import list_examples, run_example
 
 
 def test_public_catalog_contains_exactly_five_examples() -> None:

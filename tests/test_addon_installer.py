@@ -1,10 +1,15 @@
-import xml.etree.ElementTree as ET
 import sys
 import types
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from ads_agent_bridge import addon_installer
-from ads_agent_bridge.addon_installer import ADDON_NAME, addon_status, install_addon, uninstall_addon
+from ads_agent_bridge.addon_installer import (
+    ADDON_NAME,
+    addon_status,
+    install_addon,
+    uninstall_addon,
+)
 
 
 def test_addon_install_preserves_other_entries_and_uninstalls(tmp_path: Path, monkeypatch) -> None:
@@ -21,7 +26,10 @@ def test_addon_install_preserves_other_entries_and_uninstalls(tmp_path: Path, mo
     root = ET.parse(source).getroot()
 
     assert result["status"] == "installed"
-    assert [node.get("Name") for node in root.findall("Addon")] == ["KeepMe", ADDON_NAME]
+    assert [node.get("Name") for node in root.findall("Addon")] == [
+        "KeepMe",
+        ADDON_NAME,
+    ]
     assert Path(root.findall("Addon")[1].get("FilePath", "")).is_file()
     assert addon_status(config)["profiles"][0]["registrations"][0]["Enabled"] == "1"
 
@@ -30,7 +38,9 @@ def test_addon_install_preserves_other_entries_and_uninstalls(tmp_path: Path, mo
     assert [node.get("Name") for node in ET.parse(source).getroot().findall("Addon")] == ["KeepMe"]
 
 
-def test_addon_install_replaces_own_registration_and_creates_backup(tmp_path: Path, monkeypatch) -> None:
+def test_addon_install_replaces_own_registration_and_creates_backup(
+    tmp_path: Path, monkeypatch
+) -> None:
     monkeypatch.setenv("ADS_AGENT_HOME", str(tmp_path / "state"))
     config = tmp_path / "config"
     first = install_addon(config, ("dds",))
@@ -42,7 +52,9 @@ def test_addon_install_replaces_own_registration_and_creates_backup(tmp_path: Pa
     assert len(ET.parse(config / "dds_addons.xml").getroot().findall("Addon")) == 1
 
 
-def test_profile_entrypoints_execute_without_dunder_file_and_dds_has_no_de_hook(tmp_path: Path, monkeypatch) -> None:
+def test_profile_entrypoints_execute_without_dunder_file_and_dds_has_no_de_hook(
+    tmp_path: Path, monkeypatch
+) -> None:
     monkeypatch.setenv("ADS_AGENT_HOME", str(tmp_path / "state"))
     config = tmp_path / "config"
     installed = install_addon(config, ("de", "dds"))
@@ -55,8 +67,11 @@ def test_profile_entrypoints_execute_without_dunder_file_and_dds_has_no_de_hook(
     namespaces = {}
     for profile, filename in installed["entrypoints"].items():
         entrypoint = Path(filename)
-        namespace = {"__name__": "AdsAgentBridge_{0}_exec_test".format(profile)}
-        exec(compile(entrypoint.read_text(encoding="utf-8"), str(entrypoint), "exec"), namespace)
+        namespace = {"__name__": f"AdsAgentBridge_{profile}_exec_test"}
+        exec(
+            compile(entrypoint.read_text(encoding="utf-8"), str(entrypoint), "exec"),
+            namespace,
+        )
         namespaces[profile] = namespace
 
     assert callable(namespaces["de"]["setup_addon"])
@@ -64,8 +79,14 @@ def test_profile_entrypoints_execute_without_dunder_file_and_dds_has_no_de_hook(
     assert callable(namespaces["dds"]["setup_addon"])
     assert "generate_menu" not in namespaces["dds"]
     assert "__file__" not in namespaces["de"]
-    assert Path(ET.parse(config / "eesof_addons.xml").getroot().find("Addon").get("FilePath")).name == "de_entrypoint.py"
-    assert Path(ET.parse(config / "dds_addons.xml").getroot().find("Addon").get("FilePath")).name == "dds_entrypoint.py"
+    assert (
+        Path(ET.parse(config / "eesof_addons.xml").getroot().find("Addon").get("FilePath")).name
+        == "de_entrypoint.py"
+    )
+    assert (
+        Path(ET.parse(config / "dds_addons.xml").getroot().find("Addon").get("FilePath")).name
+        == "dds_entrypoint.py"
+    )
 
 
 def test_windows_default_config_prefers_ads_registry_home(tmp_path: Path, monkeypatch) -> None:

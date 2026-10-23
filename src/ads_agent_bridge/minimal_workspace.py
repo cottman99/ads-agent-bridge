@@ -15,17 +15,13 @@ def run(workspace: Path, library: str, cell: str) -> dict[str, object]:
     result: dict[str, object] = {"ok": False, "workspace": str(workspace)}
     try:
         if workspace.exists():
-            raise FileExistsError(
-                f"Refusing to overwrite an existing workspace: {workspace}"
-            )
+            raise FileExistsError(f"Refusing to overwrite an existing workspace: {workspace}")
         workspace.parent.mkdir(parents=True, exist_ok=True)
         de.create_workspace(workspace)
         de.open_workspace(workspace)
         library_path = workspace / library
         de.create_new_library(library, library_path)
-        de.active_workspace().add_library(
-            library, library_path, de.LibraryMode.NON_SHARED
-        )
+        de.active_workspace().add_library(library, library_path, de.LibraryMode.NON_SHARED)
         design_name = f"{library}:{cell}:schematic"
         design = db.create_schematic(design_name)
         design.save_design()

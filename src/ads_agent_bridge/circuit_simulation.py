@@ -15,9 +15,7 @@ from .config import select_instance
 from .design_plan import _environment, _result
 
 _SCHEMA = "ads.circuit-simulation/v1"
-_LCV = re.compile(
-    r"[A-Za-z_][A-Za-z0-9_]{0,127}:[A-Za-z_][A-Za-z0-9_]{0,127}:schematic"
-)
+_LCV = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,127}:[A-Za-z_][A-Za-z0-9_]{0,127}:schematic")
 
 
 def validate_simulation_plan(value: Any) -> dict[str, Any]:
@@ -36,9 +34,7 @@ def validate_simulation_plan(value: Any) -> dict[str, Any]:
     }
     unknown = sorted(set(plan) - allowed)
     if unknown:
-        raise ValueError(
-            "simulation plan contains unsupported fields: " + ", ".join(unknown)
-        )
+        raise ValueError("simulation plan contains unsupported fields: " + ", ".join(unknown))
     required = (
         "schema_version",
         "operation_id",
@@ -51,9 +47,7 @@ def validate_simulation_plan(value: Any) -> dict[str, Any]:
     if missing:
         raise ValueError("simulation plan is missing: " + ", ".join(missing))
     if plan["schema_version"] != _SCHEMA:
-        raise ValueError(
-            f"unsupported simulation plan schema: {plan['schema_version']}"
-        )
+        raise ValueError(f"unsupported simulation plan schema: {plan['schema_version']}")
     if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,127}", str(plan["operation_id"])):
         raise ValueError("operation_id must be a simple identifier")
     if not _LCV.fullmatch(str(plan["design"])):
@@ -69,11 +63,7 @@ def validate_simulation_plan(value: Any) -> dict[str, Any]:
     if set(assertions) - {"minimum_rows", "required_columns", "finite_columns"}:
         raise ValueError("simulation assertions contain unsupported fields")
     minimum_rows = assertions.get("minimum_rows", 1)
-    if (
-        not isinstance(minimum_rows, int)
-        or isinstance(minimum_rows, bool)
-        or minimum_rows < 1
-    ):
+    if not isinstance(minimum_rows, int) or isinstance(minimum_rows, bool) or minimum_rows < 1:
         raise ValueError("assertions.minimum_rows must be a positive integer")
     for field in ("required_columns", "finite_columns"):
         values = assertions.get(field, [])
@@ -110,9 +100,7 @@ def execute_simulation_plan(
         raise FileExistsError(f"refusing to overwrite simulation output: {output}")
     instance = select_instance(plan.get("instance"))
     if not instance.python_executable:
-        raise RuntimeError(
-            f"ADS Python was not discovered for {instance.product_version}"
-        )
+        raise RuntimeError(f"ADS Python was not discovered for {instance.product_version}")
     plan_path = output.parent / f".{output.name}.simulation-{uuid.uuid4().hex}.json"
     try:
         output.parent.mkdir(parents=True, exist_ok=True)

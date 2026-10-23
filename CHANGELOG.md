@@ -1,6 +1,20 @@
 # Changelog
 
-## Unreleased
+## 0.2.0a1 - 2026-10-23
+
+- Use official Python through one `native.execute` contract with independent live/background/offline modes and observe/mutate effects.
+- Share Worker resource admission, idempotency, cancellation, structured errors and durable evidence across retained entry points.
+- Prepare private versioned knowledge automatically; missing Markdown or experience does not disable execution.
+- Remove the old native protocol and raw unsafe execution paths. Upgrade selected Bridges and Runtime together.
+
+
+- Route engineering operations through the closest applicable experience before
+  querying official documentation, while retaining documentation as the fallback
+  for uncovered behavior, version drift, and contradictory execution evidence.
+- Complete the ADS 2027 native AC experience with the exact greenfield workspace
+  payload, scalar parameter assignment, design save, simulator import/return,
+  timeout, and fresh-read mechanics established by controlled Codex and Pi
+  calibration.
 
 ## 0.1.0a49 - 2026-09-01
 

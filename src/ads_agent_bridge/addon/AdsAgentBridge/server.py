@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import base64
-import copy
 import contextlib
+import copy
 import hashlib
-import io
 import json
 import os
 import queue
@@ -15,11 +14,27 @@ import secrets
 import socket
 import sys
 import threading
+import time
 import traceback
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from types import SimpleNamespace
+from typing import Any
+
+# The installer copies these exact stdlib-only Runtime sources into the addon.
+# Source-tree tests import the same implementation from the installed Runtime.
+try:
+    from .execution_kernel.admission import assert_admission
+    from .execution_kernel.errors import ExecutionError, error_facts
+    from .execution_kernel.native_program import validate_native_program
+    from .execution_kernel.python_execution import BoundedTextIO, execute_python
+except ImportError:
+    from eda_bridge_runtime.admission import assert_admission
+    from eda_bridge_runtime.errors import ExecutionError, error_facts
+    from eda_bridge_runtime.native_program import validate_native_program
+    from eda_bridge_runtime.python_execution import BoundedTextIO, execute_python
 
 try:
     from .context import ContextRegistry
@@ -100,7 +115,11 @@ def _jsonable(value: Any, depth: int = 0, max_depth: int = 3) -> Any:
         return {str(key): _jsonable(item, depth + 1, max_depth) for key, item in value.items()}
     if isinstance(value, (list, tuple, set)):
         return [_jsonable(item, depth + 1, max_depth) for item in value]
-    return {"type": type(value).__name__, "module": type(value).__module__, "repr": _safe_repr(value)}
+    return {
+        "type": type(value).__name__,
+        "module": type(value).__module__,
+        "repr": _safe_repr(value),
+    }
 
 
 def _safe_repr(value: Any) -> str:
@@ -115,6 +134,7 @@ class _Task:
     callback: Callable[[], dict[str, Any]]
     completed: threading.Event
     result: dict[str, Any] | None = None
+    deadline: float = 0
 
 
 class _Dispatcher(QtCore.QObject):
@@ -131,12 +151,12 @@ class _Dispatcher(QtCore.QObject):
     def stop(self) -> None:
         self._timer.stop()
 
-    def call(self, callback: Callable[[], dict[str, Any]]) -> dict[str, Any]:
+    def call(self, callback: Callable[[], dict[str, Any]], timeout: float = 60) -> dict[str, Any]:
         if QtCore.QThread.currentThread() == self.thread():
             return callback()
-        task = _Task(callback, threading.Event())
+        task = _Task(callback, threading.Event(), deadline=time.monotonic() + timeout)
         self._tasks.put(task)
-        if not task.completed.wait(timeout=60):
+        if not task.completed.wait(timeout=timeout):
             raise TimeoutError("ADS main-thread dispatch timed out")
         assert task.result is not None
         return task.result
@@ -148,6 +168,8 @@ class _Dispatcher(QtCore.QObject):
             except queue.Empty:
                 return
             try:
+                if time.monotonic() >= task.deadline:
+                    raise TimeoutError("ADS task expired before main-thread execution")
                 task.result = task.callback()
             except Exception as exc:
                 task.result = _error(exc)
@@ -156,7 +178,19 @@ class _Dispatcher(QtCore.QObject):
 
 
 def _error(exc: BaseException | str) -> dict[str, Any]:
-    return {"ok": False, "result": None, "stdout": "", "stderr": "", "error": str(exc)}
+    facts = (
+        error_facts(exc)
+        if isinstance(exc, BaseException)
+        else {"code": "execution_failed", "message": str(exc)}
+    )
+    return {
+        "ok": False,
+        "result": None,
+        "stdout": "",
+        "stderr": "",
+        "error": str(exc),
+        "failure": facts,
+    }
 
 
 class _Runtime:
@@ -194,24 +228,44 @@ class _Runtime:
             pass
 
     def execute(self, command: str, args: dict[str, Any]) -> dict[str, Any]:
-        out, err = io.StringIO(), io.StringIO()
+        limit = int((args.get("plan") or {}).get("limits", {}).get("max_output_bytes", 1048576))
+        out, err = BoundedTextIO(limit), BoundedTextIO(limit)
         try:
             with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
                 result = self._dispatch(command, args)
-            max_depth = 8 if command.startswith("context_") or command in {"capabilities", "runtime_snapshot"} else 3
+            max_depth = (
+                8
+                if command.startswith("context_") or command in {"capabilities", "runtime_snapshot"}
+                else 3
+            )
             return {
                 "ok": True,
-                "result": _jsonable(result, max_depth=max_depth),
+                "result": result
+                if command == "native.execute"
+                else _jsonable(result, max_depth=max_depth),
                 "stdout": out.getvalue(),
                 "stderr": err.getvalue(),
                 "error": None,
             }
         except Exception as exc:
-            return {"ok": False, "result": None, "stdout": out.getvalue(), "stderr": err.getvalue(), "error": str(exc), "traceback": traceback.format_exc()}
+            return {
+                **_error(exc),
+                "stdout": out.getvalue(),
+                "stderr": err.getvalue(),
+                "traceback": traceback.format_exc(),
+            }
 
     def _dispatch(self, command: str, args: dict[str, Any]) -> Any:
+        if command in commands_by_safety("bounded") or command == "native.execute":
+            assert_admission(args.get("admission") or {})
+            _required_text(args, "purpose")
         if command == "ping":
-            return {"status": "ok", "profile": self.profile, "slot": self.slot, "pid": os.getpid()}
+            return {
+                "status": "ok",
+                "profile": self.profile,
+                "slot": self.slot,
+                "pid": os.getpid(),
+            }
         if command == "capabilities":
             return self._capabilities()
         if command == "status":
@@ -226,8 +280,29 @@ class _Runtime:
             return self.contexts.get(_required_text(args, "context"))
         if command == "context_capture_active_design":
             return self._context_capture_active_design()
+        if command == "context_capture_workspace":
+            de = self.namespace.get("de")
+            if self.profile != "de" or de is None or not de.workspace_is_open():
+                raise ExecutionError(
+                    "session_unavailable",
+                    "The selected DE session has no open workspace",
+                )
+            return self.contexts.capture_workspace(de.active_workspace().path)
         if command == "context_refresh":
             return self.contexts.refresh(_required_text(args, "context"))
+        if command == "context_capture_dds_file":
+            from .context import _dds_path
+
+            path = _required_text(args, "path")
+            dds = self.namespace.get("dds")
+            if self.profile != "dds" or dds is None:
+                raise ExecutionError("session_unavailable", "Select a live DDS session")
+            matches = [item for item in dds.get_dds_files() if _same_path(_dds_path(item), path)]
+            if len(matches) != 1:
+                raise ExecutionError(
+                    "target_changed", "The exact DDS file is not open in this session"
+                )
+            return self.contexts.capture_dds(matches[0])
         if command == "context_drop":
             context = _required_text(args, "context")
             return {"context": context, "dropped": self.contexts.drop(context)}
@@ -247,44 +322,153 @@ class _Runtime:
             return self._design_live_finalize(args)
         if command == "safe_shutdown":
             return self._safe_shutdown()
-        if command in {"eval", "exec", "ael_call"}:
-            self._require_unsafe(command)
-        if command == "eval":
-            expression = _required_text(args, "expression")
-            return eval(expression, self.namespace, self.namespace)
-        if command == "exec":
-            code = _required_text(args, "code")
-            exec(compile(code, "<ads-agent-bridge>", "exec"), self.namespace, self.namespace)
-            return None
-        if command == "ael_call":
-            name = _required_text(args, "name")
-            if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) is None:
-                raise ValueError("ael_call name must be a simple AEL function name")
-            call_args = args.get("args", [])
-            if not isinstance(call_args, list):
-                raise ValueError("ael_call args must be a list")
-            ael = self.namespace.get("ael")
-            if ael is None:
-                raise RuntimeError("keysight.ads.ael is unavailable")
-            return getattr(ael.call, name)(*call_args)
+        if command == "native.execute":
+            return self._native_execute(args)
         raise ValueError(f"Unsupported command: {command}")
+
+    def _native_execute(self, args: dict[str, Any]) -> dict[str, Any]:
+        plan = validate_native_program(args.get("plan"))
+        scope = plan["scope"]
+        selectors = scope["selectors"]
+        if plan["mode"] != "live" or plan["runtime"] != f"ads.python.{self.profile}":
+            raise ExecutionError(
+                "runtime_unsupported",
+                "The selected ADS session does not implement this runtime and mode",
+            )
+        if scope["resource_kind"] != "ads-workspace" or len(scope["read_paths"]) != 1:
+            raise ValueError("Live ADS execution requires one exact workspace")
+        if plan["transaction"]["strategy"] != "none":
+            raise ExecutionError(
+                "runtime_unsupported",
+                "General live ADS programs use explicit validation and native save semantics",
+            )
+        captured = self.contexts.get(_required_text(args, "context"))
+        if int(captured.get("freshness", {}).get("generation", 0)) != int(
+            args.get("generation", 0)
+        ):
+            raise ExecutionError(
+                "target_changed",
+                "The captured ADS context has changed; capture it again",
+            )
+        identity = captured.get("target", {}).get("identity", {})
+        source = str(Path(scope["read_paths"][0]).expanduser().resolve())
+        workspace = identity.get("workspace_path") or identity.get("workspace")
+        if self.profile == "dds":
+            from .context import _dds_path
+
+            dds_path = identity.get("path")
+            opened = self.namespace["dds"].get_dds_files()
+            if not dds_path or not any(_same_path(_dds_path(item), dds_path) for item in opened):
+                raise ExecutionError("target_changed", "The captured DDS file is no longer open")
+            try:
+                Path(dds_path).resolve().relative_to(Path(source))
+                workspace = source
+            except ValueError:
+                raise ExecutionError(
+                    "target_changed",
+                    "Captured DDS file is outside the selected workspace",
+                ) from None
+        if not workspace or not _same_path(workspace, source):
+            raise ExecutionError(
+                "target_changed", "Program workspace differs from the captured target"
+            )
+        if not _same_path(_required_text(args, "install_root"), os.environ.get("HPEESOF_DIR", "")):
+            raise ExecutionError(
+                "version_mismatch", "Captured session uses a different ADS installation"
+            )
+        de = self.namespace.get("de")
+        if self.profile == "de":
+            if (
+                de is None
+                or not de.workspace_is_open()
+                or not _same_path(de.active_workspace().path, source)
+            ):
+                raise ExecutionError("target_changed", "The selected workspace is no longer open")
+            parts = [identity.get(name) for name in ("library", "cell", "view")]
+            if all(parts):
+                self._resolve_live_design(":".join(parts), activate=False)
+        if selectors.get("profile") != self.profile:
+            raise ValueError("The selected profile does not match this session")
+        if plan["effect"] == "mutate" and (
+            len(scope["write_paths"]) != 1 or not _same_path(scope["write_paths"][0], source)
+        ):
+            raise ValueError("Live write scope must be exactly the captured workspace")
+        if scope["artifacts"]:
+            raise ValueError("Live artifacts must be written through an explicit artifact workflow")
+        api = SimpleNamespace(
+            **{
+                key: value
+                for key, value in self.namespace.items()
+                if key in {"de", "dds", "ael", "de_app"}
+            }
+        )
+        if de is not None and self.profile == "de":
+            from keysight.ads.de import db_uu
+
+            api.db = db_uu
+        context = {
+            **selectors,
+            "workspace": source,
+            "dds_path": identity.get("path"),
+            "target": captured["target"],
+            "mode": "live",
+            "effect": plan["effect"],
+        }
+        assert_admission(args["admission"])
+        result = execute_python(
+            plan["program"],
+            api,
+            context,
+            max_output_bytes=plan["limits"]["max_output_bytes"],
+        )
+        validation = None
+        if plan["validation"]["program"] is not None:
+            validation = execute_python(
+                plan["validation"]["program"],
+                api,
+                context,
+                entrypoint="validate",
+                max_output_bytes=plan["limits"]["max_output_bytes"],
+            )
+            if validation.get("status") != "passed":
+                raise ExecutionError(
+                    "validation_failed",
+                    "Live ADS readback failed",
+                    phase="validation",
+                    evidence={"program_result": result, "validation": validation},
+                )
+        return {
+            "status": "passed",
+            "program_id": plan["program_id"],
+            "runtime": plan["runtime"],
+            "mode": "live",
+            "effect": plan["effect"],
+            "execution": "completed",
+            "validation": "passed" if validation else "not_requested",
+            "program_result": result,
+            "validation_result": validation,
+            "fresh_reopen": False,
+        }
 
     def _capabilities(self, status: dict[str, Any] | None = None) -> dict[str, Any]:
         runtime_status = status if status is not None else {"ui": self._modal_state()}
-        descriptors = [self._capability_descriptor(spec, runtime_status) for spec in capability_specs()]
+        descriptors = [
+            self._capability_descriptor(spec, runtime_status) for spec in capability_specs()
+        ]
         return {
             "descriptor_schema_version": CAPABILITY_DESCRIPTOR_SCHEMA_VERSION,
             "runtime_snapshot_schema_version": RUNTIME_SNAPSHOT_SCHEMA_VERSION,
             "safe_commands": commands_by_safety("safe"),
             "bounded_commands": commands_by_safety("bounded"),
-            "unsafe_commands": commands_by_safety("unsafe"),
-            "unsafe_enabled": os.environ.get("ADS_AGENT_UNSAFE") == "1",
+            "native_commands": commands_by_safety("native"),
             "localhost_only": True,
             "token_required": True,
             "descriptors": descriptors,
         }
 
-    def _capability_descriptor(self, spec: dict[str, Any], status: dict[str, Any]) -> dict[str, Any]:
+    def _capability_descriptor(
+        self, spec: dict[str, Any], status: dict[str, Any]
+    ) -> dict[str, Any]:
         capability_id = spec["id"]
         profile_compatible = self.profile in spec["profiles"]
         namespace = getattr(self, "namespace", {})
@@ -302,8 +486,6 @@ class _Runtime:
         ]
         compatible = profile_compatible and not missing_runtime
         modal_blocking = bool((status.get("ui") or {}).get("modal_blocking"))
-        unsafe_enabled = os.environ.get("ADS_AGENT_UNSAFE") == "1"
-        authorized = spec["safety"] != "unsafe" or unsafe_enabled
         available = compatible
         reason: str | None = None
         if not profile_compatible:
@@ -315,14 +497,11 @@ class _Runtime:
             reason = "no_active_modal"
         elif capability_id == "safe_shutdown":
             de_app = namespace.get("de_app")
-            if not callable(getattr(de_app, "prompt_and_save_modified_workspace", None)) or not callable(
-                getattr(de_app, "exit_application", None)
-            ):
+            if not callable(
+                getattr(de_app, "prompt_and_save_modified_workspace", None)
+            ) or not callable(getattr(de_app, "exit_application", None)):
                 available = False
                 reason = "native_safe_shutdown_unavailable"
-        elif spec["safety"] == "unsafe" and not unsafe_enabled:
-            available = False
-            reason = "unsafe_opt_in_required"
 
         healthy = compatible and not (
             modal_blocking and spec["mutates"] and capability_id != "dialog_action"
@@ -331,12 +510,8 @@ class _Runtime:
             reason = "blocked_by_dialog"
 
         safe_next_actions: list[str] = []
-        if reason == "no_active_modal":
+        if reason == "no_active_modal" or reason == "blocked_by_dialog":
             safe_next_actions = ["dialog_snapshot"]
-        elif reason == "blocked_by_dialog":
-            safe_next_actions = ["dialog_snapshot"]
-        elif reason == "unsafe_opt_in_required":
-            safe_next_actions = ["capabilities"]
         elif reason == "profile_not_supported":
             safe_next_actions = ["status"]
 
@@ -354,7 +529,7 @@ class _Runtime:
                 "compatible": compatible,
                 "available": available,
                 "healthy": healthy,
-                "authorized": authorized,
+                "authorization": "checked_at_execution",
                 "reason": reason,
                 "safe_next_actions": safe_next_actions,
             },
@@ -393,8 +568,7 @@ class _Runtime:
             raise RuntimeError("Activate one ADS design window before a live design operation")
 
         actual_design = ":".join(
-            str(getattr(design, name, "") or "")
-            for name in ("lib_name", "cell_name", "view_name")
+            str(getattr(design, name, "") or "") for name in ("lib_name", "cell_name", "view_name")
         )
         if actual_design != expected_design:
             raise RuntimeError(
@@ -448,18 +622,17 @@ class _Runtime:
                 if (
                     not isinstance(at, list)
                     or len(at) != 2
-                    or not all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in at)
+                    or not all(
+                        isinstance(value, (int, float)) and not isinstance(value, bool)
+                        for value in at
+                    )
                 ):
                     raise ValueError(f"design.live_patch operation {index} at is invalid")
                 if not isinstance(parameters, dict) or any(
-                    not isinstance(name, str)
-                    or not name
-                    or not isinstance(value, str)
+                    not isinstance(name, str) or not name or not isinstance(value, str)
                     for name, value in parameters.items()
                 ):
-                    raise ValueError(
-                        f"design.live_patch operation {index} parameters are invalid"
-                    )
+                    raise ValueError(f"design.live_patch operation {index} parameters are invalid")
                 entry = {
                     "op": kind,
                     "name": _required_text(operation, "name"),
@@ -470,9 +643,7 @@ class _Runtime:
                 if "angle" in operation:
                     angle = operation["angle"]
                     if not isinstance(angle, (int, float)) or isinstance(angle, bool):
-                        raise ValueError(
-                            f"design.live_patch operation {index} angle is invalid"
-                        )
+                        raise ValueError(f"design.live_patch operation {index} angle is invalid")
                     entry["angle"] = angle
                 normalized.append(entry)
                 continue
@@ -485,16 +656,13 @@ class _Runtime:
                         not isinstance(point, list)
                         or len(point) != 2
                         or any(
-                            not isinstance(value, (int, float))
-                            or isinstance(value, bool)
+                            not isinstance(value, (int, float)) or isinstance(value, bool)
                             for value in point
                         )
                         for point in points
                     )
                 ):
-                    raise ValueError(
-                        f"design.live_patch operation {index} points are invalid"
-                    )
+                    raise ValueError(f"design.live_patch operation {index} points are invalid")
                 entry = {"op": kind, "points": [list(point) for point in points]}
                 if operation.get("label") is not None:
                     entry["label"] = _required_text(operation, "label")
@@ -673,9 +841,7 @@ class _Runtime:
                     continue
                 delete_object = getattr(item["target"], "delete_object", None)
                 if not callable(delete_object):
-                    raise RuntimeError(
-                        f"ADS live rollback cannot delete created {item['kind']}"
-                    )
+                    raise RuntimeError(f"ADS live rollback cannot delete created {item['kind']}")
                 delete_object()
             transaction.commit()
 
@@ -721,9 +887,7 @@ class _Runtime:
         authorization = _required_text(decision, "authorization")
         reason = _required_text(decision, "reason")
         if authorization not in {"user-confirmed", "agent-owned-session"}:
-            raise ValueError(
-                "decision.authorization must be user-confirmed or agent-owned-session"
-            )
+            raise ValueError("decision.authorization must be user-confirmed or agent-owned-session")
         if (
             action == "discard_unsaved"
             and authorization == "agent-owned-session"
@@ -750,9 +914,7 @@ class _Runtime:
         de_app = self.namespace.get("de_app")
         current_window = getattr(de_app, "current_window", None) if de_app is not None else None
         design_from_window = (
-            getattr(de_app, "get_design_in_uu_from_window", None)
-            if de_app is not None
-            else None
+            getattr(de_app, "get_design_in_uu_from_window", None) if de_app is not None else None
         )
         if not callable(current_window) or not callable(design_from_window):
             raise RuntimeError("ADS current-design window APIs are unavailable")
@@ -780,7 +942,9 @@ class _Runtime:
             if getattr(self, "contexts", None) is not None
             else {"count": 0, "max_contexts": 0, "latest": None}
         )
-        latest_context = self._compact_context(context_summary["latest"]) if context_summary["latest"] else None
+        latest_context = (
+            self._compact_context(context_summary["latest"]) if context_summary["latest"] else None
+        )
         ui = dict(status.get("ui") or {})
         if detail == "compact":
             ui = {
@@ -797,7 +961,9 @@ class _Runtime:
         state = {
             "workspace": {
                 "is_open": status.get("workspace_is_open") is True,
-                "path": status.get("workspace") if isinstance(status.get("workspace"), str) else None,
+                "path": status.get("workspace")
+                if isinstance(status.get("workspace"), str)
+                else None,
             },
             "ui": ui,
             "contexts": {
@@ -822,7 +988,9 @@ class _Runtime:
             "state": state,
             "capability_states": capability_states,
         }
-        encoded = json.dumps(stable_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        encoded = json.dumps(
+            stable_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        )
         revision = hashlib.sha256(encoded.encode("utf-8")).hexdigest()[:20]
         captured_at = datetime.now(timezone.utc).isoformat()
         if since_revision == revision:
@@ -870,7 +1038,11 @@ class _Runtime:
         try:
             files = list(dds.get_dds_files())
         except Exception as exc:
-            return {"available": False, "reason": "dds_inventory_failed", "error": str(exc)}
+            return {
+                "available": False,
+                "reason": "dds_inventory_failed",
+                "error": str(exc),
+            }
         result: dict[str, Any] = {"available": True, "open_file_count": len(files)}
         if detail == "full":
             result["open_files"] = [
@@ -888,7 +1060,9 @@ class _Runtime:
         state = snapshot["state"]
         if (state.get("ui") or {}).get("modal_blocking"):
             return ["dialog_snapshot"]
-        if snapshot["identity"].get("profile") == "de" and not (state.get("workspace") or {}).get("is_open"):
+        if snapshot["identity"].get("profile") == "de" and not (state.get("workspace") or {}).get(
+            "is_open"
+        ):
             return ["open_workspace"]
         if (state.get("contexts") or {}).get("count", 0) == 0:
             return ["context_capabilities"]
@@ -905,7 +1079,6 @@ class _Runtime:
             "function": "de_get_open_workspace_pathname",
             "workspace_path": str(workspace_path or ""),
             "bounded": True,
-            "unsafe_python_enabled": os.environ.get("ADS_AGENT_UNSAFE") == "1",
         }
 
     def _open_workspace(self, args: dict[str, Any]) -> dict[str, Any]:
@@ -933,16 +1106,30 @@ class _Runtime:
         actual = str(de.active_workspace().path) if de.workspace_is_open() else None
         if not _same_path(actual, workspace):
             raise RuntimeError(f"ADS did not bind the requested workspace: {actual}")
-        return {"workspace": actual, "opened": opened, "verified": True, "bounded": True}
+        return {
+            "workspace": actual,
+            "opened": opened,
+            "verified": True,
+            "bounded": True,
+        }
 
     def _safe_shutdown(self) -> dict[str, Any]:
         if self.profile != "de":
             raise RuntimeError("safe_shutdown requires the DE bridge profile")
         modal = self._modal_state()
         if modal.get("modal_blocking"):
-            return {"accepted": False, "reason": "modal_dialog_active", "modal": modal, "bounded": True}
+            return {
+                "accepted": False,
+                "reason": "modal_dialog_active",
+                "modal": modal,
+                "bounded": True,
+            }
         de_app = self.namespace.get("de_app")
-        prompt = getattr(de_app, "prompt_and_save_modified_workspace", None) if de_app is not None else None
+        prompt = (
+            getattr(de_app, "prompt_and_save_modified_workspace", None)
+            if de_app is not None
+            else None
+        )
         exit_application = getattr(de_app, "exit_application", None) if de_app is not None else None
         if not callable(prompt) or not callable(exit_application):
             raise RuntimeError(
@@ -965,7 +1152,11 @@ class _Runtime:
 
     def _prompt_then_exit(self) -> None:
         de_app = self.namespace.get("de_app")
-        prompt = getattr(de_app, "prompt_and_save_modified_workspace", None) if de_app is not None else None
+        prompt = (
+            getattr(de_app, "prompt_and_save_modified_workspace", None)
+            if de_app is not None
+            else None
+        )
         exit_application = getattr(de_app, "exit_application", None) if de_app is not None else None
         try:
             self._set_shutdown_state("prompting")
@@ -1057,7 +1248,10 @@ class _Runtime:
             raise RuntimeError("No active modal dialog is available for the requested action")
         if snapshot.get("dialog_fingerprint") != expected_fingerprint:
             raise RuntimeError("The active dialog changed after observation; take a fresh snapshot")
-        button = next((item for item in snapshot.get("buttons", []) if item.get("button_id") == button_id), None)
+        button = next(
+            (item for item in snapshot.get("buttons", []) if item.get("button_id") == button_id),
+            None,
+        )
         if not isinstance(button, dict):
             raise ValueError("button_id is not present in the current dialog")
         if not button.get("visible") or not button.get("enabled"):
@@ -1069,7 +1263,9 @@ class _Runtime:
         if declared_rank < floor_rank:
             raise PermissionError(f"The selected Qt button requires at least {floor!r} risk")
         if risk == "medium" and authorization == "automatic":
-            raise PermissionError("Medium-risk dialog actions require workflow-policy or user-confirmed authorization")
+            raise PermissionError(
+                "Medium-risk dialog actions require workflow-policy or user-confirmed authorization"
+            )
         if risk == "high" and authorization != "user-confirmed":
             raise PermissionError("High-risk dialog actions require user-confirmed authorization")
 
@@ -1087,7 +1283,11 @@ class _Runtime:
             "state": "scheduled",
             "dialog_fingerprint": expected_fingerprint,
             "button": button,
-            "decision": {"risk": risk, "authorization": authorization, "reason": reason},
+            "decision": {
+                "risk": risk,
+                "authorization": authorization,
+                "reason": reason,
+            },
             "bounded": True,
         }
 
@@ -1113,7 +1313,11 @@ class _Runtime:
                 )
                 return
             button = next(
-                (item for item in snapshot.get("buttons", []) if item.get("button_id") == button_id),
+                (
+                    item
+                    for item in snapshot.get("buttons", [])
+                    if item.get("button_id") == button_id
+                ),
                 None,
             )
             if not isinstance(button, dict):
@@ -1347,10 +1551,6 @@ class _Runtime:
             "bounded": True,
         }
 
-    def _require_unsafe(self, command: str) -> None:
-        if os.environ.get("ADS_AGENT_UNSAFE") != "1":
-            raise PermissionError(f"{command} is disabled; launch ADS with ADS_AGENT_UNSAFE=1 to opt in")
-
     def _status(self, detail: str = "full") -> dict[str, Any]:
         result: dict[str, Any] = {
             "profile": self.profile,
@@ -1397,7 +1597,12 @@ class _Runtime:
         result = self._modal_state()
         application = QtWidgets.QApplication.instance()
         if application is None:
-            return {**result, "application_ready": False, "visible_window_count": 0, "windows": []}
+            return {
+                **result,
+                "application_ready": False,
+                "visible_window_count": 0,
+                "windows": [],
+            }
         windows: list[dict[str, Any]] = []
         try:
             top_level = list(application.topLevelWidgets())
@@ -1496,10 +1701,8 @@ class BridgeServer:
         self._dispatcher.stop()
         sock, self._socket = self._socket, None
         if sock is not None:
-            try:
+            with contextlib.suppress(OSError):
                 sock.close()
-            except OSError:
-                pass
         self._remove_owned_session()
 
     def _bind(self) -> tuple[socket.socket, int]:
@@ -1523,7 +1726,7 @@ class BridgeServer:
         while not self._stop.is_set():
             try:
                 conn, _ = self._socket.accept()
-            except socket.timeout:
+            except TimeoutError:
                 continue
             except OSError:
                 return
@@ -1548,7 +1751,12 @@ class BridgeServer:
                     args = request.get("args", {})
                     if not isinstance(args, dict):
                         raise ValueError("args must be an object")
-                    response = self._dispatcher.call(lambda: self._runtime.execute(command, args))
+                    timeout = float(
+                        (args.get("plan") or {}).get("limits", {}).get("timeout_seconds", 60)
+                    )
+                    response = self._dispatcher.call(
+                        lambda: self._runtime.execute(command, args), timeout=timeout
+                    )
             except Exception as exc:
                 response = _error(exc)
             conn.sendall((json.dumps(response, ensure_ascii=False) + "\n").encode("utf-8"))
@@ -1570,10 +1778,8 @@ class BridgeServer:
             "managed_session_id": os.environ.get("ADS_AGENT_MANAGED_SESSION_ID"),
         }
         temporary.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-        try:
+        with contextlib.suppress(OSError):
             temporary.chmod(0o600)
-        except OSError:
-            pass
         os.replace(temporary, path)
 
     def _remove_owned_session(self) -> None:

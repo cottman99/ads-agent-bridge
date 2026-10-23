@@ -5,7 +5,6 @@ from pathlib import Path
 
 from platformdirs import user_cache_path, user_config_path, user_data_path
 
-
 APP_NAME = "ads-agent"
 
 

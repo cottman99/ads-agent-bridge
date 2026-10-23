@@ -4,7 +4,6 @@ import os
 from pathlib import Path
 from typing import Any
 
-
 LINUX_ADS_PROCESS_NAMES = {"hpeesofde", "hpeesofemx"}
 WINDOWS_ADS_PROCESS_NAMES = {"hpeesofde.exe", "hpeesofemx.exe"}
 
@@ -34,7 +33,10 @@ def _windows_pid_running(pid: int) -> bool:
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
     kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
     kernel32.OpenProcess.restype = wintypes.HANDLE
-    kernel32.GetExitCodeProcess.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+    kernel32.GetExitCodeProcess.argtypes = [
+        wintypes.HANDLE,
+        ctypes.POINTER(wintypes.DWORD),
+    ]
     kernel32.GetExitCodeProcess.restype = wintypes.BOOL
     kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
     kernel32.CloseHandle.restype = wintypes.BOOL
@@ -127,9 +129,15 @@ def _windows_launch_processes(launcher_pid: int | None) -> list[dict[str, Any]]:
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
     kernel32.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
     kernel32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
-    kernel32.Process32FirstW.argtypes = [wintypes.HANDLE, ctypes.POINTER(ProcessEntry32W)]
+    kernel32.Process32FirstW.argtypes = [
+        wintypes.HANDLE,
+        ctypes.POINTER(ProcessEntry32W),
+    ]
     kernel32.Process32FirstW.restype = wintypes.BOOL
-    kernel32.Process32NextW.argtypes = [wintypes.HANDLE, ctypes.POINTER(ProcessEntry32W)]
+    kernel32.Process32NextW.argtypes = [
+        wintypes.HANDLE,
+        ctypes.POINTER(ProcessEntry32W),
+    ]
     kernel32.Process32NextW.restype = wintypes.BOOL
     kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
     kernel32.CloseHandle.restype = wintypes.BOOL
@@ -144,7 +152,10 @@ def _windows_launch_processes(launcher_pid: int | None) -> list[dict[str, Any]]:
         entry.dwSize = ctypes.sizeof(entry)
         if kernel32.Process32FirstW(snapshot, ctypes.byref(entry)):
             while True:
-                entries[int(entry.th32ProcessID)] = (int(entry.th32ParentProcessID), entry.szExeFile)
+                entries[int(entry.th32ProcessID)] = (
+                    int(entry.th32ParentProcessID),
+                    entry.szExeFile,
+                )
                 entry.dwSize = ctypes.sizeof(entry)
                 if not kernel32.Process32NextW(snapshot, ctypes.byref(entry)):
                     break
@@ -166,7 +177,12 @@ def _windows_launch_processes(launcher_pid: int | None) -> list[dict[str, Any]]:
             else "managed-child"
         )
         matches.append(
-            {"pid": pid, "parent_pid": parent_pid, "process_name": process_name, "role": role}
+            {
+                "pid": pid,
+                "parent_pid": parent_pid,
+                "process_name": process_name,
+                "role": role,
+            }
         )
     priority = {"design-environment": 0, "ads-runtime": 1, "managed-child": 2}
     matches.sort(key=lambda item: (priority[item["role"]], item["pid"]))

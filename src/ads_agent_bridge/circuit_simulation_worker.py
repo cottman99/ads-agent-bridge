@@ -9,8 +9,7 @@ import time
 import traceback
 from pathlib import Path
 
-import keysight.ads.dataset as dataset
-import keysight.ads.de as de
+from keysight.ads import dataset, de
 from keysight.ads.de import db_uu as db
 from keysight.edatoolbox import ads
 
@@ -43,9 +42,7 @@ def run(plan: dict[str, object]) -> dict[str, object]:
         netlist_path.write_text(netlist, encoding="utf-8")
         started = time.monotonic()
         run_result = ads.CircuitSimulator().run_netlist(netlist, output_dir=str(output))
-        datasets = sorted(
-            output.glob("*.ds"), key=lambda item: item.stat().st_mtime, reverse=True
-        )
+        datasets = sorted(output.glob("*.ds"), key=lambda item: item.stat().st_mtime, reverse=True)
         if not datasets:
             raise RuntimeError("simulation completed without a dataset")
         dataset_path = accept_dataset_artifact(
@@ -63,28 +60,20 @@ def run(plan: dict[str, object]) -> dict[str, object]:
             raise RuntimeError("dataset contains no variable blocks")
         selected_name, selected = max(frames, key=lambda item: len(item[1]))
         columns = [str(column) for column in selected.columns]
-        rows = int(len(selected))
-        missing = [
-            name for name in assertions["required_columns"] if name not in columns
-        ]
+        rows = len(selected)
+        missing = [name for name in assertions["required_columns"] if name not in columns]
         if missing:
-            raise RuntimeError(
-                "dataset is missing required columns: " + ", ".join(missing)
-            )
+            raise RuntimeError("dataset is missing required columns: " + ", ".join(missing))
         if rows < assertions["minimum_rows"]:
             raise RuntimeError(
                 f"dataset has {rows} rows; expected at least {assertions['minimum_rows']}"
             )
         nonfinite = []
         for name in assertions["finite_columns"]:
-            if name not in columns or not all(
-                _finite(value) for value in selected[name]
-            ):
+            if name not in columns or not all(_finite(value) for value in selected[name]):
                 nonfinite.append(name)
         if nonfinite:
-            raise RuntimeError(
-                "dataset has non-finite columns: " + ", ".join(nonfinite)
-            )
+            raise RuntimeError("dataset has non-finite columns: " + ", ".join(nonfinite))
         csv_path = output / "dataset.csv"
         selected.to_csv(csv_path, index=False)
         result.update(

@@ -21,15 +21,23 @@ def support_tier(year: int | None, update: str | None) -> str:
 
 def explain(instance: AdsInstance) -> dict[str, object]:
     capabilities = instance.capabilities
-    ready = sorted(key for key, value in capabilities.items() if value is True or value == "available")
-    unavailable = sorted(key for key, value in capabilities.items() if value is False or value == "unavailable")
+    ready = sorted(
+        key for key, value in capabilities.items() if value is True or value == "available"
+    )
+    unavailable = sorted(
+        key for key, value in capabilities.items() if value is False or value == "unavailable"
+    )
     notes: list[str] = []
     if instance.support_tier == "stable":
-        notes.append("Stable support target. Individual features still require runtime capability probes.")
+        notes.append(
+            "Stable support target. Individual features still require runtime capability probes."
+        )
     elif instance.support_tier == "preview":
         notes.append("Preview support: ADS Python APIs in this generation were still evolving.")
     elif instance.support_tier == "experimental":
-        notes.append("Experimental support: installation and docs are usable, but live automation may need a legacy adapter.")
+        notes.append(
+            "Experimental support: installation and docs are usable, but live automation may need a legacy adapter."
+        )
     else:
         notes.append("No live bridge support promise for this ADS generation.")
     return {

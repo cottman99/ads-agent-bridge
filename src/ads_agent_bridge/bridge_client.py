@@ -16,10 +16,7 @@ def normalize_slot(value: str) -> str:
 
 def runtime_dir(*, ensure: bool = True) -> Path:
     override = _override_root(ensure=ensure)
-    if override:
-        path = override / "runtime"
-    else:
-        path = Path.home() / ".ads-agent" / "runtime"
+    path = override / "runtime" if override else Path.home() / ".ads-agent" / "runtime"
     if ensure:
         path.mkdir(parents=True, exist_ok=True)
     return path
@@ -62,7 +59,9 @@ def select_session(slot: str | None, profile: str) -> dict[str, Any]:
     raise ValueError(f"Multiple bridge sessions found for profile={profile}; pass --slot")
 
 
-def _request_session(session: dict[str, Any], command: str, args: dict[str, Any], timeout: float) -> dict[str, Any]:
+def _request_session(
+    session: dict[str, Any], command: str, args: dict[str, Any], timeout: float
+) -> dict[str, Any]:
     payload = {"token": session["token"], "command": command, "args": args}
     with socket.create_connection((session["host"], int(session["port"])), timeout=timeout) as sock:
         sock.sendall(json.dumps(payload).encode("utf-8"))
@@ -73,22 +72,80 @@ def _request_session(session: dict[str, Any], command: str, args: dict[str, Any]
             if not chunk:
                 break
             chunks.append(chunk)
+    if not chunks:
+        from eda_bridge_runtime.errors import ExecutionError
+
+        raise ExecutionError(
+            "execution_uncertain",
+            "ADS closed the connection without a result",
+            uncertain=True,
+        )
     response = json.loads(b"".join(chunks).decode("utf-8"))
-    response["session"] = {key: session.get(key) for key in ("slot", "profile", "pid", "port", "started_at", "session_file")}
+    response["session"] = {
+        key: session.get(key)
+        for key in ("slot", "profile", "pid", "port", "started_at", "session_file")
+    }
     return response
 
 
-def request(command: str, args: dict[str, Any], slot: str | None, profile: str, timeout: float = 15) -> dict[str, Any]:
+def request(
+    command: str,
+    args: dict[str, Any],
+    slot: str | None,
+    profile: str,
+    timeout: float = 15,
+) -> dict[str, Any]:
+    from eda_bridge_runtime.execution_scope import current_execution
+
+    from .addon.AdsAgentBridge.contracts import capability_specs
+
+    spec = next((item for item in capability_specs() if item["id"] == command), None)
+    if spec and spec["mutates"] and not args.get("admission"):
+        active = current_execution()
+        if active:
+            args = {**args, **active}
+        else:
+            import uuid
+
+            from eda_bridge_runtime import RequestEnvelope
+
+            from .runtime_adapter import build_runtime
+
+            response = build_runtime(runtime_dir() / "execution.sqlite3").execute(
+                RequestEnvelope(
+                    purpose=str(args.get("purpose") or f"Execute ADS {command}"),
+                    target={"eda": "keysight-ads", "slot": slot, "profile": profile},
+                    operation=command,
+                    payload={**args, "mutating": True, "timeout_seconds": timeout},
+                    idempotency_key=uuid.uuid4().hex,
+                )
+            )
+            if response.status != "passed":
+                return {
+                    "ok": False,
+                    "error": (response.error or {}).get("message"),
+                    "failure": response.error,
+                }
+            return response.result["data"]["bridge"]
     return _request_session(select_session(slot, profile), command, args, timeout)
 
 
 def probe_sessions(profile: str | None = None, timeout: float = 1.0) -> list[dict[str, Any]]:
     results = []
     for session in _load_sessions(profile):
-        public = {key: session.get(key) for key in ("slot", "profile", "pid", "port", "started_at", "session_file")}
+        public = {
+            key: session.get(key)
+            for key in ("slot", "profile", "pid", "port", "started_at", "session_file")
+        }
         try:
             response = _request_session(session, "ping", {}, timeout)
-            public.update({"reachable": True, "ok": bool(response.get("ok")), "error": response.get("error")})
+            public.update(
+                {
+                    "reachable": True,
+                    "ok": bool(response.get("ok")),
+                    "error": response.get("error"),
+                }
+            )
         except (OSError, ValueError, json.JSONDecodeError) as exc:
             public.update({"reachable": False, "ok": False, "error": str(exc)})
         results.append(public)

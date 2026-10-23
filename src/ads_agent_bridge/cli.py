@@ -12,11 +12,24 @@ from . import __version__
 from .addon_installer import addon_status, install_addon, uninstall_addon
 from .bridge_client import list_sessions, request
 from .compatibility import explain
-from .config import configured_instances, load_config, select_instance, set_default, update_instances
+from .config import (
+    configured_instances,
+    load_config,
+    select_instance,
+    set_default,
+    update_instances,
+)
 from .discovery import discover
-from .docs_kb import build_full_index, ensure_fast_index, get_document, query, start_background_build, status
+from .docs_kb import (
+    build_full_index,
+    ensure_fast_index,
+    get_document,
+    query,
+    start_background_build,
+    status,
+)
 from .doctor import diagnose
-from .examples import run_example, list_examples, show_example
+from .examples import list_examples, run_example, show_example
 from .host_ui import action as host_ui_action
 from .host_ui import snapshot as host_ui_snapshot
 from .onboarding import quickstart, setup
@@ -62,7 +75,9 @@ def _store_dialog_image(response: dict[str, Any], path: Path) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="ads-agent", description="Unofficial local-first ADS Agent Bridge.")
+    parser = argparse.ArgumentParser(
+        prog="ads-agent", description="Unofficial local-first ADS Agent Bridge."
+    )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--pretty", action="store_true", help="Pretty-print JSON output.")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -71,7 +86,11 @@ def build_parser() -> argparse.ArgumentParser:
     doctor.add_argument("--ads-root", action="append", type=Path, default=[])
     doctor.add_argument("--search-root", action="append", type=Path, default=[])
     doctor.add_argument("--config-dir", type=Path, help="Explicit ADS hpeesof/config directory.")
-    doctor.add_argument("--no-ping", action="store_true", help="List bridge session files without contacting them.")
+    doctor.add_argument(
+        "--no-ping",
+        action="store_true",
+        help="List bridge session files without contacting them.",
+    )
 
     instances = commands.add_parser("instances")
     instances_commands = instances.add_subparsers(dest="instances_command", required=True)
@@ -88,12 +107,18 @@ def build_parser() -> argparse.ArgumentParser:
     use.add_argument("instance_id")
 
     compatibility = commands.add_parser("compatibility")
-    compatibility_commands = compatibility.add_subparsers(dest="compatibility_command", required=True)
+    compatibility_commands = compatibility.add_subparsers(
+        dest="compatibility_command", required=True
+    )
     compatibility_explain = compatibility_commands.add_parser("explain")
     compatibility_explain.add_argument("--ads")
 
     docs = commands.add_parser("docs")
     docs_commands = docs.add_subparsers(dest="docs_command", required=True)
+    symbol = docs_commands.add_parser("symbol")
+    symbol.add_argument("query")
+    symbol.add_argument("--ads")
+    symbol.add_argument("--limit", type=int, default=6)
     ensure = docs_commands.add_parser("ensure")
     ensure.add_argument("--ads")
     ensure.add_argument("--force", action="store_true")
@@ -117,49 +142,98 @@ def build_parser() -> argparse.ArgumentParser:
     docs_get = docs_commands.add_parser("get")
     docs_get.add_argument("source_ref")
     docs_get.add_argument("--ads")
-    docs_get.add_argument("--focus", help="Return bounded sections centered on these symbols or terms.")
-    docs_get.add_argument("--max-chars", type=int, default=4000, help="Total focus budget, from 200 to 12000 characters.")
+    docs_get.add_argument(
+        "--focus", help="Return bounded sections centered on these symbols or terms."
+    )
+    docs_get.add_argument(
+        "--max-chars",
+        type=int,
+        default=4000,
+        help="Total focus budget, from 200 to 12000 characters.",
+    )
 
     setup_parser = commands.add_parser("setup")
     setup_parser.add_argument("--ads-root", action="append", type=Path, default=[])
     setup_parser.add_argument("--search-root", action="append", type=Path, default=[])
     setup_parser.add_argument("--non-interactive", action="store_true")
-    setup_parser.add_argument("--config-dir", type=Path, help="Explicit ADS hpeesof/config directory.")
+    setup_parser.add_argument(
+        "--config-dir", type=Path, help="Explicit ADS hpeesof/config directory."
+    )
     setup_parser.add_argument(
         "--skip-skill",
         action="store_true",
         help="Do not install the public Bridge and Docs Skills for Codex.",
     )
-    setup_parser.add_argument("--no-background-docs", action="store_true", help="Do not enrich local docs in the background.")
+    setup_parser.add_argument(
+        "--no-background-docs",
+        action="store_true",
+        help="Do not enrich local docs in the background.",
+    )
 
     quickstart_parser = commands.add_parser("quickstart")
     quickstart_parser.add_argument("--ads")
     quickstart_parser.add_argument("--workspace", type=Path)
     quickstart_parser.add_argument("--timeout", type=float, default=300)
-    quickstart_parser.add_argument("--config-dir", type=Path, help="Explicit ADS hpeesof/config directory.")
+    quickstart_parser.add_argument(
+        "--config-dir", type=Path, help="Explicit ADS hpeesof/config directory."
+    )
 
-    launch_parser = commands.add_parser("launch", help="Launch or safely reuse a workspace-bound ADS session.")
-    launch_parser.add_argument("--ads", help="Configured ADS instance id. Uses the explicit default when omitted.")
-    launch_parser.add_argument("--workspace", type=Path, required=True, help="Existing ADS workspace to open.")
-    launch_parser.add_argument("--slot", help="Bridge slot. Defaults to the selected ADS instance id.")
-    launch_parser.add_argument("--display", help="Linux/X display for this ADS session, for example :4.")
-    launch_parser.add_argument("--timeout", type=float, default=120.0, help="Seconds to wait for the DE bridge.")
+    launch_parser = commands.add_parser(
+        "launch", help="Launch or safely reuse a workspace-bound ADS session."
+    )
+    launch_parser.add_argument(
+        "--ads",
+        help="Configured ADS instance id. Uses the explicit default when omitted.",
+    )
+    launch_parser.add_argument(
+        "--workspace", type=Path, required=True, help="Existing ADS workspace to open."
+    )
+    launch_parser.add_argument(
+        "--slot", help="Bridge slot. Defaults to the selected ADS instance id."
+    )
+    launch_parser.add_argument(
+        "--display", help="Linux/X display for this ADS session, for example :4."
+    )
+    launch_parser.add_argument(
+        "--timeout",
+        type=float,
+        default=120.0,
+        help="Seconds to wait for the DE bridge.",
+    )
     launch_parser.add_argument(
         "--reuse-existing",
         action="store_true",
         help="Reuse the same slot only if it has no workspace or already has the requested workspace.",
     )
-    launch_parser.add_argument("--dry-run", action="store_true", help="Validate and print the launch plan only.")
+    launch_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate and print the launch plan only.",
+    )
 
-    status_parser = commands.add_parser("status", help="Report managed and externally owned ADS sessions.")
+    status_parser = commands.add_parser(
+        "status", help="Report managed and externally owned ADS sessions."
+    )
     status_parser.add_argument("--slot")
 
-    disconnect_parser = commands.add_parser("disconnect", help="End the stateless client interaction without closing ADS.")
+    disconnect_parser = commands.add_parser(
+        "disconnect", help="End the stateless client interaction without closing ADS."
+    )
     disconnect_parser.add_argument("--slot")
 
-    shutdown_parser = commands.add_parser("shutdown", help="Safely exit an agent-owned ADS session.")
-    shutdown_parser.add_argument("--slot", help="May be omitted only when exactly one agent-owned session is live.")
-    shutdown_parser.add_argument("--timeout", type=float, default=30.0, help="Seconds to wait for ADS to exit normally.")
+    shutdown_parser = commands.add_parser(
+        "shutdown", help="Safely exit an agent-owned ADS session."
+    )
+    shutdown_parser.add_argument(
+        "--slot",
+        help="May be omitted only when exactly one agent-owned session is live.",
+    )
+    shutdown_parser.add_argument(
+        "--timeout",
+        type=float,
+        default=30.0,
+        help="Seconds to wait for ADS to exit normally.",
+    )
 
     host_ui = commands.add_parser(
         "host-ui",
@@ -218,7 +292,9 @@ def build_parser() -> argparse.ArgumentParser:
             choices=("all", "bridge", "docs"),
         )
         item.add_argument("--target", choices=("codex", "agents"), default="codex")
-        item.add_argument("--root", type=Path, help="Explicit parent directory for installed skills.")
+        item.add_argument(
+            "--root", type=Path, help="Explicit parent directory for installed skills."
+        )
         if name == "install":
             item.add_argument("--force", action="store_true")
 
@@ -264,10 +340,13 @@ def build_parser() -> argparse.ArgumentParser:
     bridge_dialog_snapshot.add_argument("--profile", choices=("de", "dds"), default="de")
     bridge_dialog_snapshot.add_argument("--slot")
     bridge_dialog_snapshot.add_argument(
-        "--image-out", type=Path, help="Write a Qt-captured PNG for Agent vision fallback; never overwrites."
+        "--image-out",
+        type=Path,
+        help="Write a Qt-captured PNG for Agent vision fallback; never overwrites.",
     )
     bridge_dialog_watch = bridge_commands.add_parser(
-        "dialog-watch", help="Wait on an independent client lane until a modal dialog appears."
+        "dialog-watch",
+        help="Wait on an independent client lane until a modal dialog appears.",
     )
     bridge_dialog_watch.add_argument("--profile", choices=("de", "dds"), default="de")
     bridge_dialog_watch.add_argument("--slot")
@@ -288,30 +367,6 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
     )
     bridge_dialog_action.add_argument("--reason", required=True)
-    bridge_eval = bridge_commands.add_parser("eval")
-    bridge_eval.add_argument("expression")
-    bridge_eval.add_argument("--profile", choices=("de", "dds"), default="de")
-    bridge_eval.add_argument("--slot")
-    bridge_eval.add_argument("--unsafe", action="store_true")
-    bridge_eval.add_argument("--timeout", type=float, default=30)
-    bridge_exec = bridge_commands.add_parser("exec")
-    bridge_exec.add_argument("code")
-    bridge_exec.add_argument("--profile", choices=("de", "dds"), default="de")
-    bridge_exec.add_argument("--slot")
-    bridge_exec.add_argument("--unsafe", action="store_true")
-    bridge_exec.add_argument("--timeout", type=float, default=120)
-    bridge_exec_file = bridge_commands.add_parser("exec-file")
-    bridge_exec_file.add_argument("path", type=Path)
-    bridge_exec_file.add_argument("--profile", choices=("de", "dds"), default="de")
-    bridge_exec_file.add_argument("--slot")
-    bridge_exec_file.add_argument("--unsafe", action="store_true")
-    bridge_exec_file.add_argument("--timeout", type=float, default=300)
-    bridge_ael = bridge_commands.add_parser("ael-call")
-    bridge_ael.add_argument("name")
-    bridge_ael.add_argument("--arg", action="append", default=[], help="JSON-encoded positional argument.")
-    bridge_ael.add_argument("--profile", choices=("de", "dds"), default="de")
-    bridge_ael.add_argument("--slot")
-    bridge_ael.add_argument("--unsafe", action="store_true")
 
     runtime = commands.add_parser(
         "runtime",
@@ -327,11 +382,35 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="Execution ledger path. Defaults to the private ADS Agent runtime directory.",
     )
+    runtime_worker = runtime_commands.add_parser("worker", help="Run one claimed durable job.")
+    runtime_worker.add_argument("--jobs", type=Path, required=True)
+    runtime_worker.add_argument("--ledger", type=Path, required=True)
+    runtime_worker.add_argument("--job-id", required=True)
+    runtime_execute = runtime_commands.add_parser(
+        "execute", help="Execute one Runtime request JSON file."
+    )
+    runtime_execute.add_argument("--request", type=Path, required=True)
+    runtime_execute.add_argument("--ledger", type=Path)
     return parser
 
 
 def run(args: argparse.Namespace) -> tuple[Any, int]:
     if args.command == "runtime":
+        if args.runtime_command == "worker":
+            from .runtime_adapter import run_worker
+
+            result = run_worker(args.jobs, args.ledger, args.job_id)
+            return result.to_dict(), 0 if result.status == "passed" else 2
+        if args.runtime_command == "execute":
+            from eda_bridge_runtime import RequestEnvelope
+
+            from .runtime_adapter import build_runtime, default_ledger_path
+
+            envelope = RequestEnvelope.from_dict(
+                json.loads(args.request.read_text(encoding="utf-8"))
+            )
+            result = build_runtime(args.ledger or default_ledger_path()).execute(envelope)
+            return result.to_dict(), 0 if result.status == "passed" else 2
         if args.runtime_command == "serve":
             from .runtime_adapter import default_ledger_path, serve
 
@@ -344,19 +423,28 @@ def run(args: argparse.Namespace) -> tuple[Any, int]:
             found = discover(args.ads_root, args.search_root)
             config = None if args.no_save else update_instances(found)
             return {
-                "default_instance_id": None if config is None else config.get("default_instance_id"),
+                "default_instance_id": None
+                if config is None
+                else config.get("default_instance_id"),
                 "saved": config is not None,
                 "instances": [item.to_dict() for item in found],
             }, 0
         if args.instances_command == "list":
             config = load_config()
-            return {"default_instance_id": config.get("default_instance_id"), "instances": [item.to_dict() for item in configured_instances(config)]}, 0
+            return {
+                "default_instance_id": config.get("default_instance_id"),
+                "instances": [item.to_dict() for item in configured_instances(config)],
+            }, 0
         if args.instances_command == "use":
             return set_default(args.instance_id), 0
     if args.command == "compatibility":
         return explain(select_instance(args.ads)), 0
     if args.command == "docs":
         instance = select_instance(args.ads)
+        if args.docs_command == "symbol":
+            from .sdk_docs import describe
+
+            return describe(instance, args.query, args.limit), 0
         if args.docs_command == "ensure":
             return ensure_fast_index(instance, force=args.force), 0
         if args.docs_command == "build":
@@ -369,7 +457,9 @@ def run(args: argparse.Namespace) -> tuple[Any, int]:
         if args.docs_command == "query":
             return query(instance, args.query, args.limit, domains=args.domain), 0
         if args.docs_command == "get":
-            return get_document(instance, args.source_ref, focus=args.focus, max_chars=args.max_chars), 0
+            return get_document(
+                instance, args.source_ref, focus=args.focus, max_chars=args.max_chars
+            ), 0
     if args.command == "setup":
         payload = setup(
             roots=args.ads_root,
@@ -493,14 +583,19 @@ def run(args: argparse.Namespace) -> tuple[Any, int]:
             deadline = time.monotonic() + max(0.0, args.timeout)
             last_response: dict[str, Any] | None = None
             while True:
-                last_response = request("dialog_snapshot", {"include_image": False}, args.slot, args.profile)
+                last_response = request(
+                    "dialog_snapshot", {"include_image": False}, args.slot, args.profile
+                )
                 if not last_response.get("ok"):
                     return last_response, 2
                 result = last_response.get("result")
                 if isinstance(result, dict) and result.get("present") is True:
                     if image_path is not None:
                         last_response = request(
-                            "dialog_snapshot", {"include_image": True}, args.slot, args.profile
+                            "dialog_snapshot",
+                            {"include_image": True},
+                            args.slot,
+                            args.profile,
                         )
                         _store_dialog_image(last_response, image_path)
                     return last_response, 0
@@ -524,24 +619,6 @@ def run(args: argparse.Namespace) -> tuple[Any, int]:
                         "reason": args.reason,
                     },
                 },
-                args.slot,
-                args.profile,
-            )
-            return response, 0 if response.get("ok") else 2
-        if args.bridge_command in {"eval", "exec", "exec-file"}:
-            if not args.unsafe:
-                raise ValueError("Arbitrary embedded Python requires the explicit --unsafe flag")
-            command = "exec" if args.bridge_command == "exec-file" else args.bridge_command
-            field = "expression" if command == "eval" else "code"
-            value = args.path.read_text(encoding="utf-8") if args.bridge_command == "exec-file" else getattr(args, field)
-            response = request(command, {field: value}, args.slot, args.profile, timeout=args.timeout)
-            return response, 0 if response.get("ok") else 2
-        if args.bridge_command == "ael-call":
-            if not args.unsafe:
-                raise ValueError("Dynamic AEL calls require the explicit --unsafe flag")
-            response = request(
-                "ael_call",
-                {"name": args.name, "args": [json.loads(value) for value in args.arg]},
                 args.slot,
                 args.profile,
             )

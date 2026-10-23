@@ -65,7 +65,9 @@ def select_instance(instance_id: str | None = None) -> AdsInstance:
         return instances[0]
     if not instances:
         raise ValueError("No ADS installations are configured. Run `ads-agent setup`.")
-    raise ValueError("Multiple ADS installations are configured. Pass --ads or run `ads-agent instances use`.")
+    raise ValueError(
+        "Multiple ADS installations are configured. Pass --ads or run `ads-agent instances use`."
+    )
 
 
 def set_default(instance_id: str) -> dict[str, Any]:

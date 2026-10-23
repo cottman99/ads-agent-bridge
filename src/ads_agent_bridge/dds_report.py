@@ -41,9 +41,7 @@ def _validate_plots(value: Any, path: str, *, typed: bool) -> list[dict[str, Any
     if not isinstance(value, list) or not value or len(value) > 32:
         raise ValueError(f"{path} must contain between 1 and 32 entries")
     normalized = []
-    expected = (
-        {"kind", "name", "traces", "rect"} if typed else {"name", "traces", "rect"}
-    )
+    expected = {"kind", "name", "traces", "rect"} if typed else {"name", "traces", "rect"}
     for index, item in enumerate(value):
         if not isinstance(item, dict) or set(item) != expected:
             raise ValueError(f"{path}[{index}] is invalid")
@@ -58,16 +56,10 @@ def _validate_plots(value: Any, path: str, *, typed: bool) -> list[dict[str, Any
             or not isinstance(traces, list)
             or not traces
             or len(traces) > 32
-            or any(
-                not isinstance(trace, str) or not trace or len(trace) > 512
-                for trace in traces
-            )
+            or any(not isinstance(trace, str) or not trace or len(trace) > 512 for trace in traces)
             or not isinstance(rect, list)
             or len(rect) != 4
-            or any(
-                not isinstance(number, int) or isinstance(number, bool)
-                for number in rect
-            )
+            or any(not isinstance(number, int) or isinstance(number, bool) for number in rect)
             or rect[2] <= 0
             or rect[3] <= 0
         ):
@@ -114,11 +106,7 @@ def validate_dds_plan(value: Any) -> dict[str, Any]:
     if not _IDENTIFIER.fullmatch(str(plan["operation_id"])):
         raise ValueError("operation_id must be a simple identifier")
     if schema == _SCHEMA_V1:
-        if (
-            not isinstance(plan.get("page"), str)
-            or not plan["page"]
-            or len(plan["page"]) > 128
-        ):
+        if not isinstance(plan.get("page"), str) or not plan["page"] or len(plan["page"]) > 128:
             raise ValueError("page must be a bounded string")
         plan["equations"] = _validate_equations(plan.get("equations", []), "equations")
         plan["plots"] = _validate_plots(plan.get("plots", []), "plots", typed=False)
@@ -173,9 +161,7 @@ def execute_dds_plan(
         raise FileExistsError(f"refusing to overwrite DDS output: {output}")
     instance = select_instance(plan.get("instance"))
     if not instance.python_executable:
-        raise RuntimeError(
-            f"ADS Python was not discovered for {instance.product_version}"
-        )
+        raise RuntimeError(f"ADS Python was not discovered for {instance.product_version}")
     plan_path = workspace / f".{output.name}.dds-{uuid.uuid4().hex}.json"
     try:
         plan_path.write_text(json.dumps(plan, ensure_ascii=False), encoding="utf-8")

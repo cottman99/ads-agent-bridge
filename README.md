@@ -19,6 +19,12 @@
 
 ![An RF engineer goes from a blank circuit through simulation to checked native results](docs/assets/readme/ads-engineer-workflow-v3.png)
 
+## Run official ADS Python and verify the saved result
+
+ADS Bridge 0.2.0a1 supports ordinary official Python in an exact live context or a staged background workspace. The October acceptance saved and freshly read back 75 Ohm on Windows and Linux; Linux live editing read back 90 Ohm in the same session.
+
+[October release acceptance](https://github.com/cottman99/eda-bridge-runtime/blob/v0.2.0a1/docs/VALIDATION_2026-10-23_NATIVE_CORE.md) · [Native execution and migration](docs/NATIVE_EXECUTION.md). The circuit, solver and timing examples below are the separately dated historical acceptance baselines.
+
 ## Finish a circuit-to-results task in one conversation
 
 > “Start from a blank workspace, build this testbench, run the simulation,
@@ -101,8 +107,8 @@ disposable workspace creation, minimal circuit simulation, and dataset readback
 have each passed.
 
 If `pipx` or a suitable Python is not yet available, use the versioned
-bootstrap for [Linux](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a49/install.sh)
-or [Windows PowerShell](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a49/install.ps1).
+bootstrap for [Linux](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.2.0a1/install.sh)
+or [Windows PowerShell](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.2.0a1/install.ps1).
 The bootstrap creates an isolated environment and does not replace an
 externally managed system Python.
 
@@ -259,3 +265,7 @@ To remove only this ADS integration while preserving unrelated add-ons:
 ```console
 ads-agent addon uninstall
 ```
+
+## Native execution upgrade
+
+This breaking alpha introduces `native.execute` / `eda.native-program/v1`. Upgrade Runtime and each selected Bridge together. Each Bridge installs Runtime automatically; installing the other Bridge is optional. Reconnect Agent clients and reload the ADS addon on its next normal application launch. See [native execution architecture](docs/NATIVE_EXECUTION.md) for modes, knowledge preparation, coordination and migration.

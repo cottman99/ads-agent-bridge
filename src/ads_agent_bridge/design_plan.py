@@ -18,9 +18,7 @@ from .config import select_instance
 from .runtime_environment import ads_runtime_environment
 
 _IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,127}")
-_LCV = re.compile(
-    r"[A-Za-z_][A-Za-z0-9_]{0,127}:[A-Za-z_][A-Za-z0-9_]{0,127}:schematic"
-)
+_LCV = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,127}:[A-Za-z_][A-Za-z0-9_]{0,127}:schematic")
 _SCHEMA = "ads.design-plan/v1"
 _MAX_OPERATIONS = 256
 _PLAN_FIELDS = {
@@ -40,9 +38,7 @@ _PLAN_FIELDS = {
 def _point(value: Any, field: str) -> list[float]:
     if not isinstance(value, list) or len(value) != 2:
         raise ValueError(f"{field} must contain exactly two coordinates")
-    if any(
-        not isinstance(item, (int, float)) or isinstance(item, bool) for item in value
-    ):
+    if any(not isinstance(item, (int, float)) or isinstance(item, bool) for item in value):
         raise ValueError(f"{field} coordinates must be numbers")
     point = [float(item) for item in value]
     if not all(math.isfinite(item) for item in point):
@@ -56,9 +52,7 @@ def validate_design_plan(value: Any) -> dict[str, Any]:
     plan = dict(value)
     unknown = sorted(set(plan) - _PLAN_FIELDS)
     if unknown:
-        raise ValueError(
-            "design plan contains unsupported fields: " + ", ".join(unknown)
-        )
+        raise ValueError("design plan contains unsupported fields: " + ", ".join(unknown))
     required = (
         "schema_version",
         "operation_id",
@@ -93,9 +87,7 @@ def validate_design_plan(value: Any) -> dict[str, Any]:
             raise TypeError(f"operations[{index}] must be an object")
         kind = str(raw.get("op") or "")
         if kind == "add_instance":
-            unknown = sorted(
-                set(raw) - {"op", "name", "item", "at", "angle", "parameters"}
-            )
+            unknown = sorted(set(raw) - {"op", "name", "item", "at", "angle", "parameters"})
             if unknown:
                 raise ValueError(
                     f"operations[{index}] contains unsupported fields: {', '.join(unknown)}"
@@ -109,9 +101,7 @@ def validate_design_plan(value: Any) -> dict[str, Any]:
                 or len(item) != 3
                 or not all(_IDENTIFIER.fullmatch(str(part)) for part in item)
             ):
-                raise ValueError(
-                    f"operations[{index}].item must contain three identifiers"
-                )
+                raise ValueError(f"operations[{index}].item must contain three identifiers")
             parameters = raw.get("parameters") or {}
             if not isinstance(parameters, dict) or any(
                 not _IDENTIFIER.fullmatch(str(key))
@@ -128,9 +118,7 @@ def validate_design_plan(value: Any) -> dict[str, Any]:
                 "parameters": dict(parameters),
             }
             if "angle" in raw:
-                if not isinstance(raw["angle"], (int, float)) or isinstance(
-                    raw["angle"], bool
-                ):
+                if not isinstance(raw["angle"], (int, float)) or isinstance(raw["angle"], bool):
                     raise ValueError(f"operations[{index}].angle must be a number")
                 angle = float(raw["angle"])
                 if not math.isfinite(angle):
@@ -147,9 +135,7 @@ def validate_design_plan(value: Any) -> dict[str, Any]:
                 )
             points = raw.get("points")
             if not isinstance(points, list) or len(points) < 2:
-                raise ValueError(
-                    f"operations[{index}].points requires at least two points"
-                )
+                raise ValueError(f"operations[{index}].points requires at least two points")
             entry = {
                 "op": kind,
                 "points": [
@@ -194,11 +180,7 @@ def validate_design_plan(value: Any) -> dict[str, Any]:
         for item in parameters
     ):
         raise ValueError("assertions.parameters must contain exact parameter triples")
-    if not (
-        assertions.get("instance_names")
-        or parameters
-        or assertions.get("netlist_contains")
-    ):
+    if not (assertions.get("instance_names") or parameters or assertions.get("netlist_contains")):
         raise ValueError("design plan requires at least one fresh-reopen assertion")
     plan["operations"] = normalized
     plan["expected_before"] = expected
@@ -261,9 +243,7 @@ def execute_design_plan(
 
     instance = select_instance(plan.get("instance"))
     if not instance.python_executable:
-        raise RuntimeError(
-            f"ADS Python was not discovered for {instance.product_version}"
-        )
+        raise RuntimeError(f"ADS Python was not discovered for {instance.product_version}")
     staging = output.parent / f".{output.name}.staging-{uuid.uuid4().hex}"
     plan_path = output.parent / f".{output.name}.plan-{uuid.uuid4().hex}.json"
     try:

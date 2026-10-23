@@ -5,7 +5,6 @@ from __future__ import annotations
 import copy
 from typing import Any
 
-
 CAPABILITY_DESCRIPTOR_SCHEMA_VERSION = 1
 RUNTIME_SNAPSHOT_SCHEMA_VERSION = 1
 
@@ -84,6 +83,15 @@ _CAPABILITY_SPECS: tuple[dict[str, Any], ...] = (
         "requirements": ("context-registry", "context-handle"),
     },
     {
+        "id": "context_capture_workspace",
+        "category": "context",
+        "safety": "safe",
+        "profiles": ("de",),
+        "mutates": False,
+        "latency_class": "fast",
+        "requirements": ("context-registry", "de-python"),
+    },
+    {
         "id": "context_capture_active_design",
         "category": "context",
         "safety": "safe",
@@ -91,6 +99,16 @@ _CAPABILITY_SPECS: tuple[dict[str, Any], ...] = (
         "mutates": False,
         "latency_class": "fast",
         "requirements": ("context-registry", "de-app", "active-design-window"),
+    },
+    {
+        "id": "context_capture_dds_file",
+        "category": "context",
+        "safety": "safe",
+        "profiles": ("dds",),
+        "mutates": False,
+        "latency_class": "fast",
+        "requirements": ("context-registry", "dds-python"),
+        "input_schema": {"required": ("path",), "optional": ()},
     },
     {
         "id": "context_refresh",
@@ -193,34 +211,31 @@ _CAPABILITY_SPECS: tuple[dict[str, Any], ...] = (
         "profiles": ("de", "dds"),
         "mutates": True,
         "latency_class": "fast",
-        "requirements": ("active-modal", "dialog-fingerprint", "authorization-decision"),
+        "requirements": (
+            "active-modal",
+            "dialog-fingerprint",
+            "authorization-decision",
+        ),
     },
     {
-        "id": "eval",
-        "category": "python",
-        "safety": "unsafe",
+        "id": "native.execute",
+        "category": "native",
+        "safety": "native",
         "profiles": ("de", "dds"),
         "mutates": True,
         "latency_class": "variable",
-        "requirements": ("unsafe-opt-in",),
-    },
-    {
-        "id": "exec",
-        "category": "python",
-        "safety": "unsafe",
-        "profiles": ("de", "dds"),
-        "mutates": True,
-        "latency_class": "variable",
-        "requirements": ("unsafe-opt-in",),
-    },
-    {
-        "id": "ael_call",
-        "category": "ael",
-        "safety": "unsafe",
-        "profiles": ("de", "dds"),
-        "mutates": True,
-        "latency_class": "variable",
-        "requirements": ("ael-python", "unsafe-opt-in"),
+        "requirements": ("context-registry", "exact-design-identity"),
+        "input_schema": {
+            "required": (
+                "plan",
+                "context",
+                "generation",
+                "admission",
+                "purpose",
+                "install_root",
+            ),
+            "optional": (),
+        },
     },
 )
 

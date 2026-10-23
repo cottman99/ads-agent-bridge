@@ -12,7 +12,6 @@ from typing import Any
 
 from .paths import data_dir
 
-
 ADDON_NAME = "AdsAgentBridge"
 CONFIG_FILES = {"de": "eesof_addons.xml", "dds": "dds_addons.xml"}
 ENTRYPOINT_FILES = {"de": "de_entrypoint.py", "dds": "dds_entrypoint.py"}
@@ -62,7 +61,12 @@ def _windows_registry_homes() -> list[Path]:
                 except OSError:
                     continue
                 if isinstance(value, str) and value.strip():
-                    records.append((tuple(int(part) for part in name.split(".")), Path(value.strip())))
+                    records.append(
+                        (
+                            tuple(int(part) for part in name.split(".")),
+                            Path(value.strip()),
+                        )
+                    )
     except OSError:
         return []
     result: list[Path] = []
@@ -75,7 +79,9 @@ def _windows_registry_homes() -> list[Path]:
     return result
 
 
-def install_addon(config_directory: Path | None = None, profiles: tuple[str, ...] = ("de", "dds")) -> dict[str, Any]:
+def install_addon(
+    config_directory: Path | None = None, profiles: tuple[str, ...] = ("de", "dds")
+) -> dict[str, Any]:
     addon_dir = data_dir() / "addons" / ADDON_NAME
     # Resolve from the inert parent package so installer-side use never imports
     # the embedded Qt runtime outside ADS.
@@ -88,11 +94,34 @@ def install_addon(config_directory: Path | None = None, profiles: tuple[str, ...
             with item.open("rb") as input_stream, target.open("wb") as output_stream:
                 shutil.copyfileobj(input_stream, output_stream)
             copied.append(str(target))
-    entrypoints = {profile: (addon_dir / ENTRYPOINT_FILES[profile]).resolve() for profile in profiles}
+    kernel = addon_dir / "execution_kernel"
+    kernel.mkdir(exist_ok=True)
+    (kernel / "__init__.py").write_text(
+        '"""Generated from the installed eda-bridge-runtime package."""\n',
+        encoding="utf-8",
+    )
+    runtime_source = files("eda_bridge_runtime")
+    for name in (
+        "admission.py",
+        "errors.py",
+        "lease.py",
+        "native_program.py",
+        "python_execution.py",
+    ):
+        target = kernel / name
+        target.write_bytes(runtime_source.joinpath(name).read_bytes())
+        copied.append(str(target))
+    entrypoints = {
+        profile: (addon_dir / ENTRYPOINT_FILES[profile]).resolve() for profile in profiles
+    }
     config_dir = (config_directory or default_ads_config_dir()).expanduser().resolve()
     config_dir.mkdir(parents=True, exist_ok=True)
-    records = [_upsert(config_dir / CONFIG_FILES[profile], entrypoints[profile]) for profile in profiles]
-    compatibility_entrypoint = entrypoints[profiles[0]] if profiles else (addon_dir / "de_entrypoint.py").resolve()
+    records = [
+        _upsert(config_dir / CONFIG_FILES[profile], entrypoints[profile]) for profile in profiles
+    ]
+    compatibility_entrypoint = (
+        entrypoints[profiles[0]] if profiles else (addon_dir / "de_entrypoint.py").resolve()
+    )
     return {
         "status": "installed",
         "addon": ADDON_NAME,
@@ -109,11 +138,20 @@ def addon_status(config_directory: Path | None = None) -> dict[str, Any]:
     for profile, filename in CONFIG_FILES.items():
         path = config_dir / filename
         matches = _matching_nodes(path)
-        records.append({"profile": profile, "config": str(path), "exists": path.is_file(), "registrations": matches})
+        records.append(
+            {
+                "profile": profile,
+                "config": str(path),
+                "exists": path.is_file(),
+                "registrations": matches,
+            }
+        )
     return {"addon": ADDON_NAME, "config_dir": str(config_dir), "profiles": records}
 
 
-def uninstall_addon(config_directory: Path | None = None, profiles: tuple[str, ...] = ("de", "dds")) -> dict[str, Any]:
+def uninstall_addon(
+    config_directory: Path | None = None, profiles: tuple[str, ...] = ("de", "dds")
+) -> dict[str, Any]:
     config_dir = (config_directory or default_ads_config_dir()).expanduser().resolve()
     records = [_remove(config_dir / CONFIG_FILES[profile]) for profile in profiles]
     return {"status": "uninstalled", "addon": ADDON_NAME, "registrations": records}
@@ -135,7 +173,11 @@ def _upsert(path: Path, entrypoint: Path) -> dict[str, Any]:
         root.remove(node)
     ET.SubElement(root, "Addon", {"Name": ADDON_NAME, "FilePath": str(entrypoint), "Enabled": "1"})
     backup = _atomic_xml_write(path, root)
-    return {"config": str(path), "replaced": len(before), "backup": str(backup) if backup else None}
+    return {
+        "config": str(path),
+        "replaced": len(before),
+        "backup": str(backup) if backup else None,
+    }
 
 
 def _remove(path: Path) -> dict[str, Any]:
@@ -146,13 +188,19 @@ def _remove(path: Path) -> dict[str, Any]:
     for node in nodes:
         root.remove(node)
     backup = _atomic_xml_write(path, root) if nodes else None
-    return {"config": str(path), "removed": len(nodes), "backup": str(backup) if backup else None}
+    return {
+        "config": str(path),
+        "removed": len(nodes),
+        "backup": str(backup) if backup else None,
+    }
 
 
 def _matching_nodes(path: Path) -> list[dict[str, str | None]]:
     if not path.is_file():
         return []
-    return [dict(node.attrib) for node in _root(path).findall("Addon") if node.get("Name") == ADDON_NAME]
+    return [
+        dict(node.attrib) for node in _root(path).findall("Addon") if node.get("Name") == ADDON_NAME
+    ]
 
 
 def _atomic_xml_write(path: Path, root: ET.Element) -> Path | None:

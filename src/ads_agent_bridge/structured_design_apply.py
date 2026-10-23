@@ -7,7 +7,7 @@ import json
 import traceback
 from pathlib import Path
 
-import keysight.ads.de as de
+from keysight.ads import de
 from keysight.ads.de import db_uu as db
 
 
@@ -21,16 +21,12 @@ def run(workspace: Path, plan: dict[str, object]) -> dict[str, object]:
         de.open_workspace(workspace)
         design = db.open_design(str(plan["design"]), de.db.DesignMode.WRITE)
         before = _instance_names(design)
-        expected_before = list(
-            (plan.get("expected_before") or {}).get("instance_names", [])
-        )
+        expected_before = list((plan.get("expected_before") or {}).get("instance_names", []))
         if before != sorted(expected_before):
             raise RuntimeError(
                 f"expected_before mismatch: expected {sorted(expected_before)!r}, got {before!r}"
             )
-        with de.db.Transaction(
-            design, "EDA Bridge structured design apply"
-        ) as transaction:
+        with de.db.Transaction(design, "EDA Bridge structured design apply") as transaction:
             for operation in plan["operations"]:
                 if operation["op"] == "add_instance":
                     kwargs = {"name": operation["name"]}
@@ -42,9 +38,7 @@ def run(workspace: Path, plan: dict[str, object]) -> dict[str, object]:
                     for name, value in operation.get("parameters", {}).items():
                         instance.parameters[name].value = value
                 else:
-                    wire = design.add_wire(
-                        [tuple(point) for point in operation["points"]]
-                    )
+                    wire = design.add_wire([tuple(point) for point in operation["points"]])
                     if operation.get("label"):
                         wire.add_wire_label(operation["label"])
             transaction.commit()
@@ -63,9 +57,7 @@ def run(workspace: Path, plan: dict[str, object]) -> dict[str, object]:
         parameter_values: list[dict[str, str]] = []
         for expected in assertions.get("parameters", []):
             actual = str(
-                design.instances[expected["instance"]]
-                .parameters[expected["parameter"]]
-                .value
+                design.instances[expected["instance"]].parameters[expected["parameter"]].value
             )
             if actual != expected["value"]:
                 raise RuntimeError(
@@ -75,9 +67,7 @@ def run(workspace: Path, plan: dict[str, object]) -> dict[str, object]:
         netlist = design.generate_netlist()
         for needle in assertions.get("netlist_contains", []):
             if needle not in netlist:
-                raise RuntimeError(
-                    f"fresh-reopen netlist is missing required text: {needle}"
-                )
+                raise RuntimeError(f"fresh-reopen netlist is missing required text: {needle}")
         result.update(
             {
                 "ok": True,

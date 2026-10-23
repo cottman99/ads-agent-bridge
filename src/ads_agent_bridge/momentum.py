@@ -6,8 +6,8 @@ import hashlib
 import math
 import os
 import re
-import signal
 import shutil
+import signal
 import subprocess
 import uuid
 from contextlib import suppress
@@ -40,19 +40,13 @@ def _wrapper(install_root: str) -> list[str]:
         binary_root / "adsMomWrapper.bat",
         binary_root / "adsMomWrapper.cmd",
     ]
-    selected = next(
-        (candidate for candidate in candidates if candidate.is_file()), None
-    )
+    selected = next((candidate for candidate in candidates if candidate.is_file()), None)
     if selected is None:
-        raise FileNotFoundError(
-            "ADS Momentum wrapper was not found in the selected installation"
-        )
+        raise FileNotFoundError("ADS Momentum wrapper was not found in the selected installation")
     if selected.suffix.casefold() in {".bat", ".cmd"}:
         command_processor = os.environ.get("COMSPEC") or shutil.which("cmd.exe")
         if not command_processor:
-            raise RuntimeError(
-                "Windows command processor was not found for ADS Momentum"
-            )
+            raise RuntimeError("Windows command processor was not found for ADS Momentum")
         return [command_processor, "/d", "/s", "/c", str(selected)]
     return [str(selected)]
 
@@ -124,9 +118,7 @@ def inspect_citi(path: str | Path) -> dict[str, Any]:
     lines = [line.strip() for line in source.read_text(encoding="utf-8").splitlines()]
     if not lines or not lines[0].startswith("CITIFILE"):
         raise ValueError("Momentum result is not a CITI file")
-    port_match = next(
-        (_PORTS.match(line) for line in lines if _PORTS.match(line)), None
-    )
+    port_match = next((_PORTS.match(line) for line in lines if _PORTS.match(line)), None)
     frequency_match = next(
         (_FREQUENCIES.match(line) for line in lines if _FREQUENCIES.match(line)), None
     )
@@ -177,9 +169,7 @@ def inspect_citi(path: str | Path) -> dict[str, Any]:
     if missing:
         raise ValueError("Momentum CITI is missing S-parameters: " + ", ".join(missing))
     if any(len(data[name]) != frequency_count for name in required):
-        raise ValueError(
-            "Momentum CITI S-parameter length does not match its frequency list"
-        )
+        raise ValueError("Momentum CITI S-parameter length does not match its frequency list")
 
     indices = sorted({0, frequency_count // 2, frequency_count - 1})
     samples = {}
@@ -224,15 +214,11 @@ def run_generated_momentum(
     source = Path(source_directory).expanduser().resolve()
     output = Path(output_directory).expanduser().resolve()
     if not source.is_dir() or not (source / project).is_file():
-        raise FileNotFoundError(
-            "Momentum source directory is missing its generated project input"
-        )
+        raise FileNotFoundError("Momentum source directory is missing its generated project input")
     if output.exists():
         raise FileExistsError(f"refusing to overwrite Momentum output: {output}")
     if source == output or source.parent != output.parent:
-        raise ValueError(
-            "Momentum source and output directories must be distinct siblings"
-        )
+        raise ValueError("Momentum source and output directories must be distinct siblings")
     source_before = workspace_fingerprint(source)
     if source_fingerprint and source_fingerprint != source_before:
         raise ValueError("Momentum source fingerprint does not match the request")

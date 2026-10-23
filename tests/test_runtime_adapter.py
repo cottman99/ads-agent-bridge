@@ -3,6 +3,7 @@ import json
 from types import SimpleNamespace
 
 import pytest
+from eda_bridge_runtime import AdapterContext
 
 from ads_agent_bridge import runtime_adapter
 from ads_agent_bridge.addon.AdsAgentBridge.context import (
@@ -132,6 +133,7 @@ def test_runtime_adapter_passes_typed_payload_without_args_wrapper(monkeypatch):
 
     monkeypatch.setattr(runtime_adapter, "bridge_request", fake_bridge_request)
     request = SimpleNamespace(
+        purpose="Verify exact vendor execution",
         operation="design.live_patch",
         payload={
             "mutating": True,
@@ -142,7 +144,7 @@ def test_runtime_adapter_passes_typed_payload_without_args_wrapper(monkeypatch):
         target={"slot": "slot-1", "profile": "de"},
         is_mutating=True,
     )
-    context = SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+    context = AdapterContext(emit=lambda *_args, **_kwargs: None)
 
     result = runtime_adapter._AdsAdapterBase().execute(request, context)
 
@@ -182,6 +184,7 @@ def test_runtime_adapter_derives_live_design_from_copied_context_target(monkeypa
 
     monkeypatch.setattr(runtime_adapter, "bridge_request", fake_bridge_request)
     request = SimpleNamespace(
+        purpose="Verify exact vendor execution",
         operation="design.live_patch",
         payload={
             "mutating": True,
@@ -199,7 +202,7 @@ def test_runtime_adapter_derives_live_design_from_copied_context_target(monkeypa
         },
         is_mutating=True,
     )
-    context = SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+    context = AdapterContext(emit=lambda *_args, **_kwargs: None)
 
     runtime_adapter._AdsAdapterBase().execute(request, context)
 
@@ -217,7 +220,11 @@ def test_runtime_adapter_revalidates_live_context_in_same_ads_process(monkeypatc
     token = EDAContext(
         eda="keysight-ads",
         target_kind="design",
-        locator={"context_id": "ctx_0123456789abcdef0123", "slot": "gui", "profile": "de"},
+        locator={
+            "context_id": "ctx_0123456789abcdef0123",
+            "slot": "gui",
+            "profile": "de",
+        },
         display_name="demo_lib:cell:schematic",
         generation=3,
         session={"slot": "gui", "profile": "de", "display": ":4.0", "state": "live"},
@@ -262,7 +269,7 @@ def test_runtime_adapter_revalidates_live_context_in_same_ads_process(monkeypatc
             "operations": [{"op": "set_instance_parameter"}],
         },
     )
-    execution_context = SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+    execution_context = AdapterContext(emit=lambda *_args, **_kwargs: None)
 
     runtime_adapter._AdsAdapterBase().execute(request, execution_context)
 
@@ -286,9 +293,7 @@ def test_capabilities_include_greenfield_workspace(monkeypatch):
     result = adapter.capabilities({"slot": "u2", "profile": "de"})
     assert result["execution_host_role"] == "eda-worker"
     assert result["run_model"] == "synchronous"
-    create = next(
-        item for item in result["operations"] if item["id"] == "workspace.create"
-    )
+    create = next(item for item in result["operations"] if item["id"] == "workspace.create")
     assert create["returns_context"] is True
     assert create["state"]["available"] is True
 
@@ -311,9 +316,9 @@ def test_capabilities_classify_live_patch_as_typed_live_edit(monkeypatch):
             },
         },
     )
-    operations = runtime_adapter._AdsAdapterBase().capabilities(
-        {"slot": "u2", "profile": "de"}
-    )["operations"]
+    operations = runtime_adapter._AdsAdapterBase().capabilities({"slot": "u2", "profile": "de"})[
+        "operations"
+    ]
     live_patch = next(item for item in operations if item["id"] == "design.live_patch")
     assert live_patch["operation_class"] == "typed-live-edit"
 
@@ -324,18 +329,17 @@ def test_capabilities_keep_greenfield_available_without_live_session(monkeypatch
         "bridge_request",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(ConnectionRefusedError()),
     )
-    result = runtime_adapter._AdsAdapterBase().capabilities(
-        {"slot": "u2", "profile": "de"}
-    )
+    result = runtime_adapter._AdsAdapterBase().capabilities({"slot": "u2", "profile": "de"})
     assert result["live_bridge"]["available"] is False
     assert [item["id"] for item in result["operations"]] == [
+        "docs.symbol",
         "docs.status",
         "docs.query",
         "docs.get",
         "workspace.create",
         "experience.list",
         "experience.get",
-        "native.batch",
+        "native.execute",
         "design.apply",
         "circuit.simulate",
         "dds.create",
@@ -375,7 +379,7 @@ def test_runtime_design_apply_accepts_only_structured_plan(monkeypatch):
         idempotency_key="design-demo",
     )
     result = runtime_adapter._AdsAdapterBase().execute(
-        request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+        request, AdapterContext(emit=lambda *_args, **_kwargs: None)
     )
     assert result.status == "passed"
     assert captured["plan"]["instance"] == "ads2026"
@@ -416,19 +420,22 @@ def test_degraded_experience_disables_shortcuts_but_not_native_execution(monkeyp
     assert experience_list["filter_semantics"] == "exact metadata match"
     assert "omit intents and tags" in experience_list["discovery"]
     assert experience_list["applicability_filters"]["profile"] == ["de", "dds"]
-    assert operations["native.batch"]["state"]["available"] is True
-    assert operations["native.batch"]["returns_context"] is True
-    assert (
-        operations["native.batch"]["input_schema"]["continuation_schema"]
-        == "eda-context/v2"
-    )
-    native_schema = operations["native.batch"]["input_schema"]
+    experience_get = operations["experience.get"]["input_schema"]
+    assert experience_get["one_of"][1]["required"] == [
+        "version",
+        "profile",
+        "capability",
+    ]
+    assert operations["native.execute"]["state"]["available"] is True
+    assert operations["native.execute"]["returns_context"] is True
+    assert operations["native.execute"]["input_schema"]["continuation_schema"] == "eda-context/v2"
+    native_schema = operations["native.execute"]["input_schema"]
     assert native_schema["runtime_request_required_for_mutation"] == [
         "purpose",
         "expected_effect",
         "idempotency_key",
     ]
-    assert native_schema["plan_contract"]["schema_version"] == "eda.native-batch/v1"
+    assert native_schema["plan_contract"]["schema_version"] == "eda.native-program/v1"
     assert native_schema["plan_contract"]["program"]["source_must_define"] == (
         "def run(api, context)"
     )
@@ -436,15 +443,11 @@ def test_degraded_experience_disables_shortcuts_but_not_native_execution(monkeyp
         "de": "ads.python.de",
         "dds": "ads.python.dds",
     }
-    assert "keysight.ads.dataset" in native_schema["ads_contract"]["allowed_imports"]
-    assert "keysight.edatoolbox" in native_schema["ads_contract"]["allowed_imports"]
+    assert "allowed_imports" not in native_schema["ads_contract"]
+    assert "installed dependencies" in native_schema["ads_contract"]["python_environment"]
     assert native_schema["ads_contract"]["program_context"]["type"] == "dict"
-    assert native_schema["ads_contract"]["program_context"]["access"] == (
-        'context["<key>"]'
-    )
-    assert native_schema["ads_contract"]["validation_return"]["required"] == {
-        "status": "passed"
-    }
+    assert native_schema["ads_contract"]["program_context"]["access"] == ('context["<key>"]')
+    assert native_schema["ads_contract"]["validation_return"]["required"] == {"status": "passed"}
     continuation = native_schema["continuation_usage"]
     assert "workspace.create" in continuation["normal_greenfield_flow"]
     assert continuation["opaque"] is True
@@ -455,21 +458,23 @@ def test_degraded_experience_disables_shortcuts_but_not_native_execution(monkeyp
     docs_get = operations["docs.get"]["input_schema"]
     assert docs_get["max_chars"] == [200, 12000]
     assert "docs.query" in docs_get["source_ref"]
+    assert "installation selector" in docs_get["field_descriptions"]["instance"]
+    assert "component instance" in docs_get["field_descriptions"]["instance"]
+    assert (
+        operations["workspace.create"]["input_schema"]["field_descriptions"]["workspace"]
+        == "Exact ADS workspace filesystem path"
+    )
     write_scope = native_schema["ads_contract"]["staged_write_paths"]
-    assert write_scope["without_artifacts"] == [
-        "absolute distinct sibling output workspace"
-    ]
+    assert write_scope["without_artifacts"] == ["absolute distinct sibling output workspace"]
     assert "relative write_paths" in write_scope["never"]
-    template = native_schema["staged_mutation_template"]
+    template = native_schema["mutate_template"]
     assert template["payload"]["plan"]["validation"]["required_artifacts"] == [
         "<same relative artifact file>"
     ]
     assert template["runtime_fields"]["wait"]["timeout_ms"] == 300000
 
 
-def test_native_batch_continues_from_opaque_content_bound_context(
-    tmp_path, monkeypatch
-):
+def test_native_program_continues_from_opaque_content_bound_context(tmp_path, monkeypatch):
     from eda_bridge_runtime import RequestEnvelope
 
     from ads_agent_bridge import workspace_create
@@ -500,18 +505,16 @@ def test_native_batch_continues_from_opaque_content_bound_context(
         captured.update(plan=plan, **kwargs)
         return {
             "status": "passed",
-            "effect": "staged_mutation",
+            "effect": "mutate",
             "source_fingerprint": "a" * 64,
             "output_fingerprint": "b" * 64,
         }
 
-    monkeypatch.setattr(runtime_adapter, "execute_native_batch", fake_execute)
+    monkeypatch.setattr(runtime_adapter, "execute_native_program", fake_execute)
     monkeypatch.setattr(
         runtime_adapter,
         "select_instance",
-        lambda _value: SimpleNamespace(
-            instance_id="ads2027", year=2027, product_version="2027"
-        ),
+        lambda _value: SimpleNamespace(instance_id="ads2027", year=2027, product_version="2027"),
     )
 
     def fake_create_continuation(**kwargs):
@@ -521,15 +524,14 @@ def test_native_batch_continues_from_opaque_content_bound_context(
             "state": "content-bound",
         }
 
-    monkeypatch.setattr(
-        runtime_adapter, "create_continuation_context", fake_create_continuation
-    )
+    monkeypatch.setattr(runtime_adapter, "create_continuation_context", fake_create_continuation)
     monkeypatch.setattr(runtime_adapter, "continuation_ref", lambda _value: "ctx_" + "2" * 20)
     plan = {
-        "schema_version": "eda.native-batch/v1",
-        "batch_id": "continue_demo",
+        "schema_version": "eda.native-program/v1",
+        "mode": "background",
+        "program_id": "continue_demo",
         "runtime": "ads.python.de",
-        "effect": "staged_mutation",
+        "effect": "mutate",
         "program": {},
         "scope": {"write_paths": [str(output)], "artifacts": []},
         "transaction": {
@@ -547,12 +549,12 @@ def test_native_batch_continues_from_opaque_content_bound_context(
             "context": token,
             "context_id": "must-not-be-expanded-as-lifecycle-context",
         },
-        operation="native.batch",
+        operation="native.execute",
         payload={"mutating": True, "plan": plan},
         idempotency_key="continue-demo-v2",
     )
     result = runtime_adapter._AdsAdapterBase().execute(
-        request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+        request, AdapterContext(emit=lambda *_args, **_kwargs: None)
     )
 
     assert captured["plan"]["scope"]["read_paths"] == [str(source.resolve())]
@@ -586,9 +588,9 @@ def test_native_continuation_context_rejects_another_operation(monkeypatch):
         operation="session.status",
         payload={"mutating": False},
     )
-    with pytest.raises(ValueError, match="bound to native.batch"):
+    with pytest.raises(ValueError, match="bound to native.execute"):
         runtime_adapter._AdsAdapterBase().execute(
-            request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+            request, AdapterContext(emit=lambda *_args, **_kwargs: None)
         )
 
 
@@ -611,7 +613,7 @@ def test_runtime_design_apply_rejects_dds_profile(monkeypatch):
     )
     with pytest.raises(ValueError, match="requires the ADS DE profile"):
         runtime_adapter._AdsAdapterBase().execute(
-            request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+            request, AdapterContext(emit=lambda *_args, **_kwargs: None)
         )
 
 
@@ -644,7 +646,7 @@ def test_runtime_circuit_simulate_accepts_structured_plan(monkeypatch):
         idempotency_key="simulate-demo",
     )
     result = runtime_adapter._AdsAdapterBase().execute(
-        request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+        request, AdapterContext(emit=lambda *_args, **_kwargs: None)
     )
     assert result.status == "passed"
     assert captured["plan"]["instance"] == "ads2026"
@@ -669,7 +671,7 @@ def test_runtime_shutdown_accepts_slot_from_payload(monkeypatch):
         idempotency_key="shutdown-u2",
     )
     result = runtime_adapter._AdsAdapterBase().execute(
-        request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+        request, AdapterContext(emit=lambda *_args, **_kwargs: None)
     )
 
     assert result.status == "passed"
@@ -696,7 +698,7 @@ def test_runtime_rejects_conflicting_slot_sources(monkeypatch):
 
     with pytest.raises(ValueError, match="slot conflicts"):
         runtime_adapter._AdsAdapterBase().execute(
-            request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+            request, AdapterContext(emit=lambda *_args, **_kwargs: None)
         )
 
 
@@ -730,7 +732,7 @@ def test_runtime_momentum_accepts_only_bounded_transaction(monkeypatch):
     )
 
     result = runtime_adapter._AdsAdapterBase().execute(
-        request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+        request, AdapterContext(emit=lambda *_args, **_kwargs: None)
     )
 
     assert result.status == "passed"
@@ -775,7 +777,7 @@ def test_runtime_docs_query_does_not_probe_live_ads(monkeypatch):
         },
     )
     result = runtime_adapter._AdsAdapterBase().execute(
-        request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+        request, AdapterContext(emit=lambda *_args, **_kwargs: None)
     )
     assert result.result["bridge"]["instance_id"] == "ads2026"
 
@@ -823,7 +825,7 @@ def test_session_launch_uses_workspace_from_opaque_context(monkeypatch):
         idempotency_key="launch-demo",
     )
     result = runtime_adapter._AdsAdapterBase().execute(
-        request, SimpleNamespace(emit=lambda *_args, **_kwargs: None)
+        request, AdapterContext(emit=lambda *_args, **_kwargs: None)
     )
     assert result.status == "passed"
     assert captured["workspace"].replace("\\", "/") == "/remote/demo_wrk"

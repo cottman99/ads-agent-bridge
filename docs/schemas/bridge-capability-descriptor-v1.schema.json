@@ -16,21 +16,52 @@
     "state"
   ],
   "properties": {
-    "schema_version": {"const": 1},
-    "id": {"type": "string", "minLength": 1},
-    "category": {"type": "string", "minLength": 1},
-    "safety": {"enum": ["safe", "bounded", "unsafe"]},
+    "schema_version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "category": {
+      "type": "string",
+      "minLength": 1
+    },
+    "safety": {
+      "enum": [
+        "safe",
+        "bounded",
+        "native"
+      ]
+    },
     "profiles": {
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
-      "items": {"enum": ["de", "dds"]}
+      "items": {
+        "enum": [
+          "de",
+          "dds"
+        ]
+      }
     },
-    "mutates": {"type": "boolean"},
-    "latency_class": {"enum": ["fast", "moderate", "slow", "variable"]},
+    "mutates": {
+      "type": "boolean"
+    },
+    "latency_class": {
+      "enum": [
+        "fast",
+        "moderate",
+        "slow",
+        "variable"
+      ]
+    },
     "requirements": {
       "type": "array",
-      "items": {"type": "string", "minLength": 1}
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
     },
     "state": {
       "type": "object",
@@ -45,15 +76,33 @@
         "safe_next_actions"
       ],
       "properties": {
-        "declared": {"type": "boolean"},
-        "compatible": {"type": "boolean"},
-        "available": {"type": "boolean"},
-        "healthy": {"type": "boolean"},
-        "authorized": {"type": "boolean"},
-        "reason": {"type": ["string", "null"]},
+        "declared": {
+          "type": "boolean"
+        },
+        "compatible": {
+          "type": "boolean"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "healthy": {
+          "type": "boolean"
+        },
+        "authorized": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "safe_next_actions": {
           "type": "array",
-          "items": {"type": "string", "minLength": 1}
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     }

@@ -12,11 +12,11 @@ compatible while common mechanisms are extracted.
 | `experience.list/get` | Bridge infrastructure | Keep as a read-only advisory gateway; missing assets degrade guidance, never execution |
 | `workspace.create` | Bridge infrastructure | Keep; workspace identity and non-overwrite creation are lifecycle foundations |
 | `session.launch/status/shutdown` | Bridge infrastructure | Keep; ownership, Context, and safe lifecycle are core |
-| `native.batch` | Generic native execution | Primary official ADS Python extension path; governed scope, staging, timeout, fresh-process validation, promotion, and opaque content-bound continuation Context |
-| `design.apply` | Asset-bound compiled shortcut | Keep compatible while its asset/version/hash and runtime match; do not add more schematic verbs |
-| `circuit.simulate` | Asset-bound compiled shortcut | Keep as an accepted circuit-to-data macro; generalize job, timeout, artifact, and dataset validation mechanics |
-| `dds.create` | Asset-bound compiled shortcut | Keep v1/v2 compatible; do not add one wrapper field per DDS widget or plot kind |
-| `momentum.run_generated` | Asset-bound compiled shortcut | Keep as an optional generated-input solver macro; it is not the Bridge core or blank-layout EM coverage |
+| `native.execute` | Generic native execution | Primary official ADS Python extension path; governed scope, staging, timeout, fresh-process validation, promotion, and opaque content-bound continuation Context |
+| `design.apply` | Compatibility shortcut | Keep callable for experience-referenced background recipes; do not present it as the default schematic route or add more schematic verbs |
+| `circuit.simulate` | Provisional compiled shortcut | Keep compatible while its experience binding and same-task advantage remain evidenced; generalize only job, timeout, artifact, and dataset validation mechanics |
+| `dds.create` | Provisional compiled shortcut | Keep v1/v2 compatible only as an experience-referenced macro; do not add one wrapper field per DDS widget or plot kind |
+| `momentum.run_generated` | Provisional compiled shortcut | Keep as an optional experience-referenced solver macro with retained process and artifact evidence; it is not the Bridge core or blank-layout EM coverage |
 
 ## Embedded add-on commands
 
@@ -26,7 +26,7 @@ compatible while common mechanisms are extracted.
 | `context_*` | Bridge infrastructure | Keep; selection and freshness belong to Context |
 | `dialog_snapshot/action` | Bridge infrastructure / bounded GUI fallback | Keep under fingerprint and approval gates |
 | `open_workspace`, `safe_shutdown` | Bridge infrastructure | Keep under ownership and identity checks |
-| `eval`, `exec`, `ael_call` | Generic native execution precursor | Replace the current safe-vs-unsafe binary with a governed official-code lane; retain explicit unrestricted unsafe compatibility separately |
+| `eval`, `exec`, `ael_call` | Generic native execution precursor | Removed; `native.execute` is the sole official-code entry point |
 | `dds_readback`, `ael_workspace_path` | Acceptance probe | Keep for compatibility and tests, but stop presenting them as the measure of product capability |
 
 ## Coverage status after the audit

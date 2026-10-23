@@ -13,7 +13,9 @@ def make_ads_root(tmp_path: Path, name: str = "ADS2025_Update2") -> Path:
     (root / "doc" / "ads").mkdir(parents=True)
     (root / "doc" / "ads" / "index.html").write_text("<title>ADS docs</title>", encoding="utf-8")
     (root / "doc" / "python").mkdir(parents=True)
-    (root / "doc" / "python" / "index.html").write_text("<title>Python docs</title>", encoding="utf-8")
+    (root / "doc" / "python" / "index.html").write_text(
+        "<title>Python docs</title>", encoding="utf-8"
+    )
     return root
 
 
@@ -52,7 +54,9 @@ def test_explicit_root_is_authoritative(tmp_path: Path, monkeypatch) -> None:
     assert candidate_roots([explicit]) == [explicit.resolve()]
 
 
-def test_windows_registry_installations_are_discovery_candidates(tmp_path: Path, monkeypatch) -> None:
+def test_windows_registry_installations_are_discovery_candidates(
+    tmp_path: Path, monkeypatch
+) -> None:
     registered = make_ads_root(tmp_path, "ADS2026_Update2")
     monkeypatch.setattr(discovery.platform, "system", lambda: "Windows")
     monkeypatch.setattr(discovery, "_windows_registry_install_roots", lambda: [registered])

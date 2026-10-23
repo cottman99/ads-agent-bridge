@@ -75,15 +75,14 @@ def create_continuation_context(
             raise ValueError(f"ADS continuation Context requires exact {field} identity")
     normalized["workspace"] = str(Path(str(normalized["workspace"])).expanduser().resolve())
     normalized = {
-        key: str(value) if value is not None else None
-        for key, value in normalized.items()
+        key: str(value) if value is not None else None for key, value in normalized.items()
     }
     record = {
         "schema_version": CONTINUATION_RECORD_SCHEMA,
         "context_kind": "native-continuation",
         "generation": 1,
         "captured_at": datetime.now(timezone.utc).isoformat(),
-        "allowed_operations": ["native.batch"],
+        "allowed_operations": ["native.execute"],
         "identity": normalized,
         "content_state": {"kind": "source_fingerprint", "sha256": digest},
     }
@@ -158,7 +157,7 @@ def resolve_continuation_context(value: str) -> dict[str, Any]:
         or record.get("context_kind") != "native-continuation"
     ):
         raise ValueError("ADS Context is not a native continuation Context")
-    if record.get("allowed_operations") != ["native.batch"]:
+    if record.get("allowed_operations") != ["native.execute"]:
         raise ValueError("ADS continuation Context operation binding is invalid")
     identity = record.get("identity")
     state = record.get("content_state")
@@ -167,8 +166,7 @@ def resolve_continuation_context(value: str) -> dict[str, Any]:
     if identity.get("profile") not in {"de", "dds"}:
         raise ValueError("ADS continuation Context profile binding is invalid")
     if not all(
-        str(identity.get(field) or "").strip()
-        for field in ("instance", "version", "workspace")
+        str(identity.get(field) or "").strip() for field in ("instance", "version", "workspace")
     ):
         raise ValueError("ADS continuation Context exact target binding is incomplete")
     if (
@@ -180,11 +178,12 @@ def resolve_continuation_context(value: str) -> dict[str, Any]:
     return record
 
 
-def continuation_reference(
-    target: dict[str, Any], payload: dict[str, Any]
-) -> str | None:
+def continuation_reference(target: dict[str, Any], payload: dict[str, Any]) -> str | None:
     candidates = []
-    for value in (target.get("continuation_context"), payload.get("continuation_context")):
+    for value in (
+        target.get("continuation_context"),
+        payload.get("continuation_context"),
+    ):
         text = str(value or "").strip()
         if text:
             candidates.append(text)
@@ -217,37 +216,34 @@ def _reject_explicit_target_conflicts(
         if value is None or str(value).strip() == "":
             continue
         expected = identity.get(field)
-        if field == "workspace":
-            value = str(Path(str(value)).expanduser().resolve())
-        else:
-            value = str(value)
+        value = str(Path(str(value)).expanduser().resolve()) if field == "workspace" else str(value)
         if expected is None or value != str(expected):
             raise ValueError(f"ADS continuation Context conflicts with explicit {field}")
 
 
-def materialize_native_batch_plan(
+def materialize_native_program_plan(
     value: Any,
     *,
     record: dict[str, Any],
     target: dict[str, Any],
     payload: dict[str, Any],
 ) -> tuple[dict[str, Any], str]:
-    """Materialize only trusted identity/state fields into a native batch plan."""
+    """Materialize only trusted identity/state fields into a native program plan."""
 
     if not isinstance(value, dict):
-        raise TypeError("native.batch requires a governed native batch plan")
+        raise TypeError("native.execute requires a governed native program plan")
     _reject_explicit_target_conflicts(record, target, payload)
     plan = json.loads(json.dumps(value))
     scope = plan.get("scope")
     transaction = plan.get("transaction")
     if not isinstance(scope, dict) or not isinstance(transaction, dict):
-        raise TypeError("native.batch continuation requires scope and transaction objects")
+        raise TypeError("native.execute continuation requires scope and transaction objects")
     identity = record["identity"]
     selectors = scope.get("selectors")
     if selectors is None:
         selectors = {}
     if not isinstance(selectors, dict):
-        raise TypeError("native.batch scope.selectors must be an object")
+        raise TypeError("native.execute scope.selectors must be an object")
     trusted_selectors = {
         "instance": identity["instance"],
         "version": identity["version"],
@@ -274,14 +270,12 @@ def materialize_native_batch_plan(
         scope["read_paths"] = [workspace]
     effect = str(plan.get("effect") or "")
     fingerprints = transaction.get("source_fingerprints")
-    if effect == "staged_mutation":
+    if effect == "mutate":
         expected = str(record["content_state"]["sha256"])
         if fingerprints in (None, {}):
             transaction["source_fingerprints"] = {workspace: expected}
         elif not isinstance(fingerprints, dict) or fingerprints != {workspace: expected}:
-            raise ValueError(
-                "ADS continuation Context conflicts with explicit source fingerprint"
-            )
+            raise ValueError("ADS continuation Context conflicts with explicit source fingerprint")
     elif fingerprints is None:
         transaction["source_fingerprints"] = {}
     plan["scope"] = scope

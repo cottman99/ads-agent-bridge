@@ -19,7 +19,7 @@ def _waiting_session() -> dict:
             "candidate_processes": [
                 {"pid": 41, "process_name": "hpeesofde"},
                 {"pid": 42, "process_name": "aglmpsel_exe"},
-            ]
+            ],
         },
     }
 
@@ -40,7 +40,9 @@ def _window() -> dict:
 def _prepare(monkeypatch) -> None:
     monkeypatch.setattr(host_ui, "_platform_name", lambda: "posix")
     monkeypatch.setattr(host_ui, "session_status", lambda _slot: {"sessions": [_waiting_session()]})
-    monkeypatch.setattr(host_ui, "_linux_candidate_windows", lambda _display, _pids, _auth: [_window()])
+    monkeypatch.setattr(
+        host_ui, "_linux_candidate_windows", lambda _display, _pids, _auth: [_window()]
+    )
 
 
 def test_snapshot_binds_nonce_process_window_and_image(monkeypatch, tmp_path: Path) -> None:

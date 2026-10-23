@@ -4,26 +4,30 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 import time
 import traceback
 from pathlib import Path
 
-import keysight.ads.dataset as dataset
-import keysight.ads.de as de
+from keysight.ads import dataset, de
 from keysight.ads.de import db_uu as db
 from keysight.edatoolbox import ads
 
 
 def summarize_dataset(path: Path) -> dict[str, object]:
     with dataset.open(path) as data:
-        result: dict[str, object] = {"dataset_path": str(path), "varblocks": list(data.varblock_names)}
+        result: dict[str, object] = {
+            "dataset_path": str(path),
+            "varblocks": list(data.varblock_names),
+        }
         if "AC1.AC" in data.varblock_names:
             frame = data["AC1.AC"].to_dataframe().reset_index()
             result["columns"] = [str(column) for column in frame.columns]
-            result["rows"] = int(len(frame))
+            result["rows"] = len(frame)
             if "freq" in frame.columns and len(frame):
-                result["freq_first_last"] = [float(frame["freq"].iloc[0]), float(frame["freq"].iloc[-1])]
+                result["freq_first_last"] = [
+                    float(frame["freq"].iloc[0]),
+                    float(frame["freq"].iloc[-1]),
+                ]
         return result
 
 
@@ -42,14 +46,18 @@ def run(workspace: Path) -> dict[str, object]:
                 f"(running_automation={running_automation}, is_pde_app={is_pde_app})."
             )
         if workspace.exists():
-            raise RuntimeError(f"Refusing to overwrite an existing quickstart workspace: {workspace}")
+            raise RuntimeError(
+                f"Refusing to overwrite an existing quickstart workspace: {workspace}"
+            )
         workspace.parent.mkdir(parents=True, exist_ok=True)
         de.create_workspace(workspace)
         de.open_workspace(workspace)
 
         library_path = workspace / "AgentBridgeExamples_lib"
         de.create_new_library("AgentBridgeExamples_lib", library_path)
-        de.active_workspace().add_library("AgentBridgeExamples_lib", library_path, de.LibraryMode.NON_SHARED)
+        de.active_workspace().add_library(
+            "AgentBridgeExamples_lib", library_path, de.LibraryMode.NON_SHARED
+        )
         design = db.create_schematic("AgentBridgeExamples_lib:MinimalAC:schematic")
         design.add_instance(("ads_sources", "V_AC", "symbol"), (-2, 0), name="SRC1", angle=-90)
         resistor = design.add_instance(("ads_rflib", "R", "symbol"), (0, 0), name="R1")
@@ -78,13 +86,17 @@ def run(workspace: Path) -> dict[str, object]:
 
         started = time.monotonic()
         result = ads.CircuitSimulator().run_netlist(netlist, output_dir=str(output_dir))
-        datasets = sorted(output_dir.glob("*.ds"), key=lambda item: item.stat().st_mtime, reverse=True)
+        datasets = sorted(
+            output_dir.glob("*.ds"), key=lambda item: item.stat().st_mtime, reverse=True
+        )
         dataset_path = datasets[0] if datasets else output_dir / "cell.ds"
         summary = summarize_dataset(dataset_path) if dataset_path.exists() else {}
         record.update(summary)
         record.update(
             {
-                "ok": dataset_path.exists() and summary.get("rows", 0) >= 5 and "R1_v" in summary.get("columns", []),
+                "ok": dataset_path.exists()
+                and summary.get("rows", 0) >= 5
+                and "R1_v" in summary.get("columns", []),
                 "top_design": "AgentBridgeExamples_lib:MinimalAC:schematic",
                 "netlist_path": str(netlist_path),
                 "netlist_lines": len(netlist.splitlines()),
