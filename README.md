@@ -272,3 +272,7 @@ ads-agent addon uninstall
 ## Native execution upgrade
 
 This breaking alpha introduces `native.execute` / `eda.native-program/v1`. Upgrade Runtime and each selected Bridge together. Each Bridge installs Runtime automatically; installing the other Bridge is optional. Reconnect Agent clients and reload the ADS addon on its next normal application launch. See [native execution architecture](docs/NATIVE_EXECUTION.md) for modes, knowledge preparation, coordination and migration.
+
+## Illustrated context guide
+
+See the [screenshots and Agent paste workflow](docs/CONTEXT_GUIDE.md), or [download the PDF](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.2.0a2/ADS-Context-Guide.pdf).

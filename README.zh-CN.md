@@ -221,3 +221,7 @@ Runtime 复用一条 SSH 标准输入输出通道，记录每次操作的动机�
 - [执行上下文契约](docs/EXECUTION_CONTEXT_CONTRACT.md)
 - [版本契约](docs/RELEASE_CONTRACT.md)
 - [更新记录](CHANGELOG.md)
+
+## 截图操作说明
+
+查看[复制上下文与 Agent 粘贴用法](docs/CONTEXT_GUIDE.md)，或[下载 PDF](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.2.0a2/ADS-Context-Guide.pdf)。
