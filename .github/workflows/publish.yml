@@ -8,7 +8,7 @@ on:
       tag:
         description: Existing release tag to publish
         required: true
-        default: v0.2.0a1
+        default: v0.2.0a2
 
 permissions:
   contents: read

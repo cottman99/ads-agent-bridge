@@ -61,7 +61,7 @@ Maintained operations such as `design.apply` and `dds.create` remain available
 as asset-bound compiled shortcuts: they save tokens and transcription errors,
 but never define the outer limit of ADS capability.
 
-Successful governed native work returns an opaque continuation Context. A
+Successful governed native work returns a continuation Context. A
 later batch can reuse its exact host-private target and content fingerprint;
 the Bridge still requires a new explicit program, effect, write scope,
 purpose, idempotency key, and validation, and rejects stale content or
@@ -107,8 +107,8 @@ disposable workspace creation, minimal circuit simulation, and dataset readback
 have each passed.
 
 If `pipx` or a suitable Python is not yet available, use the versioned
-bootstrap for [Linux](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.2.0a1/install.sh)
-or [Windows PowerShell](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.2.0a1/install.ps1).
+bootstrap for [Linux](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.2.0a2/install.sh)
+or [Windows PowerShell](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.2.0a2/install.ps1).
 The bootstrap creates an isolated environment and does not replace an
 externally managed system Python.
 
@@ -147,7 +147,10 @@ After ADS restarts, **Copy ADS Context** is available from supported DE
 schematic, layout, symbol, folder/library-tree, and DDS selections. The copied
 text identifies the software, host-local origin, workspace, object kind,
 selection, and freshness needed by the Agent. It contains no password, live
-port, or permission to mutate.
+port, or permission to mutate. `EDA_CONTEXT:v2:` is followed by readable JSON;
+its checksum detects accidental edits and is not encryption. Older Base64
+contexts remain accepted. Upgrade the Runtime client together with the addon
+so the client can read the new text format.
 
 This is the normal user interaction:
 

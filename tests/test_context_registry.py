@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import importlib.util
 from pathlib import Path
 from types import SimpleNamespace
@@ -65,6 +66,17 @@ def test_design_capture_is_bounded_reusable_and_refreshable():
     refreshed = registry.refresh(first["context_ref"]["text"])
     assert refreshed["selection"]["count"] == 3
     assert refreshed["freshness"]["generation"] == 3
+
+
+def test_copy_context_is_readable_and_accepts_legacy_encoded_text():
+    registry = context.ContextRegistry("de", slot="candidate", instance_id="ads2026")
+    captured = registry.capture_design(Design())
+    text = captured["eda_context_ref"]["text"]
+    assert '"display_name": "demo_lib:amplifier:schematic"' in text
+    assert context.context_id_from(text) == captured["context_id"]
+    body = text.removeprefix("EDA_CONTEXT:v2:").strip()
+    legacy = "EDA_CONTEXT:v2:" + base64.urlsafe_b64encode(body.encode()).decode().rstrip("=")
+    assert context.context_id_from(legacy) == captured["context_id"]
 
 
 def test_registry_uses_managed_instance_identity_before_install_root(monkeypatch):

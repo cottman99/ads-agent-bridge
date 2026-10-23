@@ -67,10 +67,15 @@ def context_reference_from(value):
         raise ValueError("context id or ADS_CONTEXT handle is required")
     prefix = next((item for item in _EDA_CONTEXT_PREFIXES if text.startswith(item)), None)
     if prefix:
-        encoded = text[len(prefix) :]
+        encoded = text[len(prefix) :].strip()
         padded = encoded + "=" * (-len(encoded) % 4)
         try:
-            wrapper = json.loads(base64.urlsafe_b64decode(padded).decode("utf-8"))
+            data = (
+                encoded
+                if encoded.startswith("{")
+                else base64.urlsafe_b64decode(padded).decode("utf-8")
+            )
+            wrapper = json.loads(data)
             payload = wrapper["payload"]
             canonical = json.dumps(
                 payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
@@ -174,9 +179,8 @@ def _eda_context_handle(context_id, envelope):
         "payload": payload,
         "checksum": hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:24],
     }
-    data = json.dumps(wrapper, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-    encoded = base64.urlsafe_b64encode(data.encode("utf-8")).decode("ascii").rstrip("=")
-    return _EDA_CONTEXT_PREFIXES[0] + encoded
+    data = json.dumps(wrapper, ensure_ascii=False, indent=2)
+    return _EDA_CONTEXT_PREFIXES[0] + "\n" + data
 
 
 def context_id_from(value):
