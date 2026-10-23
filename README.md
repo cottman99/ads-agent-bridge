@@ -275,4 +275,4 @@ This breaking alpha introduces `native.execute` / `eda.native-program/v1`. Upgra
 
 ## Illustrated context guide
 
-See the [screenshots and Agent paste workflow](docs/CONTEXT_GUIDE.md), or [download the PDF](docs/context-guide.pdf).
+See the [screenshots and Agent paste workflow](docs/CONTEXT_GUIDE.md), or [download the PDF](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.2.0a2/ADS-Context-Guide.pdf).

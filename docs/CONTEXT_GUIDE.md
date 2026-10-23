@@ -1,6 +1,6 @@
 # Copy ADS context
 
-[Download the illustrated guide (PDF)](context-guide.pdf).
+[Download the illustrated guide (PDF)](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.2.0a2/ADS-Context-Guide.pdf).
 
 Use **Copy ADS Context** in the project tree to share a view, or on the schematic canvas to share the selected component.
 
