@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0a2 - 2026-10-23
+
+- Copy readable Context JSON from the ADS selection plugin and accept older Base64 Contexts.
+- Require Runtime 0.2.0a2 for the readable format; refresh the addon and reconnect Agent clients together.
+
 ## 0.2.0a1 - 2026-10-23
 
 - Use official Python through one `native.execute` contract with independent live/background/offline modes and observe/mutate effects.
