@@ -27,5 +27,5 @@ class AdsInstance:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "AdsInstance":
+    def from_dict(cls, payload: dict[str, Any]) -> AdsInstance:
         return cls(**payload)

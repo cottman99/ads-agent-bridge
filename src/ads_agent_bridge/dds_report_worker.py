@@ -28,11 +28,7 @@ def run(plan: dict[str, object]) -> dict[str, object]:
         ]
         page_records = []
         for index, page_plan in enumerate(page_plans):
-            page = (
-                dds_file.pages[0]
-                if index == 0
-                else dds_file.new_page(page_plan["name"])
-            )
+            page = dds_file.pages[0] if index == 0 else dds_file.new_page(page_plan["name"])
             page.name = str(page_plan["name"])
             equation_status = {}
             for item in page_plan.get("equations", []):

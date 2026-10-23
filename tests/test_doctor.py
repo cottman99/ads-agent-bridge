@@ -32,11 +32,16 @@ def test_doctor_reports_missing_ads_as_blocked(tmp_path: Path, monkeypatch) -> N
     state = tmp_path / "state"
     monkeypatch.setenv("ADS_AGENT_HOME", str(state))
 
-    payload, code = diagnose([tmp_path / "does-not-exist"], ads_config_dir=tmp_path / "missing-config", ping=False)
+    payload, code = diagnose(
+        [tmp_path / "does-not-exist"], ads_config_dir=tmp_path / "missing-config", ping=False
+    )
 
     assert code == 2
     assert payload["status"] == "blocked"
-    assert next(item for item in payload["checks"] if item["name"] == "ads_discovery")["status"] == "fail"
+    assert (
+        next(item for item in payload["checks"] if item["name"] == "ads_discovery")["status"]
+        == "fail"
+    )
     assert not state.exists()
 
 

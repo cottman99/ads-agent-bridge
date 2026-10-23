@@ -11,8 +11,7 @@ def test_release_artifact_hash_comparison(tmp_path) -> None:
     local = local_digests(tmp_path)
     payload = {
         "urls": [
-            {"filename": name, "digests": {"sha256": digest}}
-            for name, digest in local.items()
+            {"filename": name, "digests": {"sha256": digest}} for name, digest in local.items()
         ]
     }
 

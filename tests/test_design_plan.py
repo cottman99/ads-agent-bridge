@@ -47,9 +47,7 @@ def test_validate_design_plan_requires_fresh_reopen_assertion(tmp_path):
         design_plan.validate_design_plan(value)
 
 
-def test_execute_design_plan_preserves_source_and_promotes_verified_copy(
-    tmp_path, monkeypatch
-):
+def test_execute_design_plan_preserves_source_and_promotes_verified_copy(tmp_path, monkeypatch):
     source = tmp_path / "source_wrk"
     output = tmp_path / "output_wrk"
     source.mkdir()

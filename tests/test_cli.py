@@ -1,10 +1,15 @@
-from pathlib import Path
 import base64
-
-from ads_agent_bridge.cli import _dialog_image_path, _store_dialog_image, build_parser, run
-from ads_agent_bridge.config import load_config
+from pathlib import Path
 
 from test_discovery import make_ads_root
+
+from ads_agent_bridge.cli import (
+    _dialog_image_path,
+    _store_dialog_image,
+    build_parser,
+    run,
+)
+from ads_agent_bridge.config import load_config
 
 
 def test_instances_scan_saves_single_discovery_as_default(tmp_path: Path, monkeypatch) -> None:
@@ -40,7 +45,9 @@ def test_examples_and_skill_commands_are_public_cli_entrypoints() -> None:
     all_skills = parser.parse_args(["skill", "status"])
     docs = parser.parse_args(["docs", "build", "--ads", "ads-2025-test", "--background"])
     docs_query = parser.parse_args(["docs", "query", "add_rectangle", "--domain", "python"])
-    docs_get = parser.parse_args(["docs", "get", "ads-doc:v1:test:python:abc", "--focus", "add_rectangle"])
+    docs_get = parser.parse_args(
+        ["docs", "get", "ads-doc:v1:test:python:abc", "--focus", "add_rectangle"]
+    )
 
     assert examples.examples_command == "run"
     assert skill.skill_command == "install"
@@ -52,11 +59,16 @@ def test_examples_and_skill_commands_are_public_cli_entrypoints() -> None:
     assert docs_get.focus == "add_rectangle"
 
 
-def test_setup_returns_nonzero_when_public_skill_install_needs_attention(monkeypatch) -> None:
+def test_setup_returns_nonzero_when_public_skill_install_needs_attention(
+    monkeypatch,
+) -> None:
     args = build_parser().parse_args(["setup", "--non-interactive"])
     monkeypatch.setattr(
         "ads_agent_bridge.cli.setup",
-        lambda **_kwargs: {"status": "attention_required", "skills": {"status": "conflict"}},
+        lambda **_kwargs: {
+            "status": "attention_required",
+            "skills": {"status": "conflict"},
+        },
     )
 
     payload, code = run(args)
@@ -68,7 +80,9 @@ def test_setup_returns_nonzero_when_public_skill_install_needs_attention(monkeyp
 def test_session_lifecycle_commands_are_public_cli_entrypoints(tmp_path: Path) -> None:
     parser = build_parser()
 
-    launch = parser.parse_args(["launch", "--workspace", str(tmp_path), "--display", ":4", "--dry-run"])
+    launch = parser.parse_args(
+        ["launch", "--workspace", str(tmp_path), "--display", ":4", "--dry-run"]
+    )
     status = parser.parse_args(["status", "--slot", "test"])
     disconnect = parser.parse_args(["disconnect", "--slot", "test"])
     shutdown = parser.parse_args(["shutdown", "--slot", "test"])
@@ -85,7 +99,16 @@ def test_host_ui_commands_are_public_agent_entrypoints(tmp_path: Path, monkeypat
     parser = build_parser()
     image_path = tmp_path / "host-window.png"
     snapshot = parser.parse_args(
-        ["host-ui", "snapshot", "--slot", "test", "--window-id", "0x2a", "--image-out", str(image_path)]
+        [
+            "host-ui",
+            "snapshot",
+            "--slot",
+            "test",
+            "--window-id",
+            "0x2a",
+            "--image-out",
+            str(image_path),
+        ]
     )
     action = parser.parse_args(
         [
@@ -155,9 +178,7 @@ def test_dialog_commands_are_public_agent_entrypoints(tmp_path: Path, monkeypatc
             "Dismiss informational message",
         ]
     )
-    watch = parser.parse_args(
-        ["bridge", "dialog-watch", "--slot", "test", "--timeout", "0"]
-    )
+    watch = parser.parse_args(["bridge", "dialog-watch", "--slot", "test", "--timeout", "0"])
     calls = []
 
     def fake_request(command, args, slot, profile):
@@ -213,9 +234,17 @@ def test_dialog_image_write_is_exclusive_at_actuation_time(tmp_path: Path) -> No
 
 def test_context_commands_are_safe_bridge_entrypoints(monkeypatch) -> None:
     parser = build_parser()
-    listed = parser.parse_args(["bridge", "context-list", "--slot", "candidate", "--profile", "dds"])
+    listed = parser.parse_args(
+        ["bridge", "context-list", "--slot", "candidate", "--profile", "dds"]
+    )
     fetched = parser.parse_args(
-        ["bridge", "context-get", "ADS_CONTEXT:v1:candidate:dds:ctx-0001:report", "--slot", "candidate"]
+        [
+            "bridge",
+            "context-get",
+            "ADS_CONTEXT:v1:candidate:dds:ctx-0001:report",
+            "--slot",
+            "candidate",
+        ]
     )
     calls = []
 

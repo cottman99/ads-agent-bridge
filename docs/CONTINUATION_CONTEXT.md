@@ -1,6 +1,6 @@
 # Content-bound continuation Context
 
-`native.batch` returns the existing `EDA_CONTEXT:v2` token after a successful
+`native.execute` returns the existing `EDA_CONTEXT:v2` token after a successful
 observe or staged mutation. It does not introduce another handle protocol. The
 token contains routing identity, a random private-record id, and only a
 non-sensitive content-bound summary. Exact instance, version, profile, optional
@@ -10,7 +10,7 @@ fingerprint remain in a private record on the ADS worker host.
 `workspace.create` returns two deliberately different Context roles. Its
 `eda_context` remains the general workspace/lifecycle Context. Its
 `continuation_context` is already content-bound and may bootstrap the first
-`native.batch` without making the Agent rediscover the absolute workspace path,
+`native.execute` without making the Agent rediscover the absolute workspace path,
 ADS version, or source fingerprint. Subsequent successful batches return the
 next content-bound continuation Context in the same field.
 
@@ -20,7 +20,7 @@ value as `payload.continuation_context`; the long `EDA_CONTEXT` remains the
 portable handoff form. Both resolve to the same record and authorization,
 content-state, identity, staging, and validation checks remain unchanged.
 
-The next governed native batch may put that handle in
+The next governed native program may put that handle in
 `target.continuation_context` or `target.context`. It may omit only identity and
 content-state fields already bound by the Context:
 
@@ -41,14 +41,15 @@ delegated authority or an operation recipe.
     "eda": "keysight-ads",
     "context": "EDA_CONTEXT:v2:..."
   },
-  "operation": "native.batch",
+  "operation": "native.execute",
   "payload": {
     "mutating": true,
     "plan": {
-      "schema_version": "eda.native-batch/v1",
-      "batch_id": "continue_update",
+      "schema_version": "eda.native-program/v1",
+      "mode": "background",
+      "program_id": "continue_update",
       "runtime": "ads.python.de",
-      "effect": "staged_mutation",
+      "effect": "mutate",
       "program": {"language": "python", "source": "...", "sha256": "..."},
       "scope": {"write_paths": ["/new/sibling/output_wrk"], "artifacts": []},
       "transaction": {

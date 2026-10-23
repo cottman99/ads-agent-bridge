@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from eda_bridge_runtime import native_batch_capability_contract
+from eda_bridge_runtime import native_program_capability_contract
 
 from . import __version__
 from .bridge_client import request as bridge_request
@@ -16,7 +16,7 @@ from .continuation_context import (
     continuation_ref,
     continuation_reference,
     create_continuation_context,
-    materialize_native_batch_plan,
+    materialize_native_program_plan,
     resolve_continuation_context,
 )
 from .dds_report import execute_dds_plan
@@ -33,7 +33,7 @@ from .experience_shortcuts import (
     validate_shortcut,
 )
 from .momentum import run_generated_momentum
-from .native_batch import execute_native_batch
+from .native_program import execute_native_program
 from .session_manager import launch as launch_session
 from .session_manager import shutdown as shutdown_session
 from .session_manager import status as session_status
@@ -83,14 +83,57 @@ def default_ledger_path() -> Path:
     return runtime_dir() / "execution-ledger.sqlite3"
 
 
+_OPERATIONS = {
+    "docs.status": {"handler": "_execute_docs_status", "mutates": False},
+    "docs.query": {"handler": "_execute_docs_status", "mutates": False},
+    "docs.get": {"handler": "_execute_docs_status", "mutates": False},
+    "docs.symbol": {"handler": "_execute_docs_status", "mutates": False},
+    "workspace.create": {"handler": "_execute_workspace_create", "mutates": True},
+    "experience.list": {"handler": "_execute_experience_list", "mutates": False},
+    "experience.get": {"handler": "_execute_experience_get", "mutates": False},
+    "native.execute": {"handler": "_execute_native_execute", "mutates": True},
+    "design.apply": {"handler": "_execute_design_apply", "mutates": True},
+    "circuit.simulate": {"handler": "_execute_circuit_simulate", "mutates": True},
+    "dds.create": {"handler": "_execute_dds_create", "mutates": True},
+    "momentum.run_generated": {
+        "handler": "_execute_momentum_run_generated",
+        "mutates": True,
+    },
+    "session.status": {"handler": "_execute_session_status", "mutates": False},
+    "session.shutdown": {"handler": "_execute_session_shutdown", "mutates": True},
+    "session.launch": {"handler": "_execute_session_launch", "mutates": True},
+}
+
+
 class _AdsAdapterBase:
+    @staticmethod
+    def resource_keys(request):
+        from eda_bridge_runtime import EDAContext, RequestEnvelope
+        from eda_bridge_runtime.resources import resource_keys
+
+        target = dict(request.target)
+        continuation = continuation_reference(target, request.payload)
+        if continuation:
+            target.update(resolve_continuation_context(continuation)["identity"])
+        elif target.get("context"):
+            decoded = EDAContext.decode(target["context"])
+            target.update(decoded.target.get("identity") or decoded.target)
+            target["slot"] = decoded.locator.get("slot") or decoded.session.get("slot")
+        elif target.get("context_id"):
+            target.update(resolve_context(target["context_id"])["target"])
+        data = request.to_dict()
+        data["target"] = target
+        keys = list(resource_keys(RequestEnvelope.from_dict(data)))
+        slot = target.get("slot") or request.payload.get("slot")
+        if slot:
+            keys.append("keysight-ads:session:" + str(slot))
+        return tuple(keys)
+
     name = "ads-agent-bridge"
     version = __version__
 
     def __init__(self) -> None:
-        self._capability_cache: dict[
-            tuple[str | None, str], tuple[float, dict[str, Any]]
-        ] = {}
+        self._capability_cache: dict[tuple[str | None, str], tuple[float, dict[str, Any]]] = {}
 
     def capabilities(self, target: dict[str, Any] | None = None) -> dict[str, Any]:
         target = target or {}
@@ -102,9 +145,23 @@ class _AdsAdapterBase:
         except (ConnectionError, OSError, RuntimeError, ValueError) as exc:
             live = {"descriptors": []}
             live_error = str(exc)
-        descriptors = list(live.get("descriptors") or [])
+        descriptors = [
+            item
+            for item in live.get("descriptors") or []
+            if item.get("id") != "native.execute"
+            and self._operation_definition(str(item.get("id"))) is not None
+        ]
         descriptors.extend(
             [
+                {
+                    "id": "docs.symbol",
+                    "category": "documentation",
+                    "safety": "safe",
+                    "mutates": False,
+                    "requires_context": False,
+                    "input_schema": {"required": ["query"], "optional": ["instance", "limit"]},
+                    "state": {"available": True, "healthy": True},
+                },
                 {
                     "id": "docs.status",
                     "category": "documentation",
@@ -194,7 +251,7 @@ class _AdsAdapterBase:
                         "applicability_filters": {
                             "version": "ADS major version such as 2027",
                             "profile": ["de", "dds"],
-                            "capability": "advertised operation id such as native.batch",
+                            "capability": "advertised operation id such as native.execute",
                         },
                         "discovery": (
                             "omit intents and tags to list the compact asset index "
@@ -212,11 +269,14 @@ class _AdsAdapterBase:
                     "requires_context": False,
                     "returns_context": False,
                     "input_schema": {
-                        "required": ["asset_id"],
+                        "one_of": [
+                            {"required": ["asset_id"]},
+                            {"required": ["version", "profile", "capability"]},
+                        ],
                         "optional": ["max_chars"],
                         "normal_use": (
-                            "read only the one version/profile-matched asset selected "
-                            "from experience.list"
+                            "when exact version, profile, and capability are known, "
+                            "resolve and read the unique matching asset in this call"
                         ),
                         "official_refs": (
                             "provenance labels, not docs.get source_ref values; query docs "
@@ -226,7 +286,7 @@ class _AdsAdapterBase:
                     "state": {"available": True, "healthy": True},
                 },
                 {
-                    "id": "native.batch",
+                    "id": "native.execute",
                     "category": "native-execution",
                     "safety": "bounded",
                     "mutates": True,
@@ -241,8 +301,8 @@ class _AdsAdapterBase:
                             "expected_effect",
                             "idempotency_key",
                         ],
-                        "plan_schema": "eda.native-batch/v1",
-                        "plan_contract": native_batch_capability_contract(),
+                        "plan_schema": "eda.native-program/v1",
+                        "plan_contract": native_program_capability_contract(),
                         "ads_contract": {
                             "runtime_by_profile": {
                                 "de": "ads.python.de",
@@ -258,7 +318,7 @@ class _AdsAdapterBase:
                             },
                             "program_context": {
                                 "type": "dict",
-                                "access": "context[\"<key>\"]",
+                                "access": 'context["<key>"]',
                                 "keys": [
                                     "workspace",
                                     "profile",
@@ -277,44 +337,29 @@ class _AdsAdapterBase:
                                 "required": {"status": "passed"},
                                 "purpose": "prove persisted staged output in a fresh process",
                             },
-                            "allowed_imports": [
-                                "keysight.ads.dataset",
-                                "keysight.ads.de",
-                                "keysight.ads.dds",
-                                "keysight.edatoolbox",
-                                "json",
-                                "math",
-                            ],
-                            "safe_builtins_include": [
-                                "dir",
-                                "getattr",
-                                "hasattr",
-                                "isinstance",
-                                "repr",
-                                "sorted",
-                            ],
+                            "python_environment": "normal builtins, standard library and installed dependencies",
+                            "modes": ["live", "background"],
                             "staged_write_paths": {
-                                "without_artifacts": [
-                                    "absolute distinct sibling output workspace"
-                                ],
+                                "without_artifacts": ["absolute distinct sibling output workspace"],
                                 "with_artifacts": [
                                     "absolute distinct sibling output workspace",
                                     "absolute final artifact directory",
                                 ],
                                 "scope_artifacts": (
-                                    "relative file paths below context[\"artifact_root\"]"
+                                    'relative file paths below context["artifact_root"]'
                                 ),
                                 "never": "library names or relative write_paths",
                             },
                         },
                         "continuation_schema": "eda-context/v2",
-                        "staged_mutation_template": {
+                        "mutate_template": {
                             "payload": {
                                 "continuation_context": "<continuation_ref>",
                                 "plan": {
-                                    "schema_version": "eda.native-batch/v1",
+                                    "schema_version": "eda.native-program/v1",
+                                    "mode": "background",
                                     "runtime": "ads.python.de",
-                                    "effect": "staged_mutation",
+                                    "effect": "mutate",
                                     "program": {
                                         "language": "python",
                                         "source": "def run(api, context): ...",
@@ -340,9 +385,7 @@ class _AdsAdapterBase:
                                             "language": "python",
                                             "source": "def validate(api, context): ...",
                                         },
-                                        "required_artifacts": [
-                                            "<same relative artifact file>"
-                                        ],
+                                        "required_artifacts": ["<same relative artifact file>"],
                                     },
                                     "limits": {
                                         "timeout_seconds": 300,
@@ -366,7 +409,7 @@ class _AdsAdapterBase:
                         "continuation_usage": {
                             "normal_greenfield_flow": (
                                 "pass the short response continuation_ref from workspace.create "
-                                "as payload.continuation_context to the first native.batch"
+                                "as payload.continuation_context to the first native.execute"
                             ),
                             "agent_supplies": (
                                 "scope.write_paths, scope.artifacts, program, validation, "
@@ -524,12 +567,13 @@ class _AdsAdapterBase:
             selected_version = ""
             python_ready = False
         for operation, descriptor in operations_by_id.items():
+            definition = self._operation_definition(operation)
+            if definition:
+                descriptor["mutates"] = bool(definition["mutates"])
             if operation in _CERTIFIED_WORKFLOWS:
                 descriptor["operation_class"] = "certified-workflow"
                 descriptor["compiled_shortcut"] = compiled_shortcut_binding(operation)
-                shortcut_profile = descriptor["compiled_shortcut"]["applies_to"][
-                    "profiles"
-                ][0]
+                shortcut_profile = descriptor["compiled_shortcut"]["applies_to"]["profiles"][0]
                 state = shortcut_state(
                     operation, version=selected_version, profile=shortcut_profile
                 )
@@ -540,18 +584,16 @@ class _AdsAdapterBase:
                         "reason": "selected ADS Python runtime is unavailable",
                     }
                 descriptor["state"] = state
-            elif operation in {"native.batch", "eval", "exec", "ael_call"}:
+            elif operation == "native.execute":
                 descriptor["operation_class"] = "generic-native-execution"
-                if operation == "native.batch":
+                if operation == "native.execute":
                     descriptor["state"] = {
                         "available": python_ready,
                         "healthy": python_ready,
                         **(
                             {}
                             if python_ready
-                            else {
-                                "reason": "selected ADS Python runtime is unavailable"
-                            }
+                            else {"reason": "selected ADS Python runtime is unavailable"}
                         ),
                     }
             elif operation in {"design.live_patch", "design.live_finalize"}:
@@ -570,6 +612,22 @@ class _AdsAdapterBase:
                 descriptor["operation_class"] = "acceptance-probe"
             else:
                 descriptor["operation_class"] = "bridge-infrastructure"
+            schema = descriptor.get("input_schema")
+            if isinstance(schema, dict):
+                fields = set(schema.get("required") or []) | set(schema.get("optional") or [])
+                descriptions = dict(schema.get("field_descriptions") or {})
+                if "instance" in fields:
+                    descriptions["instance"] = (
+                        "ADS installation selector (instance_id); never a schematic, "
+                        "layout, view, or component instance"
+                    )
+                if "workspace" in fields:
+                    descriptions["workspace"] = "Exact ADS workspace filesystem path"
+                if "design" in fields:
+                    descriptions["design"] = "Exact ADS Library:Cell:View design identity"
+                if descriptions:
+                    schema["field_descriptions"] = descriptions
+                    descriptor["input_schema"] = schema
         from eda_bridge_runtime import stable_origin_id
 
         return {
@@ -579,7 +637,7 @@ class _AdsAdapterBase:
             "run_model": "synchronous",
             "session_model": "interactive",
             "operations": list(operations_by_id.values()),
-            "escape_lanes": ["typed", "bounded-ui", "unsafe-native-opt-in"],
+            "execution": "native.execute",
             "target": {"slot": slot, "profile": profile},
             "live_bridge": {
                 "available": live_error is None,
@@ -594,9 +652,7 @@ class _AdsAdapterBase:
             return cached[1]
         response = bridge_request("capabilities", {}, slot, profile, timeout=5)
         if not response.get("ok") or not isinstance(response.get("result"), dict):
-            raise RuntimeError(
-                response.get("error") or "ADS capability discovery failed"
-            )
+            raise RuntimeError(response.get("error") or "ADS capability discovery failed")
         result = response["result"]
         self._capability_cache[key] = (time.monotonic(), result)
         return result
@@ -609,7 +665,6 @@ class _AdsAdapterBase:
         raise ValueError(f"ADS operation is not advertised: {operation}")
 
     def execute(self, request, context):
-        _, AdapterResult, _, _, _ = _runtime_imports()
         encoded_context = request.target.get("context")
         decoded_context = None
         native_continuation = False
@@ -617,9 +672,7 @@ class _AdsAdapterBase:
             from eda_bridge_runtime import EDAContext
 
             decoded_context = EDAContext.decode(str(encoded_context))
-            native_continuation = decoded_context.target.get("binding") == (
-                "private-host-record"
-            )
+            native_continuation = decoded_context.target.get("binding") == ("private-host-record")
         context_id = request.target.get("context_id") or (
             decoded_context.locator.get("context_id") if decoded_context is not None else None
         )
@@ -633,9 +686,7 @@ class _AdsAdapterBase:
             )
             if live_context:
                 live_slot = str(
-                    decoded_context.locator.get("slot")
-                    or decoded_context.session.get("slot")
-                    or ""
+                    decoded_context.locator.get("slot") or decoded_context.session.get("slot") or ""
                 )
                 live_profile = str(
                     decoded_context.locator.get("profile")
@@ -652,9 +703,7 @@ class _AdsAdapterBase:
                     timeout=30.0,
                 )
                 if not response.get("ok"):
-                    raise ValueError(
-                        f"ADS live Context is unavailable: {response.get('error')}"
-                    )
+                    raise ValueError(f"ADS live Context is unavailable: {response.get('error')}")
                 envelope = response.get("result")
                 if not isinstance(envelope, dict):
                     raise ValueError("ADS live Context record is invalid")
@@ -679,11 +728,7 @@ class _AdsAdapterBase:
                     raise ValueError("ADS Runtime context is stale")
                 target = {
                     **stored["target"],
-                    **{
-                        key: value
-                        for key, value in request.target.items()
-                        if key != "context"
-                    },
+                    **{key: value for key, value in request.target.items() if key != "context"},
                 }
             data = request.to_dict()
             data["target"] = {
@@ -692,11 +737,9 @@ class _AdsAdapterBase:
             }
             request = RequestEnvelope.from_dict(data)
         continuation = continuation_reference(request.target, request.payload)
-        if continuation and request.operation != "native.batch":
-            raise ValueError("ADS native continuation Context is bound to native.batch")
-        continuation_record = (
-            resolve_continuation_context(continuation) if continuation else None
-        )
+        if continuation and request.operation != "native.execute":
+            raise ValueError("ADS native continuation Context is bound to native.execute")
+        continuation_record = resolve_continuation_context(continuation) if continuation else None
         target_slot = request.target.get("slot")
         payload_slot = request.payload.get("slot")
         if target_slot and payload_slot and str(target_slot) != str(payload_slot):
@@ -715,319 +758,532 @@ class _AdsAdapterBase:
         )
         if profile not in {"de", "dds"}:
             raise ValueError("ADS profile must be de or dds")
-        if request.operation.startswith("docs."):
-            if request.is_mutating:
-                raise ValueError(
-                    "ADS documentation operations require payload.mutating=false"
-                )
-            instance = select_instance(
-                request.payload.get("instance") or request.target.get("instance")
+        definition = self._operation_definition(request.operation)
+        if definition is None:
+            raise ValueError(f"Unsupported ADS operation: {request.operation}")
+        return getattr(self, definition["handler"])(
+            request,
+            context,
+            slot,
+            profile,
+            continuation_record,
+            decoded_context,
+            context_id,
+            native_continuation,
+        )
+
+    @staticmethod
+    def _operation_definition(operation):
+        if operation in _OPERATIONS:
+            return _OPERATIONS[operation]
+        from .addon.AdsAgentBridge.contracts import capability_specs
+
+        spec = next((item for item in capability_specs() if item["id"] == operation), None)
+        return {**spec, "handler": "_execute_live"} if spec else None
+
+    def requires_admission(self, request):
+        definition = self._operation_definition(request.operation)
+        return definition is None or bool(definition["mutates"])
+
+    def _execute_docs_status(
+        self,
+        request,
+        context,
+        slot,
+        profile,
+        continuation_record,
+        decoded_context,
+        context_id,
+        native_continuation,
+    ):
+        _, AdapterResult, _, _, _ = _runtime_imports()
+        if request.is_mutating:
+            raise ValueError("ADS documentation operations require payload.mutating=false")
+        instance = select_instance(
+            request.payload.get("instance") or request.target.get("instance")
+        )
+        if request.operation == "docs.symbol":
+            from .sdk_docs import describe
+
+            result = describe(
+                instance,
+                str(request.payload.get("query") or ""),
+                int(request.payload.get("limit", 6)),
             )
-            if request.operation == "docs.status":
-                result = docs_status(instance)
-            elif request.operation == "docs.query":
-                result = query_docs(
-                    instance,
-                    str(request.payload.get("query") or ""),
-                    int(request.payload.get("limit", 6)),
-                    domains=list(request.payload.get("domains") or []),
-                )
-            else:
-                result = get_document(
-                    instance,
-                    str(request.payload.get("source_ref") or ""),
-                    focus=request.payload.get("focus"),
-                    max_chars=int(request.payload.get("max_chars", 4000)),
-                )
-            return AdapterResult(status="passed", result={"bridge": result})
-        if request.operation == "workspace.create":
-            if not request.is_mutating:
-                raise ValueError("workspace.create requires payload.mutating=true")
-            workspace = request.payload.get("workspace") or request.target.get(
-                "workspace"
+        elif request.operation == "docs.status":
+            result = docs_status(instance)
+        elif request.operation == "docs.query":
+            result = query_docs(
+                instance,
+                str(request.payload.get("query") or ""),
+                int(request.payload.get("limit", 6)),
+                domains=list(request.payload.get("domains") or []),
             )
-            if not workspace:
-                raise ValueError("workspace.create requires workspace")
-            started = time.monotonic()
-            result = create_workspace(
-                workspace=workspace,
-                library=str(request.payload.get("library") or "AgentWorkspace_lib"),
-                cell=str(request.payload.get("cell") or "Main"),
-                instance_id=request.payload.get("instance")
-                or request.target.get("instance"),
-                slot=str(slot) if slot else None,
-                profile=profile,
-                connection_id=request.target.get("connection_id"),
-                expected_display=request.payload.get("display")
-                or request.target.get("display"),
-                timeout=float(request.payload.get("timeout_seconds", 120)),
+        else:
+            result = get_document(
+                instance,
+                str(request.payload.get("source_ref") or ""),
+                focus=request.payload.get("focus"),
+                max_chars=int(request.payload.get("max_chars", 4000)),
             )
-            context.emit(
-                "ads.workspace.created",
+        return AdapterResult(status="passed", result={"bridge": result})
+
+    def _execute_workspace_create(
+        self,
+        request,
+        context,
+        slot,
+        profile,
+        continuation_record,
+        decoded_context,
+        context_id,
+        native_continuation,
+    ):
+        _, AdapterResult, _, _, _ = _runtime_imports()
+        if not request.is_mutating:
+            raise ValueError("workspace.create requires payload.mutating=true")
+        workspace = request.payload.get("workspace") or request.target.get("workspace")
+        if not workspace:
+            raise ValueError("workspace.create requires workspace")
+        started = time.monotonic()
+        result = create_workspace(
+            workspace=workspace,
+            library=str(request.payload.get("library") or "AgentWorkspace_lib"),
+            cell=str(request.payload.get("cell") or "Main"),
+            instance_id=request.payload.get("instance") or request.target.get("instance"),
+            slot=str(slot) if slot else None,
+            profile=profile,
+            connection_id=request.target.get("connection_id"),
+            expected_display=request.payload.get("display") or request.target.get("display"),
+            timeout=float(request.payload.get("timeout_seconds", 120)),
+        )
+        context.emit(
+            "ads.workspace.created",
+            {
+                "status": result["status"],
+                "elapsed_ms": round((time.monotonic() - started) * 1000, 3),
+            },
+        )
+        return AdapterResult(status="passed", result={"bridge": result})
+
+    def _execute_experience_list(
+        self,
+        request,
+        context,
+        slot,
+        profile,
+        continuation_record,
+        decoded_context,
+        context_id,
+        native_continuation,
+    ):
+        _, AdapterResult, _, _, _ = _runtime_imports()
+        if request.is_mutating:
+            raise ValueError("experience.list requires payload.mutating=false")
+        result = list_assets(
+            intents=list(request.payload.get("intents") or []),
+            tags=list(request.payload.get("tags") or []),
+            version=(str(request.payload["version"]) if request.payload.get("version") else None),
+            profile=(str(request.payload["profile"]) if request.payload.get("profile") else None),
+            capability=(
+                str(request.payload["capability"]) if request.payload.get("capability") else None
+            ),
+        )
+        return AdapterResult(status="passed", result={"bridge": result})
+
+    def _execute_experience_get(
+        self,
+        request,
+        context,
+        slot,
+        profile,
+        continuation_record,
+        decoded_context,
+        context_id,
+        native_continuation,
+    ):
+        _, AdapterResult, _, _, _ = _runtime_imports()
+        if request.is_mutating:
+            raise ValueError("experience.get requires payload.mutating=false")
+        result = get_asset(
+            (str(request.payload["asset_id"]) if request.payload.get("asset_id") else None),
+            version=(str(request.payload["version"]) if request.payload.get("version") else None),
+            profile=(str(request.payload["profile"]) if request.payload.get("profile") else None),
+            capability=(
+                str(request.payload["capability"]) if request.payload.get("capability") else None
+            ),
+            max_chars=int(request.payload.get("max_chars", 8000)),
+        )
+        return AdapterResult(status="passed", result={"bridge": result})
+
+    def _execute_native_execute(
+        self,
+        request,
+        context,
+        slot,
+        profile,
+        continuation_record,
+        decoded_context,
+        context_id,
+        native_continuation,
+    ):
+        _, AdapterResult, _, _, _ = _runtime_imports()
+        plan = request.payload.get("plan")
+        if not isinstance(plan, dict):
+            raise TypeError("native.execute requires a governed native program plan")
+        if plan.get("mode") == "live":
+            from eda_bridge_runtime.errors import ExecutionError
+
+            from .native_program import _instance_version_selectors
+
+            if decoded_context is None or native_continuation or not context_id:
+                raise ExecutionError(
+                    "session_unavailable",
+                    "Capture the exact ADS session context for live execution",
+                )
+            selectors = plan.get("scope", {}).get("selectors", {})
+            selected = select_instance(selectors.get("instance"))
+            if str(selectors.get("version", "")) not in _instance_version_selectors(selected):
+                raise ExecutionError(
+                    "version_mismatch",
+                    "The requested ADS version differs from the selected installation",
+                )
+            response = bridge_request(
+                "native.execute",
                 {
-                    "status": result["status"],
-                    "elapsed_ms": round((time.monotonic() - started) * 1000, 3),
+                    "plan": plan,
+                    "context": str(context_id),
+                    "generation": decoded_context.generation,
+                    "purpose": request.purpose,
+                    "admission": context.admission,
+                    "install_root": selected.install_root,
                 },
-            )
-            return AdapterResult(status="passed", result={"bridge": result})
-        if request.operation == "experience.list":
-            if request.is_mutating:
-                raise ValueError("experience.list requires payload.mutating=false")
-            result = list_assets(
-                intents=list(request.payload.get("intents") or []),
-                tags=list(request.payload.get("tags") or []),
-                version=(
-                    str(request.payload["version"])
-                    if request.payload.get("version")
-                    else None
-                ),
-                profile=(
-                    str(request.payload["profile"])
-                    if request.payload.get("profile")
-                    else None
-                ),
-                capability=(
-                    str(request.payload["capability"])
-                    if request.payload.get("capability")
-                    else None
-                ),
-            )
-            return AdapterResult(status="passed", result={"bridge": result})
-        if request.operation == "experience.get":
-            if request.is_mutating:
-                raise ValueError("experience.get requires payload.mutating=false")
-            result = get_asset(
-                str(request.payload.get("asset_id") or ""),
-                max_chars=int(request.payload.get("max_chars", 8000)),
-            )
-            return AdapterResult(status="passed", result={"bridge": result})
-        if request.operation == "native.batch":
-            plan = request.payload.get("plan")
-            if not isinstance(plan, dict):
-                raise TypeError("native.batch requires a governed native batch plan")
-            expected_source_fingerprint = None
-            if continuation_record is not None:
-                plan, expected_source_fingerprint = materialize_native_batch_plan(
-                    plan,
-                    record=continuation_record,
-                    target=request.target,
-                    payload=request.payload,
-                )
-            result = execute_native_batch(
-                plan,
-                redact_paths=bool(request.payload.get("redact_paths", True)),
-                expected_source_fingerprint=expected_source_fingerprint,
-            )
-            source_path = (
-                plan["scope"]["write_paths"][0]
-                if result.get("effect") == "staged_mutation"
-                else plan["scope"]["read_paths"][0]
-            )
-            source_fingerprint = (
-                result.get("output_fingerprint")
-                if result.get("effect") == "staged_mutation"
-                else result.get("source_fingerprint")
-            )
-            selected = select_instance(plan["scope"]["selectors"].get("instance"))
-            continuation_token, continuation_state = create_continuation_context(
-                identity={
-                    "connection_id": request.target.get("connection_id"),
-                    "slot": slot,
-                    "profile": plan["scope"]["selectors"]["profile"],
-                    "instance": selected.instance_id,
-                    "version": str(selected.year or selected.product_version),
-                    "workspace": source_path,
-                    "design": request.target.get("design")
-                    or request.target.get("top_design"),
-                },
-                source_fingerprint=str(source_fingerprint or ""),
-            )
-            result["continuation_context"] = continuation_token
-            result["continuation_ref"] = continuation_ref(continuation_token)
-            result["continuation_state"] = continuation_state
-            return AdapterResult(status="passed", result={"bridge": result})
-        if request.operation == "design.apply":
-            if not request.is_mutating:
-                raise ValueError("design.apply requires payload.mutating=true")
-            if profile != "de":
-                raise ValueError("design.apply requires the ADS DE profile")
-            plan = request.payload.get("plan")
-            if not isinstance(plan, dict):
-                raise TypeError("design.apply requires a structured plan object")
-            plan = dict(plan)
-            selected_instance = request.payload.get("instance") or request.target.get(
-                "instance"
-            )
-            if selected_instance and "instance" not in plan:
-                plan["instance"] = selected_instance
-            instance = select_instance(selected_instance)
-            version = str(instance.year or instance.product_version)
-            validate_shortcut(request.operation, version=version, profile="de")
-            result = execute_design_plan(
-                plan,
-                expected_display=request.payload.get("display")
-                or request.target.get("display"),
-                timeout=float(request.payload.get("timeout_seconds", 180)),
-            )
-            result["compiled_shortcut"] = shortcut_receipt(
-                request.operation,
-                version=version,
-                profile="de",
-                plan=plan,
-                validation_result=result.get("assertions")
-                or {"status": result.get("status")},
-            )
-            return AdapterResult(status="passed", result={"bridge": result})
-        if request.operation == "circuit.simulate":
-            if not request.is_mutating:
-                raise ValueError("circuit.simulate requires payload.mutating=true")
-            if profile != "de":
-                raise ValueError("circuit.simulate requires the ADS DE profile")
-            plan = request.payload.get("plan")
-            if not isinstance(plan, dict):
-                raise TypeError("circuit.simulate requires a structured plan object")
-            plan = dict(plan)
-            selected_instance = request.payload.get("instance") or request.target.get(
-                "instance"
-            )
-            if selected_instance and "instance" not in plan:
-                plan["instance"] = selected_instance
-            instance = select_instance(selected_instance)
-            version = str(instance.year or instance.product_version)
-            validate_shortcut(request.operation, version=version, profile="de")
-            result = execute_simulation_plan(
-                plan,
-                expected_display=request.payload.get("display")
-                or request.target.get("display"),
-                timeout=float(request.payload.get("timeout_seconds", 600)),
-            )
-            result["compiled_shortcut"] = shortcut_receipt(
-                request.operation,
-                version=version,
-                profile="de",
-                plan=plan,
-                validation_result=result.get("assertions")
-                or {"status": result.get("status")},
-            )
-            return AdapterResult(status="passed", result={"bridge": result})
-        if request.operation == "dds.create":
-            if not request.is_mutating:
-                raise ValueError("dds.create requires payload.mutating=true")
-            plan = request.payload.get("plan")
-            if not isinstance(plan, dict):
-                raise TypeError("dds.create requires a structured plan object")
-            plan = dict(plan)
-            selected_instance = request.payload.get("instance") or request.target.get(
-                "instance"
-            )
-            if selected_instance and "instance" not in plan:
-                plan["instance"] = selected_instance
-            instance = select_instance(selected_instance)
-            version = str(instance.year or instance.product_version)
-            validate_shortcut(request.operation, version=version, profile="dds")
-            result = execute_dds_plan(
-                plan,
-                expected_display=request.payload.get("display")
-                or request.target.get("display"),
-                timeout=float(request.payload.get("timeout_seconds", 180)),
-            )
-            result["compiled_shortcut"] = shortcut_receipt(
-                request.operation,
-                version=version,
-                profile="dds",
-                plan=plan,
-                validation_result=result.get("assertions")
-                or {"status": result.get("status")},
-            )
-            return AdapterResult(status="passed", result={"bridge": result})
-        if request.operation == "momentum.run_generated":
-            if not request.is_mutating:
-                raise ValueError(
-                    "momentum.run_generated requires payload.mutating=true"
-                )
-            selected_instance = request.payload.get("instance") or request.target.get(
-                "instance"
-            )
-            instance = select_instance(selected_instance)
-            version = str(instance.year or instance.product_version)
-            validate_shortcut(request.operation, version=version, profile="de")
-            result = run_generated_momentum(
-                source_directory=request.payload.get("source_directory", ""),
-                output_directory=request.payload.get("output_directory", ""),
-                project=str(request.payload.get("project") or ""),
-                instance_id=request.payload.get("instance")
-                or request.target.get("instance"),
-                expected_display=request.payload.get("display")
-                or request.target.get("display"),
-                source_fingerprint=request.payload.get("source_fingerprint"),
-                timeout=float(request.payload.get("timeout_seconds", 600)),
-            )
-            receipt_plan = {
-                key: request.payload[key]
-                for key in (
-                    "source_directory",
-                    "output_directory",
-                    "project",
-                    "source_fingerprint",
-                    "timeout_seconds",
-                )
-                if key in request.payload
-            }
-            result["compiled_shortcut"] = shortcut_receipt(
-                request.operation,
-                version=version,
-                profile="de",
-                plan=receipt_plan,
-                validation_result=result.get("assertions")
-                or {"status": result.get("status")},
-            )
-            return AdapterResult(status="passed", result={"bridge": result})
-        if request.operation == "session.status":
-            if request.is_mutating:
-                raise ValueError("session.status requires payload.mutating=false")
-            result = session_status(str(slot) if slot else None)
-            return AdapterResult(status="passed", result={"bridge": result})
-        if request.operation == "session.shutdown":
-            if not request.is_mutating:
-                raise ValueError("session.shutdown requires payload.mutating=true")
-            result = shutdown_session(
                 str(slot) if slot else None,
-                wait_seconds=float(request.payload.get("timeout_seconds", 30)),
+                profile,
+                timeout=float(plan.get("limits", {}).get("timeout_seconds", 120)) + 5,
             )
-            if result.get("status") != "exited":
-                raise RuntimeError(
-                    f"ADS session shutdown did not complete: {result.get('status')}"
+            if not response.get("ok"):
+                failure = response.get("failure") or {}
+                raise ExecutionError(
+                    failure.get("code", "execution_failed"),
+                    response.get("error", "ADS execution failed"),
+                    phase=failure.get("phase", "execution"),
+                    evidence=failure.get("evidence"),
+                    uncertain=bool(failure.get("execution_uncertain")),
                 )
-            return AdapterResult(status="passed", result={"bridge": result})
-        if request.operation == "session.launch":
-            if not request.is_mutating:
-                raise ValueError("session.launch requires payload.mutating=true")
-            workspace = request.payload.get("workspace") or request.target.get(
-                "workspace"
+            return AdapterResult(status="passed", result={"bridge": response["result"]})
+        expected_source_fingerprint = None
+        if continuation_record is not None:
+            plan, expected_source_fingerprint = materialize_native_program_plan(
+                plan,
+                record=continuation_record,
+                target=request.target,
+                payload=request.payload,
             )
-            if not workspace:
-                raise ValueError(
-                    "session.launch requires workspace or a workspace context"
-                )
-            result = launch_session(
-                request.payload.get("instance") or request.target.get("instance"),
-                Path(str(workspace)),
-                slot=str(slot) if slot else None,
-                display=request.payload.get("display") or request.target.get("display"),
-                wait_seconds=float(request.payload.get("timeout_seconds", 120)),
-                reuse_existing=bool(request.payload.get("reuse_existing")),
+        result = execute_native_program(
+            plan,
+            redact_paths=bool(request.payload.get("redact_paths", True)),
+            expected_source_fingerprint=expected_source_fingerprint,
+            admission=context.admission,
+        )
+        source_path = (
+            plan["scope"]["write_paths"][0]
+            if result.get("effect") == "mutate"
+            else plan["scope"]["read_paths"][0]
+        )
+        source_fingerprint = (
+            result.get("output_fingerprint")
+            if result.get("effect") == "mutate"
+            else result.get("source_fingerprint")
+        )
+        selected = select_instance(plan["scope"]["selectors"].get("instance"))
+        continuation_token, continuation_state = create_continuation_context(
+            identity={
+                "connection_id": request.target.get("connection_id"),
+                "slot": slot,
+                "profile": plan["scope"]["selectors"]["profile"],
+                "instance": selected.instance_id,
+                "version": str(selected.year or selected.product_version),
+                "workspace": source_path,
+                "design": request.target.get("design") or request.target.get("top_design"),
+            },
+            source_fingerprint=str(source_fingerprint or ""),
+        )
+        result["continuation_context"] = continuation_token
+        result["continuation_ref"] = continuation_ref(continuation_token)
+        result["continuation_state"] = continuation_state
+        return AdapterResult(status="passed", result={"bridge": result})
+
+    def _execute_design_apply(
+        self,
+        request,
+        context,
+        slot,
+        profile,
+        continuation_record,
+        decoded_context,
+        context_id,
+        native_continuation,
+    ):
+        _, AdapterResult, _, _, _ = _runtime_imports()
+        if not request.is_mutating:
+            raise ValueError("design.apply requires payload.mutating=true")
+        if profile != "de":
+            raise ValueError("design.apply requires the ADS DE profile")
+        plan = request.payload.get("plan")
+        if not isinstance(plan, dict):
+            raise TypeError("design.apply requires a structured plan object")
+        plan = dict(plan)
+        selected_instance = request.payload.get("instance") or request.target.get("instance")
+        if selected_instance and "instance" not in plan:
+            plan["instance"] = selected_instance
+        instance = select_instance(selected_instance)
+        version = str(instance.year or instance.product_version)
+        validate_shortcut(request.operation, version=version, profile="de")
+        result = execute_design_plan(
+            plan,
+            expected_display=request.payload.get("display") or request.target.get("display"),
+            timeout=float(request.payload.get("timeout_seconds", 180)),
+        )
+        result["compiled_shortcut"] = shortcut_receipt(
+            request.operation,
+            version=version,
+            profile="de",
+            plan=plan,
+            validation_result=result.get("assertions") or {"status": result.get("status")},
+        )
+        return AdapterResult(status="passed", result={"bridge": result})
+
+    def _execute_circuit_simulate(
+        self,
+        request,
+        context,
+        slot,
+        profile,
+        continuation_record,
+        decoded_context,
+        context_id,
+        native_continuation,
+    ):
+        _, AdapterResult, _, _, _ = _runtime_imports()
+        if not request.is_mutating:
+            raise ValueError("circuit.simulate requires payload.mutating=true")
+        if profile != "de":
+            raise ValueError("circuit.simulate requires the ADS DE profile")
+        plan = request.payload.get("plan")
+        if not isinstance(plan, dict):
+            raise TypeError("circuit.simulate requires a structured plan object")
+        plan = dict(plan)
+        selected_instance = request.payload.get("instance") or request.target.get("instance")
+        if selected_instance and "instance" not in plan:
+            plan["instance"] = selected_instance
+        instance = select_instance(selected_instance)
+        version = str(instance.year or instance.product_version)
+        validate_shortcut(request.operation, version=version, profile="de")
+        result = execute_simulation_plan(
+            plan,
+            expected_display=request.payload.get("display") or request.target.get("display"),
+            timeout=float(request.payload.get("timeout_seconds", 600)),
+        )
+        result["compiled_shortcut"] = shortcut_receipt(
+            request.operation,
+            version=version,
+            profile="de",
+            plan=plan,
+            validation_result=result.get("assertions") or {"status": result.get("status")},
+        )
+        return AdapterResult(status="passed", result={"bridge": result})
+
+    def _execute_dds_create(
+        self,
+        request,
+        context,
+        slot,
+        profile,
+        continuation_record,
+        decoded_context,
+        context_id,
+        native_continuation,
+    ):
+        _, AdapterResult, _, _, _ = _runtime_imports()
+        if not request.is_mutating:
+            raise ValueError("dds.create requires payload.mutating=true")
+        plan = request.payload.get("plan")
+        if not isinstance(plan, dict):
+            raise TypeError("dds.create requires a structured plan object")
+        plan = dict(plan)
+        selected_instance = request.payload.get("instance") or request.target.get("instance")
+        if selected_instance and "instance" not in plan:
+            plan["instance"] = selected_instance
+        instance = select_instance(selected_instance)
+        version = str(instance.year or instance.product_version)
+        validate_shortcut(request.operation, version=version, profile="dds")
+        result = execute_dds_plan(
+            plan,
+            expected_display=request.payload.get("display") or request.target.get("display"),
+            timeout=float(request.payload.get("timeout_seconds", 180)),
+        )
+        result["compiled_shortcut"] = shortcut_receipt(
+            request.operation,
+            version=version,
+            profile="dds",
+            plan=plan,
+            validation_result=result.get("assertions") or {"status": result.get("status")},
+        )
+        return AdapterResult(status="passed", result={"bridge": result})
+
+    def _execute_momentum_run_generated(
+        self,
+        request,
+        context,
+        slot,
+        profile,
+        continuation_record,
+        decoded_context,
+        context_id,
+        native_continuation,
+    ):
+        _, AdapterResult, _, _, _ = _runtime_imports()
+        if not request.is_mutating:
+            raise ValueError("momentum.run_generated requires payload.mutating=true")
+        selected_instance = request.payload.get("instance") or request.target.get("instance")
+        instance = select_instance(selected_instance)
+        version = str(instance.year or instance.product_version)
+        validate_shortcut(request.operation, version=version, profile="de")
+        result = run_generated_momentum(
+            source_directory=request.payload.get("source_directory", ""),
+            output_directory=request.payload.get("output_directory", ""),
+            project=str(request.payload.get("project") or ""),
+            instance_id=request.payload.get("instance") or request.target.get("instance"),
+            expected_display=request.payload.get("display") or request.target.get("display"),
+            source_fingerprint=request.payload.get("source_fingerprint"),
+            timeout=float(request.payload.get("timeout_seconds", 600)),
+        )
+        receipt_plan = {
+            key: request.payload[key]
+            for key in (
+                "source_directory",
+                "output_directory",
+                "project",
+                "source_fingerprint",
+                "timeout_seconds",
             )
-            status = str(result.get("status") or "")
-            if status not in {"ready", "running", "reused"}:
-                raise RuntimeError(f"ADS session launch did not become ready: {status}")
-            resource = _launched_session_resource(result)
+            if key in request.payload
+        }
+        result["compiled_shortcut"] = shortcut_receipt(
+            request.operation,
+            version=version,
+            profile="de",
+            plan=receipt_plan,
+            validation_result=result.get("assertions") or {"status": result.get("status")},
+        )
+        return AdapterResult(status="passed", result={"bridge": result})
+
+    def _execute_session_status(
+        self,
+        request,
+        context,
+        slot,
+        profile,
+        continuation_record,
+        decoded_context,
+        context_id,
+        native_continuation,
+    ):
+        _, AdapterResult, _, _, _ = _runtime_imports()
+        if request.is_mutating:
+            raise ValueError("session.status requires payload.mutating=false")
+        result = session_status(str(slot) if slot else None)
+        return AdapterResult(status="passed", result={"bridge": result})
+
+    def _execute_session_shutdown(
+        self,
+        request,
+        context,
+        slot,
+        profile,
+        continuation_record,
+        decoded_context,
+        context_id,
+        native_continuation,
+    ):
+        _, AdapterResult, _, _, _ = _runtime_imports()
+        if not request.is_mutating:
+            raise ValueError("session.shutdown requires payload.mutating=true")
+        result = shutdown_session(
+            str(slot) if slot else None,
+            wait_seconds=float(request.payload.get("timeout_seconds", 30)),
+        )
+        if result.get("status") != "exited":
             return AdapterResult(
-                status="passed",
-                result={
-                    "bridge": result,
-                    **({"resource": resource} if resource else {}),
+                status="failed",
+                result={"bridge": result},
+                error={
+                    "code": "action_required",
+                    "phase": "lifecycle",
+                    "message": f"ADS shutdown requires attention: {result.get('status')}",
                 },
             )
+        return AdapterResult(status="passed", result={"bridge": result})
+
+    def _execute_session_launch(
+        self,
+        request,
+        context,
+        slot,
+        profile,
+        continuation_record,
+        decoded_context,
+        context_id,
+        native_continuation,
+    ):
+        _, AdapterResult, _, _, _ = _runtime_imports()
+        if not request.is_mutating:
+            raise ValueError("session.launch requires payload.mutating=true")
+        workspace = request.payload.get("workspace") or request.target.get("workspace")
+        if not workspace:
+            raise ValueError("session.launch requires workspace or a workspace context")
+        result = launch_session(
+            request.payload.get("instance") or request.target.get("instance"),
+            Path(str(workspace)),
+            slot=str(slot) if slot else None,
+            display=request.payload.get("display") or request.target.get("display"),
+            wait_seconds=float(request.payload.get("timeout_seconds", 120)),
+            reuse_existing=bool(request.payload.get("reuse_existing")),
+        )
+        status = str(result.get("status") or "")
+        if status not in {"ready", "running", "reused"}:
+            return AdapterResult(
+                status="uncertain",
+                result={"bridge": result},
+                error={
+                    "code": "execution_uncertain",
+                    "phase": "lifecycle",
+                    "message": f"ADS launch has no confirmed terminal state: {status}",
+                    "execution_uncertain": True,
+                },
+            )
+        resource = _launched_session_resource(result)
+        return AdapterResult(
+            status="passed",
+            result={
+                "bridge": result,
+                **({"resource": resource} if resource else {}),
+            },
+        )
+
+    def _execute_live(
+        self,
+        request,
+        context,
+        slot,
+        profile,
+        continuation_record,
+        decoded_context,
+        context_id,
+        native_continuation,
+    ):
+        _, AdapterResult, _, _, _ = _runtime_imports()
         capabilities_started = time.monotonic()
         descriptor = self._descriptor(
             self._live_capabilities(str(slot) if slot else None, profile),
@@ -1039,27 +1295,16 @@ class _AdsAdapterBase:
         if not state.get("available") or not state.get("healthy"):
             reason = state.get("reason") or "unavailable"
             raise RuntimeError(f"ADS operation is not currently usable: {reason}")
-        if (
-            safety == "unsafe"
-            and request.payload.get("escape_lane") != "unsafe-native-opt-in"
-        ):
-            message = (
-                "unsafe ADS operation requires explicit "
-                "unsafe-native-opt-in escape lane"
-            )
-            raise ValueError(message)
         advertised_mutation = bool(descriptor.get("mutates"))
         if advertised_mutation != request.is_mutating:
-            message = (
-                "request mutation flag does not match live ADS capability descriptor"
-            )
+            message = "request mutation flag does not match live ADS capability descriptor"
             raise ValueError(message)
         legacy_args = request.payload.get("args")
         if legacy_args is None:
             args = {
                 key: value
                 for key, value in request.payload.items()
-                if key not in {"mutating", "timeout_seconds", "escape_lane"}
+                if key not in {"mutating", "timeout_seconds"}
             }
         else:
             args = legacy_args
@@ -1089,17 +1334,17 @@ class _AdsAdapterBase:
             )
             if common["expected_revision"] is not None:
                 raise ValueError(
-                    "ADS live edits currently require object preconditions, "
-                    "not a global revision"
+                    "ADS live edits currently require object preconditions, not a global revision"
                 )
             args = {
                 **args,
                 **common,
                 "operations": common["operations"],
             }
-        if request.operation in {"design.live_patch", "design.live_finalize"} and not args.get(
-            "design"
-        ):
+        if request.operation in {
+            "design.live_patch",
+            "design.live_finalize",
+        } and not args.get("design"):
             identity = request.target.get("identity")
             if request.target.get("kind") == "design" and isinstance(identity, dict):
                 parts = [identity.get(name) for name in ("library", "cell", "view")]
@@ -1119,6 +1364,8 @@ class _AdsAdapterBase:
             },
         )
         execute_started = time.monotonic()
+        args = {**args, "purpose": request.purpose, "admission": context.admission}
+        context.assert_current()
         response = bridge_request(
             request.operation,
             args,
@@ -1136,8 +1383,15 @@ class _AdsAdapterBase:
             },
         )
         if not response.get("ok"):
-            raise RuntimeError(
-                str(response.get("error") or "ADS bridge operation failed")
+            from eda_bridge_runtime.errors import ExecutionError
+
+            failure = response.get("failure") or {}
+            raise ExecutionError(
+                failure.get("code", "execution_failed"),
+                str(response.get("error") or "ADS bridge operation failed"),
+                phase=failure.get("phase", "execution"),
+                evidence=failure.get("evidence"),
+                uncertain=bool(failure.get("execution_uncertain")),
             )
         public_response = dict(response)
         public_response.pop("session", None)
@@ -1167,5 +1421,34 @@ def build_runtime(ledger_path: str | Path):
 
 def serve(ledger_path: str | Path, input_stream, output_stream) -> None:
     _, _, _, _, serve_json_lines = _runtime_imports()
-    runtime = build_runtime(ledger_path)
-    serve_json_lines(input_stream, output_stream, runtime.execute)
+    import sys
+
+    from eda_bridge_runtime.service import DurableService
+
+    jobs_path = Path(ledger_path).parent / "jobs.sqlite3"
+
+    def command(request, job_id):
+        return [
+            sys.executable,
+            "-m",
+            "ads_agent_bridge",
+            "runtime",
+            "worker",
+            "--jobs",
+            str(jobs_path),
+            "--ledger",
+            str(ledger_path),
+            "--job-id",
+            job_id,
+        ]
+
+    service = DurableService(
+        jobs_path, ledger_path, runtime_factory=build_runtime, worker_command=command
+    )
+    serve_json_lines(input_stream, output_stream, service.handle)
+
+
+def run_worker(jobs_path, ledger_path, job_id):
+    from eda_bridge_runtime import JobStore, run_job_worker
+
+    return run_job_worker(JobStore(jobs_path), job_id, build_runtime(ledger_path).execute)

@@ -3,8 +3,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ads_agent_bridge.models import AdsInstance
 from ads_agent_bridge import onboarding
+from ads_agent_bridge.models import AdsInstance
 
 
 def instance(tmp_path: Path) -> AdsInstance:
@@ -25,12 +25,18 @@ def instance(tmp_path: Path) -> AdsInstance:
     )
 
 
-def test_quickstart_runs_ads_python_and_requires_dataset_readback(tmp_path: Path, monkeypatch) -> None:
+def test_quickstart_runs_ads_python_and_requires_dataset_readback(
+    tmp_path: Path, monkeypatch
+) -> None:
     selected = instance(tmp_path)
     monkeypatch.setenv("ADS_AGENT_HOME", str(tmp_path / "state"))
     monkeypatch.setattr(onboarding, "select_instance", lambda _: selected)
     monkeypatch.setattr(onboarding, "ensure_fast_index", lambda _: {"status": "ready"})
-    monkeypatch.setattr(onboarding, "query", lambda *_args, **_kwargs: {"results": [{"title": "Python"}]})
+    monkeypatch.setattr(
+        onboarding,
+        "query",
+        lambda *_args, **_kwargs: {"results": [{"title": "Python"}]},
+    )
     monkeypatch.setattr(
         onboarding,
         "addon_status",
@@ -44,11 +50,20 @@ def test_quickstart_runs_ads_python_and_requires_dataset_readback(tmp_path: Path
         if sys.platform.startswith("linux"):
             assert "lib/linux_x86_64" in kwargs["env"]["LD_LIBRARY_PATH"]
             assert "tools/python/lib" in kwargs["env"]["LD_LIBRARY_PATH"]
-        payload = {"ok": True, "workspace": command[-1], "rows": 31, "columns": ["freq", "R1_v"]}
-        return subprocess.CompletedProcess(command, 0, stdout="ADS log\n" + json.dumps(payload) + "\n", stderr="")
+        payload = {
+            "ok": True,
+            "workspace": command[-1],
+            "rows": 31,
+            "columns": ["freq", "R1_v"],
+        }
+        return subprocess.CompletedProcess(
+            command, 0, stdout="ADS log\n" + json.dumps(payload) + "\n", stderr=""
+        )
 
     monkeypatch.setattr(onboarding.subprocess, "run", fake_run)
-    payload, code = onboarding.quickstart(workspace=tmp_path / "quickstart", config_dir=tmp_path / "config")
+    payload, code = onboarding.quickstart(
+        workspace=tmp_path / "quickstart", config_dir=tmp_path / "config"
+    )
 
     assert code == 0
     assert payload["status"] == "passed"
@@ -61,7 +76,11 @@ def test_quickstart_returns_structured_failure_on_timeout(tmp_path: Path, monkey
     monkeypatch.setenv("ADS_AGENT_HOME", str(tmp_path / "state"))
     monkeypatch.setattr(onboarding, "select_instance", lambda _: selected)
     monkeypatch.setattr(onboarding, "ensure_fast_index", lambda _: {"status": "ready"})
-    monkeypatch.setattr(onboarding, "query", lambda *_args, **_kwargs: {"results": [{"title": "Python"}]})
+    monkeypatch.setattr(
+        onboarding,
+        "query",
+        lambda *_args, **_kwargs: {"results": [{"title": "Python"}]},
+    )
     monkeypatch.setattr(
         onboarding,
         "addon_status",
@@ -125,9 +144,21 @@ def test_setup_degrades_when_old_install_has_no_docs_or_addons(tmp_path: Path, m
         }
     )
     monkeypatch.setattr(onboarding, "discover", lambda *_args: [selected])
-    monkeypatch.setattr(onboarding, "update_instances", lambda *_args: {"default_instance_id": selected.instance_id})
-    monkeypatch.setattr(onboarding, "ensure_fast_index", lambda *_args: (_ for _ in ()).throw(AssertionError("must not index")))
-    monkeypatch.setattr(onboarding, "install_addon", lambda: (_ for _ in ()).throw(AssertionError("must not install")))
+    monkeypatch.setattr(
+        onboarding,
+        "update_instances",
+        lambda *_args: {"default_instance_id": selected.instance_id},
+    )
+    monkeypatch.setattr(
+        onboarding,
+        "ensure_fast_index",
+        lambda *_args: (_ for _ in ()).throw(AssertionError("must not index")),
+    )
+    monkeypatch.setattr(
+        onboarding,
+        "install_addon",
+        lambda: (_ for _ in ()).throw(AssertionError("must not install")),
+    )
 
     payload = onboarding.setup(roots=[], search_roots=[], non_interactive=True)
 
@@ -147,7 +178,11 @@ def test_setup_installs_both_public_skills_when_requested(tmp_path: Path, monkey
         ],
     }
     monkeypatch.setattr(onboarding, "discover", lambda *_args: [selected])
-    monkeypatch.setattr(onboarding, "update_instances", lambda *_args: {"default_instance_id": selected.instance_id})
+    monkeypatch.setattr(
+        onboarding,
+        "update_instances",
+        lambda *_args: {"default_instance_id": selected.instance_id},
+    )
     monkeypatch.setattr(onboarding, "ensure_fast_index", lambda *_args: {"status": "ready"})
     monkeypatch.setattr(onboarding, "install_addon", lambda _config=None: {"status": "installed"})
 
@@ -170,7 +205,11 @@ def test_setup_installs_both_public_skills_when_requested(tmp_path: Path, monkey
 def test_setup_requires_attention_when_skill_install_conflicts(tmp_path: Path, monkeypatch) -> None:
     selected = instance(tmp_path)
     monkeypatch.setattr(onboarding, "discover", lambda *_args: [selected])
-    monkeypatch.setattr(onboarding, "update_instances", lambda *_args: {"default_instance_id": selected.instance_id})
+    monkeypatch.setattr(
+        onboarding,
+        "update_instances",
+        lambda *_args: {"default_instance_id": selected.instance_id},
+    )
     monkeypatch.setattr(onboarding, "ensure_fast_index", lambda *_args: {"status": "ready"})
     monkeypatch.setattr(onboarding, "install_addon", lambda _config=None: {"status": "installed"})
     monkeypatch.setattr(

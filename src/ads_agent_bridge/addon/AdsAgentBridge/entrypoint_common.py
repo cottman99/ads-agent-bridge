@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
 import traceback
 from pathlib import Path
@@ -23,7 +24,7 @@ def write_startup_error():
         root = Path(os.environ.get("ADS_AGENT_HOME") or Path.home() / ".ads-agent")
         error_dir = root / "runtime"
         error_dir.mkdir(parents=True, exist_ok=True)
-        (error_dir / "addon-error-{0}.log".format(os.getpid())).write_text(
+        (error_dir / f"addon-error-{os.getpid()}.log").write_text(
             traceback.format_exc(), encoding="utf-8"
         )
     except Exception:
@@ -41,10 +42,8 @@ def setup_profile(profile, addon):
         ui.setup(addon)
     except Exception:
         if server is not None:
-            try:
+            with contextlib.suppress(Exception):
                 server.stop()
-            except Exception:
-                pass
         write_startup_error()
         raise
     _SERVER = server

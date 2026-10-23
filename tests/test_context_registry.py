@@ -6,7 +6,6 @@ from types import SimpleNamespace
 
 import pytest
 
-
 CONTEXT_PATH = (
     Path(__file__).parents[1]
     / "src"
@@ -107,7 +106,12 @@ def test_workspace_multi_selection_becomes_context_set():
 def test_summary_returns_only_latest_context_and_registry_bounds():
     registry = context.ContextRegistry("de", slot="candidate", limit=4)
     registry.capture_design(
-        SimpleNamespace(lib_name="lib", cell_name="first", view_name="schematic", selected_objects=[])
+        SimpleNamespace(
+            lib_name="lib",
+            cell_name="first",
+            view_name="schematic",
+            selected_objects=[],
+        )
     )
     latest = registry.capture_design(
         SimpleNamespace(lib_name="lib", cell_name="second", view_name="layout", selected_objects=[])
@@ -123,7 +127,9 @@ def test_summary_returns_only_latest_context_and_registry_bounds():
 
 def test_dds_empty_selection_is_valid_and_page_change_marks_context_stale():
     registry = context.ContextRegistry("dds", slot="candidate")
-    dds_file = SimpleNamespace(data_path="C:/wrk/demo_wrk/data/", name="report", selected_objects=[])
+    dds_file = SimpleNamespace(
+        data_path="C:/wrk/demo_wrk/data/", name="report", selected_objects=[]
+    )
     window = SimpleNamespace(current_page=SimpleNamespace(name="Main"))
 
     captured = registry.capture_dds(dds_file, window)
@@ -182,7 +188,7 @@ def test_handle_rejects_a_different_profile_and_malformed_handle():
 def test_selection_serialization_is_bounded():
     registry = context.ContextRegistry("de")
     design = Design()
-    design.selected_objects = [SimpleNamespace(name="item-{0}".format(index)) for index in range(80)]
+    design.selected_objects = [SimpleNamespace(name=f"item-{index}") for index in range(80)]
 
     captured = registry.capture_design(design)
 
@@ -200,7 +206,7 @@ def test_generic_selection_iterator_reads_only_one_item_past_the_bound():
     def selected_objects():
         for index in range(1000):
             observed.append(index)
-            yield SimpleNamespace(name="item-{0}".format(index))
+            yield SimpleNamespace(name=f"item-{index}")
 
     design.selected_objects = selected_objects()
     captured = registry.capture_design(design)
@@ -214,7 +220,7 @@ def test_generic_selection_iterator_reads_only_one_item_past_the_bound():
 
 def test_workspace_context_set_identity_is_also_bounded():
     registry = context.ContextRegistry("de")
-    items = [WorkspaceItem(path="C:/item-{0}".format(index)) for index in range(80)]
+    items = [WorkspaceItem(path=f"C:/item-{index}") for index in range(80)]
 
     captured = registry.capture_workspace_items(items)
 

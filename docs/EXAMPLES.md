@@ -66,8 +66,7 @@ ads-agent --pretty examples run bounded-ael-workspace --slot INSTANCE_OR_SLOT
 
 This calls only the allowlisted `de_get_open_workspace_pathname()` function.
 It demonstrates where retained AEL is useful without enabling arbitrary AEL or
-embedded Python. Dynamic `ael-call`, `eval`, and `exec` remain behind the
-two-sided `ADS_AGENT_UNSAFE=1` and `--unsafe` opt-in.
+embedded Python. Additional documented AEL calls use `api.ael` through `native.execute`. The raw evaluation commands have been removed.
 
 ## Scope
 

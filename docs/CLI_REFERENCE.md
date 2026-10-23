@@ -171,9 +171,7 @@ data, and then atomically commits output. Failure or timeout leaves no output;
 timeout terminates the owned solver process tree. This is a generated-input
 execution boundary, not an EM setup authoring API.
 
-Arbitrary embedded Python and dynamic AEL calls are disabled unless ADS is
-launched with `ADS_AGENT_UNSAFE=1` and the client command also includes
-`--unsafe`.
+Official Python and documented AEL interoperability use `native.execute` through the shared Runtime. Submit an envelope with `ads-agent runtime execute --request request.json`. The removed raw eval/exec/ael-call commands have no compatibility executor.
 
 ## Remove the integration
 

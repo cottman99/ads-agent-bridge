@@ -10,7 +10,6 @@ from importlib.resources import files
 from pathlib import Path
 from typing import Any
 
-
 OWNER = "ads-agent-bridge"
 MARKER_NAME = ".ads-agent-bridge.json"
 SKILL_ALIASES = {
@@ -43,15 +42,27 @@ def _selected_skill_names(selection: str) -> tuple[str, ...]:
         return (SKILL_ALIASES[selection],)
     except KeyError as exc:
         choices = ", ".join(("all", *SKILL_ALIASES))
-        raise ValueError(f"Unknown skill selection {selection!r}; choose one of: {choices}") from exc
+        raise ValueError(
+            f"Unknown skill selection {selection!r}; choose one of: {choices}"
+        ) from exc
+
+
+def _tree_files(root: Any, prefix: str = "") -> dict[str, bytes]:
+    payload: dict[str, bytes] = {}
+    for item in sorted(root.iterdir(), key=lambda item: item.name):
+        if item.name in {MARKER_NAME, "__pycache__"} or item.name.endswith(".pyc"):
+            continue
+        relative = f"{prefix}{item.name}"
+        if item.is_dir():
+            payload.update(_tree_files(item, relative + "/"))
+        elif item.is_file():
+            payload[relative] = item.read_bytes()
+    return payload
 
 
 def _source_files(skill_name: str) -> dict[str, bytes]:
     root = files("ads_agent_bridge").joinpath("skill_assets", skill_name)
-    payload: dict[str, bytes] = {}
-    for relative in ("SKILL.md", "agents/openai.yaml"):
-        payload[relative] = root.joinpath(*relative.split("/")).read_bytes()
-    return payload
+    return _tree_files(root)
 
 
 def _digest(payload: dict[str, bytes]) -> str:
@@ -65,13 +76,11 @@ def _digest(payload: dict[str, bytes]) -> str:
 
 
 def _installed_files(path: Path) -> dict[str, bytes] | None:
-    payload: dict[str, bytes] = {}
     for relative in ("SKILL.md", "agents/openai.yaml"):
         candidate = path / Path(relative)
         if not candidate.is_file():
             return None
-        payload[relative] = candidate.read_bytes()
-    return payload
+    return _tree_files(path)
 
 
 def _declares_skill_name(path: Path, expected_name: str) -> bool:
@@ -125,9 +134,7 @@ def _single_status(
         "target": target,
         "path": str(destination),
         "managed": bool(
-            marker
-            and marker.get("owner") == OWNER
-            and marker.get("skill") == skill_name
+            marker and marker.get("owner") == OWNER and marker.get("skill") == skill_name
         ),
         "expected_digest": _digest(expected),
         "installed_digest": _digest(actual) if actual is not None else None,

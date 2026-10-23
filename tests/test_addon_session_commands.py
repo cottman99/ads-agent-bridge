@@ -35,10 +35,43 @@ def load_server(monkeypatch):
 
     fake_qt = types.ModuleType("PySide6")
     fake_qt.QtCore = types.SimpleNamespace(QObject=FakeQObject, QTimer=FakeTimer)
-    fake_qt.QtWidgets = types.SimpleNamespace(QApplication=types.SimpleNamespace(instance=lambda: None))
+    fake_qt.QtWidgets = types.SimpleNamespace(
+        QApplication=types.SimpleNamespace(instance=lambda: None)
+    )
     monkeypatch.setitem(sys.modules, "PySide6", fake_qt)
     sys.modules.pop("ads_agent_bridge.addon.AdsAgentBridge.server", None)
-    return importlib.import_module("ads_agent_bridge.addon.AdsAgentBridge.server")
+    server = importlib.import_module("ads_agent_bridge.addon.AdsAgentBridge.server")
+    from functools import wraps
+
+    from eda_bridge_runtime.connections import runtime_home
+    from eda_bridge_runtime.lease import LeaseStore
+    from eda_bridge_runtime.protocol import new_id
+
+    original = server._Runtime._dispatch
+
+    @wraps(original)
+    def admitted(self, command, args):
+        store = LeaseStore(runtime_home() / "test-admission.sqlite3")
+        lease = store.acquire("test:session", new_id("test"))
+        try:
+            return original(
+                self,
+                command,
+                {
+                    **args,
+                    "purpose": "Verify native application behavior",
+                    "admission": {
+                        "store": str(runtime_home() / "test-admission.sqlite3"),
+                        "leases": [lease.__dict__],
+                    },
+                },
+            )
+        finally:
+            store.release(lease)
+            store.connection.close()
+
+    server._Runtime._dispatch = admitted
+    return server
 
 
 class FakeWorkspace:
@@ -71,7 +104,9 @@ def make_workspace(tmp_path: Path, name: str) -> Path:
     return workspace
 
 
-def test_design_live_patch_updates_current_gui_design_with_readback(monkeypatch) -> None:
+def test_design_live_patch_updates_current_gui_design_with_readback(
+    monkeypatch,
+) -> None:
     server = load_server(monkeypatch)
 
     class Parameter:
@@ -140,7 +175,9 @@ def test_design_live_patch_updates_current_gui_design_with_readback(monkeypatch)
     ]
 
 
-def test_design_live_patch_adds_instance_and_wire_then_rolls_back_patch(monkeypatch) -> None:
+def test_design_live_patch_adds_instance_and_wire_then_rolls_back_patch(
+    monkeypatch,
+) -> None:
     server = load_server(monkeypatch)
 
     class Created:
@@ -315,16 +352,16 @@ def test_design_live_patch_can_activate_exact_named_design(monkeypatch) -> None:
     )
     runtime.namespace["de_app"] = types.SimpleNamespace(
         current_window=lambda: state["window"],
-        get_design_in_uu_from_window=lambda window: design
-        if window is target_window
-        else (_ for _ in ()).throw(RuntimeError("not a design window")),
+        get_design_in_uu_from_window=lambda window: (
+            design
+            if window is target_window
+            else (_ for _ in ()).throw(RuntimeError("not a design window"))
+        ),
     )
     runtime.namespace["ael"] = types.SimpleNamespace(
         call=types.SimpleNamespace(
             de_get_design_context_from_name=lambda name: (
-                "design-context"
-                if name == "demo_lib:Main:schematic"
-                else None
+                "design-context" if name == "demo_lib:Main:schematic" else None
             ),
             de_bring_context_to_top_or_open_new_window=bring_to_top,
         )
@@ -357,19 +394,19 @@ def test_context_capture_active_design_reuses_context_registry(monkeypatch) -> N
     window = object()
     captured = {}
     registry = types.SimpleNamespace(
-        capture_design=lambda observed, observed_window, surface: captured.update(
-            design=observed,
-            window=observed_window,
-            surface=surface,
+        capture_design=lambda observed, observed_window, surface: (
+            captured.update(
+                design=observed,
+                window=observed_window,
+                surface=surface,
+            )
+            or {"context_id": "ctx_live", "target": {"kind": "design"}}
         )
-        or {"context_id": "ctx_live", "target": {"kind": "design"}}
     )
     runtime = server._Runtime("de", "slot-a")
     runtime.namespace["de_app"] = types.SimpleNamespace(
         current_window=lambda: window,
-        get_design_in_uu_from_window=lambda observed: design
-        if observed is window
-        else None,
+        get_design_in_uu_from_window=lambda observed: design if observed is window else None,
     )
     runtime.contexts = registry
 
@@ -397,9 +434,7 @@ def test_design_live_finalize_enforces_discard_ownership(monkeypatch) -> None:
     runtime = server._Runtime("de", "slot-a")
     runtime.namespace["de_app"] = types.SimpleNamespace(
         current_window=lambda: window,
-        get_design_in_uu_from_window=lambda observed: design
-        if observed is window
-        else None,
+        get_design_in_uu_from_window=lambda observed: design if observed is window else None,
     )
     args = {
         "design": "demo_lib:Main:schematic",
@@ -512,7 +547,9 @@ def test_context_command_rejects_handle_from_another_session(monkeypatch) -> Non
     assert "slot mismatch" in rejected["error"]
 
 
-def test_bounded_open_workspace_never_switches_an_existing_workspace(tmp_path: Path, monkeypatch) -> None:
+def test_bounded_open_workspace_never_switches_an_existing_workspace(
+    tmp_path: Path, monkeypatch
+) -> None:
     server = load_server(monkeypatch)
     current = make_workspace(tmp_path, "Current_wrk")
     requested = make_workspace(tmp_path, "Requested_wrk")
@@ -527,7 +564,9 @@ def test_bounded_open_workspace_never_switches_an_existing_workspace(tmp_path: P
     assert runtime.namespace["de"].open_calls == []
 
 
-def test_bounded_open_workspace_opens_and_verifies_empty_context(tmp_path: Path, monkeypatch) -> None:
+def test_bounded_open_workspace_opens_and_verifies_empty_context(
+    tmp_path: Path, monkeypatch
+) -> None:
     server = load_server(monkeypatch)
     requested = make_workspace(tmp_path, "Requested_wrk")
     runtime = server._Runtime.__new__(server._Runtime)
@@ -565,7 +604,9 @@ def test_safe_shutdown_honors_user_cancel(monkeypatch) -> None:
     server = load_server(monkeypatch)
     de_app = types.SimpleNamespace(
         prompt_and_save_modified_workspace=lambda: False,
-        exit_application=lambda code=0: (_ for _ in ()).throw(AssertionError(f"must not exit: {code}")),
+        exit_application=lambda code=0: (_ for _ in ()).throw(
+            AssertionError(f"must not exit: {code}")
+        ),
     )
     runtime = server._Runtime.__new__(server._Runtime)
     runtime.profile = "de"
@@ -576,10 +617,15 @@ def test_safe_shutdown_honors_user_cancel(monkeypatch) -> None:
 
     assert result["accepted"] is True
     assert result["state"] == "scheduled"
-    assert runtime._shutdown_status() == {"state": "cancelled", "reason": "user_cancelled"}
+    assert runtime._shutdown_status() == {
+        "state": "cancelled",
+        "reason": "user_cancelled",
+    }
 
 
-def test_status_reports_visible_windows_without_clicking_or_classifying_them(monkeypatch) -> None:
+def test_status_reports_visible_windows_without_clicking_or_classifying_them(
+    monkeypatch,
+) -> None:
     server = load_server(monkeypatch)
 
     class FakeWidget:
@@ -617,6 +663,7 @@ def test_status_reports_visible_windows_without_clicking_or_classifying_them(mon
 
 def test_runtime_snapshot_is_compact_and_revision_aware(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.delenv("HPEESOF_DIR", raising=False)
+    monkeypatch.setenv("DISPLAY", ":17")
     server = load_server(monkeypatch)
     workspace = make_workspace(tmp_path, "Snapshot_wrk")
     runtime = server._Runtime.__new__(server._Runtime)
@@ -650,7 +697,7 @@ def test_runtime_snapshot_is_compact_and_revision_aware(monkeypatch, tmp_path: P
         "profile": "de",
         "pid": first["identity"]["pid"],
         "hpeesof_dir": None,
-        "display": None,
+        "display": ":17",
     }
     assert first["state"]["workspace"] == {"is_open": True, "path": str(workspace)}
     assert first["state"]["contexts"]["count"] == 1
@@ -663,7 +710,9 @@ def test_runtime_snapshot_is_compact_and_revision_aware(monkeypatch, tmp_path: P
     assert len(json.dumps(first, ensure_ascii=False).encode("utf-8")) < 16 * 1024
     assert first["capability_states"]["runtime_snapshot"]["available"] is True
     assert wire_response["ok"] is True
-    assert wire_response["result"]["capability_states"]["runtime_snapshot"]["safe_next_actions"] == []
+    assert (
+        wire_response["result"]["capability_states"]["runtime_snapshot"]["safe_next_actions"] == []
+    )
     assert unchanged == {
         "schema_version": 1,
         "captured_at": unchanged["captured_at"],
@@ -673,12 +722,14 @@ def test_runtime_snapshot_is_compact_and_revision_aware(monkeypatch, tmp_path: P
     }
 
 
-def test_capability_descriptors_explain_runtime_and_authorization_state(monkeypatch) -> None:
+def test_capability_descriptors_explain_runtime_and_authorization_state(
+    monkeypatch,
+) -> None:
     server = load_server(monkeypatch)
     runtime = server._Runtime.__new__(server._Runtime)
     runtime.profile = "dds"
     runtime.slot = "dds-unit"
-    runtime.namespace = {"dds": types.SimpleNamespace(get_dds_files=lambda: [])}
+    runtime.namespace = {"dds": types.SimpleNamespace(get_dds_files=list)}
     runtime.contexts = server.ContextRegistry("dds", slot="dds-unit")
 
     payload = runtime._dispatch("capabilities", {})
@@ -691,17 +742,19 @@ def test_capability_descriptors_explain_runtime_and_authorization_state(monkeypa
         "compatible": True,
         "available": True,
         "healthy": True,
-        "authorized": True,
+        "authorization": "checked_at_execution",
         "reason": None,
         "safe_next_actions": [],
     }
     assert descriptors["open_workspace"]["state"]["reason"] == "profile_not_supported"
-    assert descriptors["eval"]["state"]["available"] is False
-    assert descriptors["eval"]["state"]["authorized"] is False
-    assert descriptors["eval"]["state"]["reason"] == "unsafe_opt_in_required"
+    assert "eval" not in descriptors and "exec" not in descriptors and "ael_call" not in descriptors
+    assert descriptors["native.execute"]["state"]["available"] is True
+    assert descriptors["native.execute"]["state"]["authorization"] == "checked_at_execution"
 
 
-def test_dialog_snapshot_and_action_use_exact_fingerprint_and_button_id(monkeypatch) -> None:
+def test_dialog_snapshot_and_action_use_exact_fingerprint_and_button_id(
+    monkeypatch,
+) -> None:
     server = load_server(monkeypatch)
 
     class FakeLabel:
@@ -740,10 +793,17 @@ def test_dialog_snapshot_and_action_use_exact_fingerprint_and_button_id(monkeypa
             return 0
 
     class FakeGeometry:
-        x = lambda self: 10
-        y = lambda self: 20
-        width = lambda self: 300
-        height = lambda self: 120
+        def x(self):
+            return 10
+
+        def y(self):
+            return 20
+
+        def width(self):
+            return 300
+
+        def height(self):
+            return 120
 
     button = FakeButton()
     label = FakeLabel()
@@ -785,7 +845,11 @@ def test_dialog_snapshot_and_action_use_exact_fingerprint_and_button_id(monkeypa
         {
             "dialog_fingerprint": snapshot["dialog_fingerprint"],
             "button_id": snapshot["buttons"][0]["button_id"],
-            "decision": {"risk": "low", "authorization": "automatic", "reason": "Acknowledge information"},
+            "decision": {
+                "risk": "low",
+                "authorization": "automatic",
+                "reason": "Acknowledge information",
+            },
         }
     )
 
@@ -802,7 +866,11 @@ def test_dialog_snapshot_and_action_use_exact_fingerprint_and_button_id(monkeypa
             {
                 "dialog_fingerprint": snapshot["dialog_fingerprint"],
                 "button_id": snapshot["buttons"][0]["button_id"],
-                "decision": {"risk": "low", "authorization": "automatic", "reason": "Stale action"},
+                "decision": {
+                    "risk": "low",
+                    "authorization": "automatic",
+                    "reason": "Stale action",
+                },
             }
         )
 
@@ -810,7 +878,11 @@ def test_dialog_snapshot_and_action_use_exact_fingerprint_and_button_id(monkeypa
 def test_dialog_action_revalidates_fingerprint_at_actuation_time(monkeypatch) -> None:
     server = load_server(monkeypatch)
     callbacks = []
-    monkeypatch.setattr(server.QtCore.QTimer, "singleShot", lambda _delay, callback: callbacks.append(callback))
+    monkeypatch.setattr(
+        server.QtCore.QTimer,
+        "singleShot",
+        lambda _delay, callback: callbacks.append(callback),
+    )
 
     class FakeButton:
         clicked = False
@@ -844,7 +916,11 @@ def test_dialog_action_revalidates_fingerprint_at_actuation_time(monkeypatch) ->
         {
             "dialog_fingerprint": "observed-dialog",
             "button_id": "button-1",
-            "decision": {"risk": "low", "authorization": "automatic", "reason": "Acknowledge"},
+            "decision": {
+                "risk": "low",
+                "authorization": "automatic",
+                "reason": "Acknowledge",
+            },
         }
     )
     current["snapshot"] = changed
@@ -861,7 +937,9 @@ def test_dialog_action_revalidates_fingerprint_at_actuation_time(monkeypatch) ->
     }
 
 
-def test_actuation_reacquires_button_after_ads_invalidates_observed_wrappers(monkeypatch) -> None:
+def test_actuation_reacquires_button_after_ads_invalidates_observed_wrappers(
+    monkeypatch,
+) -> None:
     server = load_server(monkeypatch)
 
     class FakeButton:
@@ -869,10 +947,17 @@ def test_actuation_reacquires_button_after_ads_invalidates_observed_wrappers(mon
             self.valid = valid
             self.clicked = False
 
-        def objectName(self): return "cancel"
-        def text(self): return "Cancel"
-        def isVisible(self): return self.valid
-        def isEnabled(self): return self.valid
+        def objectName(self):
+            return "cancel"
+
+        def text(self):
+            return "Cancel"
+
+        def isVisible(self):
+            return self.valid
+
+        def isEnabled(self):
+            return self.valid
 
         def click(self):
             assert self.valid
@@ -928,16 +1013,30 @@ def test_negative_qt_buttons_have_medium_risk_floor(
     server = load_server(monkeypatch)
 
     class FakeButton:
-        def objectName(self): return "negative"
-        def text(self): return "No"
-        def accessibleName(self): return ""
-        def toolTip(self): return ""
-        def isVisible(self): return True
-        def isEnabled(self): return True
+        def objectName(self):
+            return "negative"
+
+        def text(self):
+            return "No"
+
+        def accessibleName(self):
+            return ""
+
+        def toolTip(self):
+            return ""
+
+        def isVisible(self):
+            return True
+
+        def isEnabled(self):
+            return True
 
     class FakeButtonBox:
-        def standardButton(self, _button): return standard_button
-        def buttonRole(self, _button): return button_role
+        def standardButton(self, _button):
+            return standard_button
+
+        def buttonRole(self, _button):
+            return button_role
 
     button = FakeButton()
     box = FakeButtonBox()
@@ -956,25 +1055,47 @@ def test_dialog_action_enforces_qt_destructive_role_risk_floor(monkeypatch) -> N
     server = load_server(monkeypatch)
 
     class FakeButton:
-        def objectName(self): return "discard"
-        def text(self): return "Discard"
-        def accessibleName(self): return ""
-        def toolTip(self): return ""
-        def isVisible(self): return True
-        def isEnabled(self): return True
-        def click(self): raise AssertionError("must not click")
+        def objectName(self):
+            return "discard"
+
+        def text(self):
+            return "Discard"
+
+        def accessibleName(self):
+            return ""
+
+        def toolTip(self):
+            return ""
+
+        def isVisible(self):
+            return True
+
+        def isEnabled(self):
+            return True
+
+        def click(self):
+            raise AssertionError("must not click")
 
     class FakeButtonBox:
-        def standardButton(self, _button): return 0x00800000
-        def buttonRole(self, _button): return 2
+        def standardButton(self, _button):
+            return 0x00800000
+
+        def buttonRole(self, _button):
+            return 2
 
     button = FakeButton()
     box = FakeButtonBox()
 
     class FakeDialog:
-        def objectName(self): return "warning"
-        def windowTitle(self): return "Unsaved changes"
-        def frameGeometry(self): raise RuntimeError("not needed")
+        def objectName(self):
+            return "warning"
+
+        def windowTitle(self):
+            return "Unsaved changes"
+
+        def frameGeometry(self):
+            raise RuntimeError("not needed")
+
         def findChildren(self, child_type):
             if child_type is FakeButton:
                 return [button]
@@ -997,6 +1118,10 @@ def test_dialog_action_enforces_qt_destructive_role_risk_floor(monkeypatch) -> N
             {
                 "dialog_fingerprint": snapshot["dialog_fingerprint"],
                 "button_id": snapshot["buttons"][0]["button_id"],
-                "decision": {"risk": "low", "authorization": "automatic", "reason": "Unsafe"},
+                "decision": {
+                    "risk": "low",
+                    "authorization": "automatic",
+                    "reason": "Unsafe",
+                },
             }
         )

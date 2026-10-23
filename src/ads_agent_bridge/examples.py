@@ -7,7 +7,6 @@ from .bridge_client import request
 from .discovery import discover
 from .onboarding import quickstart
 
-
 EXAMPLES: tuple[dict[str, Any], ...] = (
     {
         "name": "discover-installations",
@@ -16,7 +15,13 @@ EXAMPLES: tuple[dict[str, Any], ...] = (
         "state_change": "none",
         "support": "stable",
         "requires": ["a local ADS installation"],
-        "evidence": ["instance_id", "product_version", "support_tier", "docs_roots", "capabilities"],
+        "evidence": [
+            "instance_id",
+            "product_version",
+            "support_tier",
+            "docs_roots",
+            "capabilities",
+        ],
     },
     {
         "name": "headless-minimal-ac",
@@ -24,7 +29,12 @@ EXAMPLES: tuple[dict[str, Any], ...] = (
         "lane": "headless",
         "state_change": "creates a new disposable workspace",
         "support": "stable on ADS 2025+ after runtime gates pass",
-        "requires": ["a configured ADS instance", "ADS Python", "a license", "DISPLAY on Linux"],
+        "requires": [
+            "a configured ADS instance",
+            "ADS Python",
+            "a license",
+            "DISPLAY on Linux",
+        ],
         "evidence": ["workspace_creation", "circuit_simulation", "dataset_readback"],
     },
     {
@@ -34,7 +44,14 @@ EXAMPLES: tuple[dict[str, Any], ...] = (
         "state_change": "none",
         "support": "stable on ADS 2025+ after bridge connection passes",
         "requires": ["ADS DE running with the bridge add-on", "an open workspace"],
-        "evidence": ["profile", "slot", "pid", "workspace", "running_automation", "is_pde_app"],
+        "evidence": [
+            "profile",
+            "slot",
+            "pid",
+            "workspace",
+            "running_automation",
+            "is_pde_app",
+        ],
     },
     {
         "name": "dds-dataset-readback",
@@ -42,7 +59,11 @@ EXAMPLES: tuple[dict[str, Any], ...] = (
         "lane": "live-dds",
         "state_change": "creates ads_agent_dds_readback.dds in the chosen workspace",
         "support": "version-gated; DDS Python is probed at runtime",
-        "requires": ["ADS DDS running with the bridge add-on", "an ADS dataset", "a writable disposable workspace"],
+        "requires": [
+            "ADS DDS running with the bridge add-on",
+            "an ADS dataset",
+            "a writable disposable workspace",
+        ],
         "evidence": ["dds_path", "equation_status", "row_count", "dataset_aliases"],
     },
     {
@@ -52,7 +73,7 @@ EXAMPLES: tuple[dict[str, Any], ...] = (
         "state_change": "none",
         "support": "hybrid boundary; fixed allowlisted call only",
         "requires": ["ADS DE running with the bridge add-on", "an open workspace"],
-        "evidence": ["function", "workspace_path", "bounded", "unsafe_python_enabled"],
+        "evidence": ["function", "workspace_path", "bounded"],
     },
 )
 
@@ -96,19 +117,28 @@ def run_example(
     if name == "live-de-context":
         response = request("status", {}, slot, "de", timeout=min(timeout, 30))
         result = response.get("result") if response.get("ok") else None
-        accepted = isinstance(result, dict) and result.get("profile") == "de" and result.get("workspace_is_open") is True
+        accepted = (
+            isinstance(result, dict)
+            and result.get("profile") == "de"
+            and result.get("workspace_is_open") is True
+        )
         return {
             "status": "passed" if accepted else "failed",
             "example": metadata,
             "bridge": response,
-            "stop_reason": None if accepted else "A live DE bridge with an open workspace is required.",
+            "stop_reason": None
+            if accepted
+            else "A live DE bridge with an open workspace is required.",
         }, 0 if accepted else 2
     if name == "dds-dataset-readback":
         if workspace is None or dataset is None:
             raise ValueError("dds-dataset-readback requires --workspace and --dataset")
         response = request(
             "dds_readback",
-            {"workspace": str(workspace.expanduser().resolve()), "dataset": str(dataset.expanduser().resolve())},
+            {
+                "workspace": str(workspace.expanduser().resolve()),
+                "dataset": str(dataset.expanduser().resolve()),
+            },
             slot,
             "dds",
             timeout=min(timeout, 120),
@@ -123,11 +153,17 @@ def run_example(
     if name == "bounded-ael-workspace":
         response = request("ael_workspace_path", {}, slot, "de", timeout=min(timeout, 30))
         result = response.get("result") if response.get("ok") else None
-        accepted = isinstance(result, dict) and bool(result.get("workspace_path")) and result.get("bounded") is True
+        accepted = (
+            isinstance(result, dict)
+            and bool(result.get("workspace_path"))
+            and result.get("bounded") is True
+        )
         return {
             "status": "passed" if accepted else "failed",
             "example": metadata,
             "bridge": response,
-            "stop_reason": None if accepted else "The fixed AEL call requires an open DE workspace.",
+            "stop_reason": None
+            if accepted
+            else "The fixed AEL call requires an open DE workspace.",
         }, 0 if accepted else 2
     raise ValueError(f"Unknown example: {name}")

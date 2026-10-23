@@ -10,7 +10,6 @@ from typing import Any
 
 from .session_manager import status as session_status
 
-
 RISK_LEVELS = {"low": 0, "medium": 1, "high": 2}
 AUTHORIZATION_LEVELS = {"automatic": 0, "workflow-policy": 1, "user-confirmed": 2}
 
@@ -68,14 +67,18 @@ def _window_fingerprint(slot: str, session: dict[str, Any], window: dict[str, An
         "geometry": window.get("geometry"),
         "coordinate_space": window.get("coordinate_space"),
     }
-    encoded = json.dumps(identity, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+    encoded = json.dumps(
+        identity, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode()
     return hashlib.sha256(encoded).hexdigest()
 
 
 def _select_window(windows: list[dict[str, Any]], window_id: str | None) -> dict[str, Any]:
     if window_id is not None:
         normalized = _normalize_window_id(window_id)
-        matches = [window for window in windows if _normalize_window_id(window["window_id"]) == normalized]
+        matches = [
+            window for window in windows if _normalize_window_id(window["window_id"]) == normalized
+        ]
         if len(matches) != 1:
             raise HostUiError(f"Window {window_id!r} is not a visible nonce-bound candidate")
         return matches[0]
@@ -208,7 +211,9 @@ def action(
         width = int(geometry.get("width") or 0)
         height = int(geometry.get("height") or 0)
         if not (0 <= x < width and 0 <= y < height):
-            raise HostUiError(f"Click coordinate {x},{y} is outside the {width}x{height} target window")
+            raise HostUiError(
+                f"Click coordinate {x},{y} is outside the {width}x{height} target window"
+            )
 
     if _platform_name() == "nt":
         if operation == "click":
@@ -269,7 +274,11 @@ def _linux_candidate_windows(
     root = connection.screen().root
     client_atom = connection.intern_atom("_NET_CLIENT_LIST")
     clients = root.get_full_property(client_atom, X.AnyPropertyType)
-    window_ids = list(clients.value) if clients is not None else [child.id for child in root.query_tree().children]
+    window_ids = (
+        list(clients.value)
+        if clients is not None
+        else [child.id for child in root.query_tree().children]
+    )
     windows: list[dict[str, Any]] = []
     for raw_id in window_ids:
         try:
@@ -430,7 +439,12 @@ def _windows_candidate_windows(pids: set[int]) -> list[dict[str, Any]]:
     windows: list[dict[str, Any]] = []
 
     class Rect(ctypes.Structure):
-        _fields_ = [("left", wintypes.LONG), ("top", wintypes.LONG), ("right", wintypes.LONG), ("bottom", wintypes.LONG)]
+        _fields_ = [
+            ("left", wintypes.LONG),
+            ("top", wintypes.LONG),
+            ("right", wintypes.LONG),
+            ("bottom", wintypes.LONG),
+        ]
 
     enum_proc_type = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
 
@@ -462,7 +476,12 @@ def _windows_candidate_windows(pids: set[int]) -> list[dict[str, Any]]:
                 "class_name": class_buffer.value,
                 "visible": True,
                 "enabled": bool(user32.IsWindowEnabled(hwnd)),
-                "geometry": {"x": int(origin.x), "y": int(origin.y), "width": width, "height": height},
+                "geometry": {
+                    "x": int(origin.x),
+                    "y": int(origin.y),
+                    "width": width,
+                    "height": height,
+                },
                 "coordinate_space": "physical-client-pixels",
             }
         )
@@ -518,13 +537,17 @@ def _windows_capture(target: dict[str, Any], path: Path) -> None:
     from PIL import ImageGrab
 
     _windows_require_target(target)
-    ctypes.WinDLL("user32", use_last_error=True).SetForegroundWindow(_normalize_window_id(target["window_id"]))
+    ctypes.WinDLL("user32", use_last_error=True).SetForegroundWindow(
+        _normalize_window_id(target["window_id"])
+    )
     time.sleep(0.1)
     _windows_require_target(target)
     geometry = target["geometry"]
     left, top = int(geometry["x"]), int(geometry["y"])
     right, bottom = left + int(geometry["width"]), top + int(geometry["height"])
-    image = ImageGrab.grab(bbox=(left, top, right, bottom), include_layered_windows=True, all_screens=True)
+    image = ImageGrab.grab(
+        bbox=(left, top, right, bottom), include_layered_windows=True, all_screens=True
+    )
     image.save(path, format="PNG")
 
 
@@ -532,7 +555,12 @@ def _windows_click(target: dict[str, Any], x: int, y: int) -> None:
     _windows_require_target(target)
     user32 = ctypes.WinDLL("user32", use_last_error=True)
     hwnd = _normalize_window_id(target["window_id"])
-    wm_mousemove, wm_lbuttondown, wm_lbuttonup, mk_lbutton = 0x0200, 0x0201, 0x0202, 0x0001
+    wm_mousemove, wm_lbuttondown, wm_lbuttonup, mk_lbutton = (
+        0x0200,
+        0x0201,
+        0x0202,
+        0x0001,
+    )
     lparam = (y << 16) | (x & 0xFFFF)
     user32.SetForegroundWindow(hwnd)
     time.sleep(0.1)

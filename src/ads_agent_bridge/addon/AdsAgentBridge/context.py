@@ -142,9 +142,8 @@ def _eda_context_handle(context_id, envelope):
         selection["items"] = items[:12]
         selection["truncated"] = True
     session = copy.deepcopy(envelope["session"])
-    session["session_id"] = (
-        os.environ.get("ADS_AGENT_MANAGED_SESSION_ID")
-        or "ads-{0}-{1}-{2}".format(session.get("pid"), session.get("slot"), session.get("profile"))
+    session["session_id"] = os.environ.get("ADS_AGENT_MANAGED_SESSION_ID") or "ads-{}-{}-{}".format(
+        session.get("pid"), session.get("slot"), session.get("profile")
     )
     session["display"] = os.environ.get("DISPLAY")
     payload = {
@@ -250,6 +249,13 @@ def _design_identity(design):
         "cell": cell_name,
         "view": view_name,
     }
+    try:
+        from keysight.ads import de
+
+        if de.workspace_is_open():
+            identity["workspace_path"] = str(Path(de.active_workspace().path).resolve())
+    except (ImportError, AttributeError):
+        pass
     display_name = ":".join(part for part in (lib_name, cell_name, view_name) if part)
     if not display_name:
         display_name = _bounded_text(_safe_attr(design, "name") or "design")
@@ -384,7 +390,12 @@ class ContextRegistry:
             capabilities["edit"] = "requires-authorization"
         if target_kind in ("design", "cellview"):
             capabilities["simulate"] = "requires-authorization"
-        if target_kind.endswith("-ref") or target_kind in ("workspace", "folder", "library", "cell"):
+        if target_kind.endswith("-ref") or target_kind in (
+            "workspace",
+            "folder",
+            "library",
+            "cell",
+        ):
             capabilities["open"] = "requires-authorization"
         return capabilities
 
@@ -402,7 +413,16 @@ class ContextRegistry:
             kind=quote(_bounded_text(target.get("kind")), safe="@._-"),
         )
 
-    def _register(self, key, source, target, selection, live_object=None, window=None, state="captured-live"):
+    def _register(
+        self,
+        key,
+        source,
+        target,
+        selection,
+        live_object=None,
+        window=None,
+        state="captured-live",
+    ):
         now = _utc_now()
         with self._lock:
             context_id = self._keys.get(key)
@@ -412,7 +432,7 @@ class ContextRegistry:
                 captured_at = previous["envelope"]["freshness"]["captured_at"]
             else:
                 self._counter += 1
-                context_id = "ctx-{0:04d}".format(self._counter)
+                context_id = f"ctx-{self._counter:04d}"
                 generation = 1
                 captured_at = now
 
@@ -461,6 +481,21 @@ class ContextRegistry:
                 self._keys.pop(old_record["key"], None)
             return copy.deepcopy(envelope)
 
+    def capture_workspace(self, workspace):
+        path = str(Path(workspace).resolve())
+        target = {
+            "kind": "workspace",
+            "identity": {"workspace_path": path},
+            "display_name": Path(path).name,
+        }
+        return self._register(
+            json.dumps(["workspace", path]),
+            "workspace-window",
+            target,
+            {},
+            state="captured-live",
+        )
+
     def capture_design(self, design, window=None, surface="design-window"):
         if design is None:
             raise ValueError("a live design is required")
@@ -488,9 +523,9 @@ class ContextRegistry:
                     "truncated": truncated,
                 },
                 "display_name": (
-                    "{0} selected items".format(total)
+                    f"{total} selected items"
                     if count_is_exact
-                    else "at least {0} selected items".format(total)
+                    else f"at least {total} selected items"
                 ),
             }
         target["identity"].setdefault("workspace_path", _bounded_text(workspace_path, 1024))
@@ -520,11 +555,15 @@ class ContextRegistry:
         target = {"kind": kind, "identity": identity, "display_name": display_name}
         selection = _selection_summary(_safe_attr(dds_file, "selected_objects", ()))
         key = json.dumps(["dds", identity], sort_keys=True)
-        return self._register(key, "dds-window", target, selection, dds_file, window, "captured-live")
+        return self._register(
+            key, "dds-window", target, selection, dds_file, window, "captured-live"
+        )
 
     def list(self):
         with self._lock:
-            return [copy.deepcopy(record["envelope"]) for record in reversed(self._records.values())]
+            return [
+                copy.deepcopy(record["envelope"]) for record in reversed(self._records.values())
+            ]
 
     def summary(self):
         """Return bounded registry state without copying every stored context."""
@@ -542,7 +581,7 @@ class ContextRegistry:
         with self._lock:
             record = self._records.get(context_id)
             if record is None:
-                raise KeyError("unknown context: {0}".format(context_id))
+                raise KeyError(f"unknown context: {context_id}")
             self._records.move_to_end(context_id)
             return copy.deepcopy(record["envelope"])
 
@@ -551,7 +590,7 @@ class ContextRegistry:
         with self._lock:
             record = self._records.get(context_id)
             if record is None:
-                raise KeyError("unknown context: {0}".format(context_id))
+                raise KeyError(f"unknown context: {context_id}")
             envelope = record["envelope"]
             live_object = record["live_object"]
             target_kind = envelope["target"]["kind"]
@@ -564,7 +603,9 @@ class ContextRegistry:
                     envelope["freshness"]["state"] = "stale"
                     envelope["freshness"]["reason"] = "live_design_identity_changed"
                 else:
-                    envelope["selection"] = _selection_summary(_safe_attr(live_object, "selected_objects", ()))
+                    envelope["selection"] = _selection_summary(
+                        _safe_attr(live_object, "selected_objects", ())
+                    )
                     envelope["freshness"]["state"] = "captured-live"
                     envelope["freshness"].pop("reason", None)
             elif target_kind in ("dds-page", "dds-file"):
@@ -577,7 +618,9 @@ class ContextRegistry:
                     envelope["freshness"]["state"] = "stale"
                     envelope["freshness"]["reason"] = "active_dds_page_changed"
                 else:
-                    envelope["selection"] = _selection_summary(_safe_attr(live_object, "selected_objects", ()))
+                    envelope["selection"] = _selection_summary(
+                        _safe_attr(live_object, "selected_objects", ())
+                    )
                     envelope["freshness"]["state"] = "captured-live"
                     envelope["freshness"].pop("reason", None)
             envelope["freshness"]["generation"] += 1
@@ -602,13 +645,13 @@ class ContextRegistry:
         if reference["is_handle"]:
             if reference["slot"] != self.slot:
                 raise ValueError(
-                    "ADS_CONTEXT slot mismatch: handle={0!r}, session={1!r}".format(
+                    "ADS_CONTEXT slot mismatch: handle={!r}, session={!r}".format(
                         reference["slot"], self.slot
                     )
                 )
             if reference["profile"] != self.profile:
                 raise ValueError(
-                    "ADS_CONTEXT profile mismatch: handle={0!r}, session={1!r}".format(
+                    "ADS_CONTEXT profile mismatch: handle={!r}, session={!r}".format(
                         reference["profile"], self.profile
                     )
                 )

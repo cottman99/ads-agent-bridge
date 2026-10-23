@@ -5,8 +5,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from ads_agent_bridge.models import AdsInstance
 from ads_agent_bridge import session_manager
+from ads_agent_bridge.models import AdsInstance
 
 
 def make_instance(tmp_path: Path) -> AdsInstance:
@@ -49,7 +49,9 @@ def test_launch_dry_run_binds_argument_and_cwd_to_workspace(tmp_path: Path, monk
     assert payload["plan"]["command"] == [instance.executable, str(workspace.resolve())]
 
 
-def test_launch_records_nonce_bound_ownership_only_after_verification(tmp_path: Path, monkeypatch) -> None:
+def test_launch_records_nonce_bound_ownership_only_after_verification(
+    tmp_path: Path, monkeypatch
+) -> None:
     instance = make_instance(tmp_path)
     workspace = make_workspace(tmp_path)
     state = tmp_path / "state"
@@ -87,7 +89,11 @@ def test_launch_records_nonce_bound_ownership_only_after_verification(tmp_path: 
         "request",
         lambda *_args, **_kwargs: {
             "ok": True,
-            "result": {"workspace_is_open": True, "workspace": str(workspace), "ui": {"modal_blocking": False}},
+            "result": {
+                "workspace_is_open": True,
+                "workspace": str(workspace),
+                "ui": {"modal_blocking": False},
+            },
         },
     )
 
@@ -151,7 +157,9 @@ def test_reuse_refuses_bridge_from_different_ads_installation(tmp_path: Path, mo
 
     monkeypatch.setattr(session_manager, "request", fake_request)
 
-    with pytest.raises(session_manager.SessionError, match="different or unverifiable ADS installation"):
+    with pytest.raises(
+        session_manager.SessionError, match="different or unverifiable ADS installation"
+    ):
         session_manager.launch(None, workspace, slot="test", display=":4", reuse_existing=True)
 
     assert calls == ["status"]
@@ -188,7 +196,9 @@ def test_shutdown_refuses_active_modal_without_sending_exit(tmp_path: Path, monk
     monkeypatch.setattr(
         session_manager,
         "request",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("must not request shutdown")),
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("must not request shutdown")
+        ),
     )
 
     with pytest.raises(session_manager.SessionError, match="modal dialog"):
@@ -204,7 +214,11 @@ def test_shutdown_removes_record_after_native_safe_exit(tmp_path: Path, monkeypa
     monkeypatch.setattr(
         session_manager,
         "_session_summary",
-        lambda *_: {"slot": "test", "ownership": "agent-owned", "modal": {"modal_blocking": False}},
+        lambda *_: {
+            "slot": "test",
+            "ownership": "agent-owned",
+            "modal": {"modal_blocking": False},
+        },
     )
     monkeypatch.setattr(
         session_manager,
@@ -213,7 +227,11 @@ def test_shutdown_removes_record_after_native_safe_exit(tmp_path: Path, monkeypa
     )
     monkeypatch.setattr(session_manager, "pid_running", lambda _: False)
     monkeypatch.setattr(session_manager, "_remove_managed_record", lambda *_: True)
-    monkeypatch.setattr(session_manager, "_cleanup_stale_bridge_records", lambda *_: ["de.json", "dds.json"])
+    monkeypatch.setattr(
+        session_manager,
+        "_cleanup_stale_bridge_records",
+        lambda *_: ["de.json", "dds.json"],
+    )
     monkeypatch.setattr(session_manager, "_live_slot_records", lambda _: [])
 
     payload = session_manager.shutdown("test", wait_seconds=1)
@@ -227,10 +245,30 @@ def test_stale_bridge_cleanup_requires_dead_owned_slot_records(tmp_path: Path, m
     monkeypatch.setenv("ADS_AGENT_HOME", str(tmp_path / "state"))
     runtime = session_manager.runtime_dir()
     records = {
-        "session-test-de.json": {"slot": "test", "profile": "de", "pid": 11, "managed_session_id": "owned"},
-        "session-test-dds.json": {"slot": "test", "profile": "dds", "pid": 12, "managed_session_id": None},
-        "session-test-other.json": {"slot": "test", "profile": "other", "pid": 13, "managed_session_id": "someone-else"},
-        "session-live-de.json": {"slot": "live", "profile": "de", "pid": 14, "managed_session_id": "owned"},
+        "session-test-de.json": {
+            "slot": "test",
+            "profile": "de",
+            "pid": 11,
+            "managed_session_id": "owned",
+        },
+        "session-test-dds.json": {
+            "slot": "test",
+            "profile": "dds",
+            "pid": 12,
+            "managed_session_id": None,
+        },
+        "session-test-other.json": {
+            "slot": "test",
+            "profile": "other",
+            "pid": 13,
+            "managed_session_id": "someone-else",
+        },
+        "session-live-de.json": {
+            "slot": "live",
+            "profile": "de",
+            "pid": 14,
+            "managed_session_id": "owned",
+        },
     }
     for name, payload in records.items():
         session_manager._write_json(runtime / name, payload)
@@ -238,12 +276,17 @@ def test_stale_bridge_cleanup_requires_dead_owned_slot_records(tmp_path: Path, m
 
     removed = session_manager._cleanup_stale_bridge_records("test", "owned")
 
-    assert {Path(path).name for path in removed} == {"session-test-de.json", "session-test-dds.json"}
+    assert {Path(path).name for path in removed} == {
+        "session-test-de.json",
+        "session-test-dds.json",
+    }
     assert (runtime / "session-test-other.json").is_file()
     assert (runtime / "session-live-de.json").is_file()
 
 
-def test_live_slot_records_include_all_profiles_and_block_partial_slot_claim(tmp_path: Path, monkeypatch) -> None:
+def test_live_slot_records_include_all_profiles_and_block_partial_slot_claim(
+    tmp_path: Path, monkeypatch
+) -> None:
     monkeypatch.setenv("ADS_AGENT_HOME", str(tmp_path / "state"))
     runtime = session_manager.runtime_dir()
     instance = make_instance(tmp_path)
@@ -257,17 +300,28 @@ def test_live_slot_records_include_all_profiles_and_block_partial_slot_claim(tmp
     monkeypatch.setattr(session_manager, "_live_bridge", lambda _: None)
 
     assert session_manager._live_slot_records("partial") == [
-        {"profile": "dds", "pid": 51, "session_file": str(runtime / "session-partial-dds.json")}
+        {
+            "profile": "dds",
+            "pid": 51,
+            "session_file": str(runtime / "session-partial-dds.json"),
+        }
     ]
     with pytest.raises(session_manager.SessionError, match="partially occupied"):
         session_manager.launch(None, workspace, slot="partial", display=":4")
 
 
-def test_status_reports_stale_managed_record_without_claiming_live_ownership(tmp_path: Path, monkeypatch) -> None:
+def test_status_reports_stale_managed_record_without_claiming_live_ownership(
+    tmp_path: Path, monkeypatch
+) -> None:
     monkeypatch.setenv("ADS_AGENT_HOME", str(tmp_path / "state"))
     session_manager._write_json(
         session_manager._managed_path("old"),
-        {"managed_session_id": "old-id", "slot": "old", "ads_pid": 2_147_483_647, "workspace": "old"},
+        {
+            "managed_session_id": "old-id",
+            "slot": "old",
+            "ads_pid": 2_147_483_647,
+            "workspace": "old",
+        },
     )
     monkeypatch.setattr(session_manager, "list_sessions", lambda _: [])
 
@@ -284,7 +338,10 @@ def test_launch_timeout_preserves_recoverable_starting_record(tmp_path: Path, mo
     monkeypatch.setattr(session_manager, "select_instance", lambda _: instance)
     monkeypatch.setattr(session_manager, "_live_bridge", lambda _: None)
     monkeypatch.setattr(session_manager, "_live_slot_records", lambda _: [])
-    monkeypatch.setattr(session_manager.uuid, "uuid4", lambda: SimpleNamespace(hex="starting-nonce"))
+    monkeypatch.setattr(
+        session_manager.uuid, "uuid4", lambda: SimpleNamespace(hex="starting-nonce")
+    )
+
     def fake_popen(*_args, **kwargs):
         kwargs["stdout"].write(b"waiting for license\n")
         return SimpleNamespace(pid=1234)
@@ -310,7 +367,9 @@ def test_launch_timeout_preserves_recoverable_starting_record(tmp_path: Path, mo
     assert record["ads_pid"] is None
 
 
-def test_status_adopts_nonce_bound_linux_ads_process_after_wrapper_exit(monkeypatch) -> None:
+def test_status_adopts_nonce_bound_linux_ads_process_after_wrapper_exit(
+    monkeypatch,
+) -> None:
     managed = {
         "state": "starting",
         "managed_session_id": "owned-nonce",
@@ -353,7 +412,9 @@ def test_status_adopts_nonce_bound_linux_ads_process_after_wrapper_exit(monkeypa
     assert "must not guess a license choice" in summary["host_ui"]["action_policy"]
 
 
-def test_explicit_host_ui_wait_state_does_not_depend_on_wrapper_exit(monkeypatch) -> None:
+def test_explicit_host_ui_wait_state_does_not_depend_on_wrapper_exit(
+    monkeypatch,
+) -> None:
     managed = {
         "state": "waiting-for-host-ui",
         "managed_session_id": "owned-nonce",
@@ -419,7 +480,9 @@ def test_provisional_record_adopts_only_matching_bridge_nonce() -> None:
     )
 
 
-def test_session_summary_reports_unknown_modal_as_user_resolvable_blockage(monkeypatch) -> None:
+def test_session_summary_reports_unknown_modal_as_user_resolvable_blockage(
+    monkeypatch,
+) -> None:
     bridge = {"managed_session_id": "nonce", "slot": "test", "pid": 44}
     record = {"managed_session_id": "nonce", "slot": "test", "ads_pid": 44}
     monkeypatch.setattr(
@@ -442,7 +505,9 @@ def test_session_summary_reports_unknown_modal_as_user_resolvable_blockage(monke
     assert "exact fingerprint and button ID" in summary["next_actions"][1]
 
 
-def test_remove_managed_record_requires_identity_and_really_unlinks(tmp_path: Path, monkeypatch) -> None:
+def test_remove_managed_record_requires_identity_and_really_unlinks(
+    tmp_path: Path, monkeypatch
+) -> None:
     monkeypatch.setenv("ADS_AGENT_HOME", str(tmp_path / "state"))
     path = session_manager._managed_path("test")
     session_manager._write_json(path, {"managed_session_id": "owned", "slot": "test"})
@@ -453,16 +518,22 @@ def test_remove_managed_record_requires_identity_and_really_unlinks(tmp_path: Pa
     assert not path.exists()
 
 
-def test_slot_operation_lock_rejects_overlapping_lifecycle_action(tmp_path: Path, monkeypatch) -> None:
+def test_slot_operation_lock_rejects_overlapping_lifecycle_action(
+    tmp_path: Path, monkeypatch
+) -> None:
     monkeypatch.setenv("ADS_AGENT_HOME", str(tmp_path / "state"))
 
-    with session_manager._slot_operation_lock("test"):
-        with pytest.raises(session_manager.SessionError, match="already in progress"):
-            with session_manager._slot_operation_lock("test"):
-                pass
+    with (
+        session_manager._slot_operation_lock("test"),
+        pytest.raises(session_manager.SessionError, match="already in progress"),
+        session_manager._slot_operation_lock("test"),
+    ):
+        pass
 
 
-def test_shutdown_reports_native_prompt_as_awaiting_user_action(tmp_path: Path, monkeypatch) -> None:
+def test_shutdown_reports_native_prompt_as_awaiting_user_action(
+    tmp_path: Path, monkeypatch
+) -> None:
     monkeypatch.setenv("ADS_AGENT_HOME", str(tmp_path / "state"))
     managed = {"managed_session_id": "owned", "ads_pid": 40, "slot": "test"}
     bridge = {"managed_session_id": "owned", "slot": "test", "pid": 40}
@@ -472,12 +543,19 @@ def test_shutdown_reports_native_prompt_as_awaiting_user_action(tmp_path: Path, 
     monkeypatch.setattr(
         session_manager,
         "_session_summary",
-        lambda *_: {"slot": "test", "ownership": "agent-owned", "modal": {"modal_blocking": False}},
+        lambda *_: {
+            "slot": "test",
+            "ownership": "agent-owned",
+            "modal": {"modal_blocking": False},
+        },
     )
     monkeypatch.setattr(
         session_manager,
         "request",
-        lambda *_args, **_kwargs: {"ok": True, "result": {"accepted": True, "state": "scheduled"}},
+        lambda *_args, **_kwargs: {
+            "ok": True,
+            "result": {"accepted": True, "state": "scheduled"},
+        },
     )
     monkeypatch.setattr(session_manager, "pid_running", lambda _: True)
     monkeypatch.setattr(session_manager, "_live_slot_records", lambda _: [])
@@ -495,7 +573,7 @@ def test_shutdown_reports_native_prompt_as_awaiting_user_action(tmp_path: Path, 
     monkeypatch.setattr(session_manager.time, "monotonic", lambda: next(monotonic))
     monkeypatch.setattr(session_manager.time, "sleep", lambda _: None)
 
-    payload = session_manager.shutdown("test", wait_seconds=0.5)
+    payload = session_manager._shutdown_locked("test", wait_seconds=0.5)
 
     assert payload["status"] == "awaiting-user-action"
     assert payload["record_retained"] is True

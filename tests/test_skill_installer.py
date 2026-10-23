@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import pytest
@@ -13,7 +14,9 @@ def _by_name(payload: dict) -> dict[str, dict]:
     return {item["skill"]: item for item in payload["skills"]}
 
 
-def test_public_skills_install_together_idempotently_and_recoverably(tmp_path: Path) -> None:
+def test_public_skills_install_together_idempotently_and_recoverably(
+    tmp_path: Path,
+) -> None:
     root = tmp_path / "skills"
 
     installed = install_skills(root=root)
@@ -28,6 +31,10 @@ def test_public_skills_install_together_idempotently_and_recoverably(tmp_path: P
     assert "Launching a DE workspace neither launches nor proves a DDS runtime" in bridge_text
     assert "Do not open raw ADS HTML" in docs_text
     assert "full signature for each required dependency" in docs_text
+    references = re.findall(r"\]\((references/[^)]+)\)", bridge_text)
+    assert references
+    for reference in references:
+        assert Path(results["ads-agent-bridge"]["path"], reference).is_file()
 
     reused = install_skills(root=root)
     assert reused["status"] == "ready"
@@ -37,6 +44,28 @@ def test_public_skills_install_together_idempotently_and_recoverably(tmp_path: P
     assert removed["status"] == "removed"
     assert all(Path(item["backup"]).is_dir() for item in removed["skills"])
     assert skill_status(root=root)["status"] == "missing"
+
+
+@pytest.mark.parametrize("change", ["missing", "modified"])
+def test_reference_drift_is_detected_and_repaired_with_backup(tmp_path: Path, change: str) -> None:
+    root = tmp_path / "skills"
+    installed = install_skills("bridge", root=root)
+    reference = Path(installed["path"], "references/background-native-workflows.md")
+    original = reference.read_bytes()
+    if change == "missing":
+        reference.unlink()
+    else:
+        reference.write_text("local edit", encoding="utf-8")
+
+    assert skill_status("bridge", root=root)["status"] == "stale"
+    repaired = install_skills("bridge", root=root, force=True)
+    assert repaired["status"] == "ready"
+    assert reference.read_bytes() == original
+    backup_reference = Path(repaired["backup"], "references/background-native-workflows.md")
+    if change == "missing":
+        assert not backup_reference.exists()
+    else:
+        assert backup_reference.read_text(encoding="utf-8") == "local edit"
 
 
 def test_docs_skill_can_be_managed_without_bridge_skill(tmp_path: Path) -> None:
@@ -51,7 +80,9 @@ def test_docs_skill_can_be_managed_without_bridge_skill(tmp_path: Path) -> None:
     assert removed["status"] == "removed"
 
 
-def test_all_preserves_complete_unmanaged_docs_and_installs_bridge(tmp_path: Path) -> None:
+def test_all_preserves_complete_unmanaged_docs_and_installs_bridge(
+    tmp_path: Path,
+) -> None:
     root = tmp_path / "skills"
     destination = root / "ads-kb-docs"
     (destination / "agents").mkdir(parents=True)
@@ -102,7 +133,9 @@ def test_incomplete_unmanaged_content_remains_a_conflict(tmp_path: Path) -> None
         uninstall_skills("docs", root=root)
 
 
-def test_complete_but_invalid_unmanaged_docs_content_remains_a_conflict(tmp_path: Path) -> None:
+def test_complete_but_invalid_unmanaged_docs_content_remains_a_conflict(
+    tmp_path: Path,
+) -> None:
     root = tmp_path / "skills"
     destination = root / "ads-kb-docs"
     (destination / "agents").mkdir(parents=True)

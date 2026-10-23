@@ -99,7 +99,9 @@ def diagnose(
     )
 
     if selected:
-        checks.append(_check("ads_selection", "pass", f"{selected.product_version} ({selected.instance_id})"))
+        checks.append(
+            _check("ads_selection", "pass", f"{selected.product_version} ({selected.instance_id})")
+        )
     elif instances:
         checks.append(
             _check(
@@ -116,13 +118,21 @@ def diagnose(
             _check(
                 "local_docs",
                 "warn" if docs_missing else "pass",
-                "Missing for: " + ", ".join(docs_missing) if docs_missing else "Local HTML documentation found.",
-                "Install the matching ADS documentation or pass the correct --ads-root." if docs_missing else None,
+                "Missing for: " + ", ".join(docs_missing)
+                if docs_missing
+                else "Local HTML documentation found.",
+                "Install the matching ADS documentation or pass the correct --ads-root."
+                if docs_missing
+                else None,
             )
         )
 
     headless_ready = bool(selected and selected.python_executable)
-    headless_detail = "ADS Python executable found." if headless_ready else "Select an ADS installation with embedded Python."
+    headless_detail = (
+        "ADS Python executable found."
+        if headless_ready
+        else "Select an ADS installation with embedded Python."
+    )
     if headless_ready and sys.platform.startswith("linux") and not os.environ.get("DISPLAY"):
         headless_detail = "ADS Python found; DISPLAY is not set for Linux runtime initialization."
         headless_status = "warn"
@@ -133,7 +143,9 @@ def diagnose(
             "headless",
             headless_status,
             headless_detail,
-            "Set DISPLAY to the isolated X display before ADS Python automation." if headless_status == "warn" and headless_ready else None,
+            "Set DISPLAY to the isolated X display before ADS Python automation."
+            if headless_status == "warn" and headless_ready
+            else None,
         )
     )
 
@@ -145,12 +157,21 @@ def diagnose(
                 "addon_registration",
                 "pass" if registration_count else "warn",
                 f"{registration_count} DE/DDS registration(s) found in {addon['config_dir']}",
-                None if registration_count else "Run `ads-agent setup` or `ads-agent addon install`.",
+                None
+                if registration_count
+                else "Run `ads-agent setup` or `ads-agent addon install`.",
             )
         )
     except (OSError, ValueError) as exc:
         addon = {"status": "error", "error": str(exc)}
-        checks.append(_check("addon_registration", "warn", str(exc), "Inspect the ADS add-on XML before installing."))
+        checks.append(
+            _check(
+                "addon_registration",
+                "warn",
+                str(exc),
+                "Inspect the ADS add-on XML before installing.",
+            )
+        )
 
     sessions = probe_sessions(timeout=1.0) if ping else list_sessions()
     live_count = sum(1 for item in sessions if item.get("ok")) if ping else len(sessions)
@@ -158,7 +179,9 @@ def diagnose(
         _check(
             "bridge_sessions",
             "pass" if live_count else "warn",
-            f"{live_count} live session(s)" if ping else f"{live_count} session file(s); ping skipped",
+            f"{live_count} live session(s)"
+            if ping
+            else f"{live_count} session file(s); ping skipped",
             None if live_count else "Launch ADS DE or DDS after the add-on is installed.",
         )
     )
@@ -178,7 +201,11 @@ def diagnose(
         "status": "blocked" if blocked else "ready",
         "read_only": True,
         "package_version": __version__,
-        "platform": {"system": platform.system(), "release": platform.release(), "python": platform.python_version()},
+        "platform": {
+            "system": platform.system(),
+            "release": platform.release(),
+            "python": platform.python_version(),
+        },
         "paths": {
             "config": str(config_dir(ensure=False)),
             "data": str(data_dir(ensure=False)),

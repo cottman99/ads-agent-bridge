@@ -34,11 +34,11 @@ Agent time and tool execution are different measurements:
 | Successful-run tool layer | Median observed time |
 | --- | ---: |
 | Runtime `workspace.create` | 0.784 s |
-| Runtime governed `native.batch` | 2.379 s |
+| Runtime governed `native.execute` | 2.379 s |
 | Official `start_local_session` | 0.783 s |
 | Official `execute_python` | 0.814 s |
 
-Runtime `native.batch` includes staging, one ADS program, a separate fresh
+Runtime `native.execute` includes staging, one ADS program, a separate fresh
 validation process, and promotion. The official call performs the task in one
 local automation process, so these calls do not carry identical governance.
 The roughly 1.6 s tool-layer difference is real; the much larger Agent-time
@@ -49,7 +49,7 @@ official MCP.
 
 ## Controls and acceptance
 
-- Runtime used `workspace.create` followed by governed `native.batch`; it did
+- Runtime used `workspace.create` followed by governed `native.execute`; it did
   not use the legacy product CLI path.
 - The official MCP used `start_local_session` and `execute_python`.
 - Every accepted run proved a persisted workspace below its assigned directory,

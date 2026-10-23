@@ -6,8 +6,7 @@ from pathlib import Path
 import pytest
 from eda_bridge_runtime import EDAContext
 
-from ads_agent_bridge import continuation_context
-from ads_agent_bridge import workspace_create
+from ads_agent_bridge import continuation_context, workspace_create
 
 
 def _record(workspace: Path) -> dict:
@@ -16,7 +15,7 @@ def _record(workspace: Path) -> dict:
         "context_kind": "native-continuation",
         "generation": 1,
         "captured_at": "2026-08-31T00:00:00+00:00",
-        "allowed_operations": ["native.batch"],
+        "allowed_operations": ["native.execute"],
         "identity": {
             "connection_id": "worker-one",
             "slot": "u2",
@@ -32,10 +31,11 @@ def _record(workspace: Path) -> dict:
 
 def _partial_plan() -> dict:
     return {
-        "schema_version": "eda.native-batch/v1",
-        "batch_id": "continue_demo",
+        "schema_version": "eda.native-program/v1",
+        "mode": "background",
+        "program_id": "continue_demo",
         "runtime": "ads.python.de",
-        "effect": "staged_mutation",
+        "effect": "mutate",
         "program": {},
         "scope": {
             "write_paths": ["output_wrk"],
@@ -69,8 +69,9 @@ def test_private_record_returns_opaque_handle(tmp_path, monkeypatch):
     assert "source_fingerprint" not in json.dumps(decoded.__dict__)
     context_id = decoded.locator["context_id"]
     assert continuation_context.continuation_ref(token) == context_id
-    assert continuation_context.resolve_continuation_context(context_id)["identity"] == (
-        _record(workspace)["identity"]
+    assert (
+        continuation_context.resolve_continuation_context(context_id)["identity"]
+        == (_record(workspace)["identity"])
     )
     record_path = private_root / "contexts" / f"{context_id}.json"
     private_record = json.loads(record_path.read_text(encoding="utf-8"))
@@ -78,7 +79,7 @@ def test_private_record_returns_opaque_handle(tmp_path, monkeypatch):
     assert private_record["content_state"]["sha256"] == "a" * 64
     resolved = continuation_context.resolve_continuation_context(token)
     assert resolved == private_record
-    continued_plan, expected = continuation_context.materialize_native_batch_plan(
+    continued_plan, expected = continuation_context.materialize_native_program_plan(
         _partial_plan(),
         record=resolved,
         target={"eda": "keysight-ads", "context": token},
@@ -103,7 +104,7 @@ def test_private_record_returns_opaque_handle(tmp_path, monkeypatch):
 def test_materialization_supplies_only_bound_identity_and_content_state(tmp_path):
     workspace = tmp_path / "source_wrk"
     record = _record(workspace)
-    plan, expected = continuation_context.materialize_native_batch_plan(
+    plan, expected = continuation_context.materialize_native_program_plan(
         _partial_plan(),
         record=record,
         target={"eda": "keysight-ads"},
@@ -117,9 +118,7 @@ def test_materialization_supplies_only_bound_identity_and_content_state(tmp_path
         "profile": "de",
     }
     assert plan["scope"]["read_paths"] == [str(workspace.resolve())]
-    assert plan["transaction"]["source_fingerprints"] == {
-        str(workspace.resolve()): "a" * 64
-    }
+    assert plan["transaction"]["source_fingerprints"] == {str(workspace.resolve()): "a" * 64}
     assert expected == "a" * 64
 
 
@@ -143,7 +142,7 @@ def test_materialization_rejects_explicit_conflicts(tmp_path, target, change, me
         else:
             plan["transaction"]["source_fingerprints"] = value
     with pytest.raises(ValueError, match=message):
-        continuation_context.materialize_native_batch_plan(
+        continuation_context.materialize_native_program_plan(
             plan,
             record=_record(tmp_path / "source_wrk"),
             target={"eda": "keysight-ads", **target},

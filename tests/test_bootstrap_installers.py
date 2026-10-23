@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -50,7 +49,9 @@ def test_windows_installer_discovers_supported_python_and_bootstraps_pipx() -> N
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows PowerShell installer integration test")
-def test_windows_installer_bootstraps_when_selected_python_has_no_pipx(tmp_path: Path) -> None:
+def test_windows_installer_bootstraps_when_selected_python_has_no_pipx(
+    tmp_path: Path,
+) -> None:
     selected = tmp_path / "selected-python"
     subprocess.run([sys.executable, "-m", "venv", str(selected)], check=True)
     selected_python = selected / "Scripts" / "python.exe"
@@ -109,5 +110,5 @@ def test_publish_workflow_and_readme_expose_versioned_bootstrap_installers() -> 
     assert "default: " + tag in workflow
     assert "cp install.sh install.ps1 dist/" in workflow
     assert "sha256sum *.whl *.tar.gz install.sh install.ps1" in workflow
-    assert "releases/download/{0}/install.sh".format(tag) in readme
-    assert "releases/download/{0}/install.ps1".format(tag) in readme
+    assert f"releases/download/{tag}/install.sh" in readme
+    assert f"releases/download/{tag}/install.ps1" in readme

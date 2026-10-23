@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-import ads_agent_bridge.docs_kb as docs_kb
+from ads_agent_bridge import docs_kb
 from ads_agent_bridge.docs_kb import (
     _context_excerpt,
     _markdown_record,
@@ -26,7 +26,9 @@ def test_fast_index_and_query(tmp_path: Path, monkeypatch) -> None:
         encoding="utf-8",
     )
     cache = tmp_path / "cache"
-    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    monkeypatch.setattr(
+        "ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache
+    )
     cache.mkdir()
     instance = AdsInstance(
         instance_id="ads-2025-test",
@@ -61,7 +63,9 @@ def test_full_index_writes_private_markdown_and_enriches_query(tmp_path: Path, m
     )
     cache = tmp_path / "cache"
     cache.mkdir()
-    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    monkeypatch.setattr(
+        "ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache
+    )
     instance = AdsInstance(
         instance_id="ads-2026-u1-test",
         install_root=str(tmp_path),
@@ -96,7 +100,9 @@ def test_query_rebuilds_stale_index_schema(tmp_path: Path, monkeypatch) -> None:
     )
     cache = tmp_path / "cache"
     cache.mkdir()
-    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    monkeypatch.setattr(
+        "ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache
+    )
     instance = AdsInstance(
         instance_id="ads-2027-stale-schema-test",
         install_root=str(tmp_path),
@@ -127,7 +133,9 @@ def test_multi_term_query_does_not_return_domain_only_match(tmp_path: Path, monk
     (docs / "workspace.html").write_text("<html><title>Workspace</title></html>", encoding="utf-8")
     cache = tmp_path / "cache"
     cache.mkdir()
-    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    monkeypatch.setattr(
+        "ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache
+    )
     instance = AdsInstance(
         instance_id="ads-2026-test",
         install_root=str(tmp_path),
@@ -140,7 +148,10 @@ def test_multi_term_query_does_not_return_domain_only_match(tmp_path: Path, monk
     )
     ensure_fast_index(instance)
     fallback_calls = []
-    monkeypatch.setattr("ads_agent_bridge.docs_kb._query_source_fallback", lambda *_args, **_kwargs: fallback_calls.append(1) or [])
+    monkeypatch.setattr(
+        "ads_agent_bridge.docs_kb._query_source_fallback",
+        lambda *_args, **_kwargs: fallback_calls.append(1) or [],
+    )
 
     result = query(instance, "python term_that_is_not_indexed")
 
@@ -208,7 +219,9 @@ def test_natural_language_domain_word_does_not_silently_filter_corpus(
     assert all("python" in terms for terms, _domains in calls)
 
 
-def test_fast_index_searches_python_page_prefix_without_full_enrichment(tmp_path: Path, monkeypatch) -> None:
+def test_fast_index_searches_python_page_prefix_without_full_enrichment(
+    tmp_path: Path, monkeypatch
+) -> None:
     docs = tmp_path / "docs"
     docs.mkdir()
     (docs / "Design.html").write_text(
@@ -219,7 +232,9 @@ def test_fast_index_searches_python_page_prefix_without_full_enrichment(tmp_path
     )
     cache = tmp_path / "cache"
     cache.mkdir()
-    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    monkeypatch.setattr(
+        "ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache
+    )
     instance = AdsInstance(
         instance_id="ads-2027-prefix-test",
         install_root=str(tmp_path),
@@ -239,7 +254,9 @@ def test_fast_index_searches_python_page_prefix_without_full_enrichment(tmp_path
     assert "prefix_only_method" in result["results"][0]["snippet"]
 
 
-def test_sphinx_main_content_excludes_navigation_and_private_glyphs(tmp_path: Path) -> None:
+def test_sphinx_main_content_excludes_navigation_and_private_glyphs(
+    tmp_path: Path,
+) -> None:
     docs = tmp_path / "docs"
     docs.mkdir()
     page = docs / "Design.html"
@@ -322,7 +339,9 @@ def test_heading_only_page_does_not_repeat_canonical_title(tmp_path: Path) -> No
     assert markdown.rstrip().endswith(f"Source: `{page}`")
 
 
-def test_madcap_main_content_excludes_account_chrome_and_build_metadata(tmp_path: Path) -> None:
+def test_madcap_main_content_excludes_account_chrome_and_build_metadata(
+    tmp_path: Path,
+) -> None:
     docs = tmp_path / "docs"
     docs.mkdir()
     page = docs / "drc.html"
@@ -363,7 +382,9 @@ def test_query_snippet_is_centered_on_late_match(tmp_path: Path, monkeypatch) ->
     )
     cache = tmp_path / "cache"
     cache.mkdir()
-    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    monkeypatch.setattr(
+        "ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache
+    )
     instance = AdsInstance(
         instance_id="ads-2027-snippet-test",
         install_root=str(tmp_path),
@@ -435,7 +456,9 @@ def test_query_prefers_reference_page_over_generic_page(tmp_path: Path, monkeypa
     )
     cache = tmp_path / "cache"
     cache.mkdir()
-    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    monkeypatch.setattr(
+        "ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache
+    )
     instance = AdsInstance(
         instance_id="ads-2027-rank-test",
         install_root=str(tmp_path),
@@ -455,7 +478,9 @@ def test_query_prefers_reference_page_over_generic_page(tmp_path: Path, monkeypa
     assert result["results"][0]["validation_status"] == "docs_backed_reference"
 
 
-def test_query_can_explicitly_select_python_domain_and_returns_term_evidence(tmp_path: Path, monkeypatch) -> None:
+def test_query_can_explicitly_select_python_domain_and_returns_term_evidence(
+    tmp_path: Path, monkeypatch
+) -> None:
     docs = tmp_path / "docs"
     python_docs = docs / "python" / "reference"
     ael_docs = docs / "ael"
@@ -474,7 +499,9 @@ def test_query_can_explicitly_select_python_domain_and_returns_term_evidence(tmp
     )
     cache = tmp_path / "cache"
     cache.mkdir()
-    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    monkeypatch.setattr(
+        "ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache
+    )
     instance = AdsInstance(
         instance_id="ads-2027-domain-test",
         install_root=str(tmp_path),
@@ -500,7 +527,9 @@ def test_query_can_explicitly_select_python_domain_and_returns_term_evidence(tmp
     assert len(serialized) < 2500
 
 
-def test_exact_title_is_not_excluded_by_unmatched_generic_terms(tmp_path: Path, monkeypatch) -> None:
+def test_exact_title_is_not_excluded_by_unmatched_generic_terms(
+    tmp_path: Path, monkeypatch
+) -> None:
     docs = tmp_path / "docs" / "reference"
     docs.mkdir(parents=True)
     (docs / "LayerId.html").write_text(
@@ -515,7 +544,9 @@ def test_exact_title_is_not_excluded_by_unmatched_generic_terms(tmp_path: Path, 
     )
     cache = tmp_path / "cache"
     cache.mkdir()
-    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    monkeypatch.setattr(
+        "ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache
+    )
     instance = AdsInstance(
         instance_id="ads-2027-exact-title-test",
         install_root=str(tmp_path),
@@ -543,7 +574,9 @@ def test_get_document_cleans_on_demand_and_bounds_output(tmp_path: Path, monkeyp
     )
     cache = tmp_path / "cache"
     cache.mkdir()
-    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    monkeypatch.setattr(
+        "ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache
+    )
     instance = AdsInstance(
         instance_id="ads-2026-get-test",
         install_root=str(tmp_path),
@@ -563,7 +596,7 @@ def test_get_document_cleans_on_demand_and_bounds_output(tmp_path: Path, monkeyp
         max_chars=300,
     )
 
-    assert detail["retrieval_mode"] == "on_demand_cleaning"
+    assert detail["retrieval_mode"] == "enriched_index"
     excerpt = detail["sections"][0]["excerpt"]
     assert detail["returned_chars"] == sum(
         len(section["excerpt"]) for section in detail["sections"]
@@ -585,7 +618,9 @@ def test_ads_function_page_is_typed_as_ael_reference(tmp_path: Path, monkeypatch
     )
     cache = tmp_path / "cache"
     cache.mkdir()
-    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    monkeypatch.setattr(
+        "ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache
+    )
     instance = AdsInstance(
         instance_id="ads-2027-ael-reference-test",
         install_root=str(tmp_path),
@@ -603,7 +638,9 @@ def test_ads_function_page_is_typed_as_ael_reference(tmp_path: Path, monkeypatch
     assert result["results"][0]["validation_status"] == "docs_backed_reference"
 
 
-def test_multi_term_guide_match_keeps_reference_candidates_visible(tmp_path: Path, monkeypatch) -> None:
+def test_multi_term_guide_match_keeps_reference_candidates_visible(
+    tmp_path: Path, monkeypatch
+) -> None:
     docs = tmp_path / "docs" / "Content" / "drc"
     docs.mkdir(parents=True)
     (docs / "layout_design_rule_check_drc_run.html").write_text(
@@ -616,7 +653,9 @@ def test_multi_term_guide_match_keeps_reference_candidates_visible(tmp_path: Pat
     )
     cache = tmp_path / "cache"
     cache.mkdir()
-    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    monkeypatch.setattr(
+        "ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache
+    )
     instance = AdsInstance(
         instance_id="ads-2027-hybrid-rank-test",
         install_root=str(tmp_path),
@@ -653,7 +692,9 @@ def test_multi_term_query_preserves_uncovered_title_topics(tmp_path: Path, monke
     )
     cache = tmp_path / "cache"
     cache.mkdir()
-    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    monkeypatch.setattr(
+        "ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache
+    )
     instance = AdsInstance(
         instance_id="ads-2027-topic-coverage-test",
         install_root=str(tmp_path),
@@ -688,7 +729,9 @@ def test_longer_exact_symbol_title_beats_generic_exact_title(tmp_path: Path, mon
     )
     cache = tmp_path / "cache"
     cache.mkdir()
-    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    monkeypatch.setattr(
+        "ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache
+    )
     instance = AdsInstance(
         instance_id="ads-2027-exact-symbol-rank-test",
         install_root=str(tmp_path),
@@ -700,7 +743,12 @@ def test_longer_exact_symbol_title_beats_generic_exact_title(tmp_path: Path, mon
         docs_roots={"python": [str(docs.parents[1])]},
     )
 
-    result = query(instance, "LayerId named layer purpose technology lookup", limit=6, domains=["python"])
+    result = query(
+        instance,
+        "LayerId named layer purpose technology lookup",
+        limit=6,
+        domains=["python"],
+    )
 
     assert result["results"][0]["title"] == "LayerId"
 
@@ -715,7 +763,9 @@ def test_status_reports_committed_background_progress(tmp_path: Path, monkeypatc
         )
     cache = tmp_path / "cache"
     cache.mkdir()
-    monkeypatch.setattr("ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache)
+    monkeypatch.setattr(
+        "ads_agent_bridge.docs_kb.docs_cache", lambda _instance_id, **_kwargs: cache
+    )
     instance = AdsInstance(
         instance_id="ads-2026-progress-test",
         install_root=str(tmp_path),
@@ -728,7 +778,9 @@ def test_status_reports_committed_background_progress(tmp_path: Path, monkeypatc
     )
     built = ensure_fast_index(instance)
     with sqlite3.connect(built["db_path"]) as connection:
-        connection.execute("UPDATE pages SET enriched = 1 WHERE relative_path IN ('page-0.html', 'page-1.html')")
+        connection.execute(
+            "UPDATE pages SET enriched = 1 WHERE relative_path IN ('page-0.html', 'page-1.html')"
+        )
         connection.commit()
     (cache / "build-state.json").write_text(
         json.dumps({"status": "running", "pid": os.getpid()}),

@@ -6,13 +6,7 @@ import types
 from pathlib import Path
 from types import SimpleNamespace
 
-ADDON_DIR = (
-    Path(__file__).parents[1]
-    / "src"
-    / "ads_agent_bridge"
-    / "addon"
-    / "AdsAgentBridge"
-)
+ADDON_DIR = Path(__file__).parents[1] / "src" / "ads_agent_bridge" / "addon" / "AdsAgentBridge"
 
 
 class Signal:
@@ -124,12 +118,16 @@ def _load_modules(monkeypatch):
     pyside.QtWidgets = qtwidgets
     monkeypatch.setitem(sys.modules, "PySide6", pyside)
 
-    context_spec = importlib.util.spec_from_file_location("context_ui_test_context", ADDON_DIR / "context.py")
+    context_spec = importlib.util.spec_from_file_location(
+        "context_ui_test_context", ADDON_DIR / "context.py"
+    )
     context_module = importlib.util.module_from_spec(context_spec)
     assert context_spec.loader is not None
     context_spec.loader.exec_module(context_module)
 
-    ui_spec = importlib.util.spec_from_file_location("context_ui_under_test", ADDON_DIR / "context_ui.py")
+    ui_spec = importlib.util.spec_from_file_location(
+        "context_ui_under_test", ADDON_DIR / "context_ui.py"
+    )
     ui_module = importlib.util.module_from_spec(ui_spec)
     assert ui_spec.loader is not None
     ui_spec.loader.exec_module(ui_module)
@@ -160,7 +158,9 @@ def test_de_registers_and_removes_callbacks_and_captures_exact_tree_selection(mo
         popup={},
         main_popup={},
         add_popup_callback=lambda callback, name: application.popup.__setitem__(name, callback),
-        add_main_popup_callback=lambda callback, name: application.main_popup.__setitem__(name, callback),
+        add_main_popup_callback=lambda callback, name: application.main_popup.__setitem__(
+            name, callback
+        ),
         remove_popup_callback=lambda name: application.popup.pop(name, None),
         remove_main_popup_callback=lambda name: application.main_popup.pop(name, None),
     )
@@ -215,8 +215,12 @@ def test_dds_popup_accepts_empty_selection_and_unregisters_returned_handles(monk
     dds = types.ModuleType("keysight.ads.dds")
     dds.files = []
     dds_app = types.ModuleType("keysight.ads.dds.app")
-    dds_app.register_window_callback = lambda callback: registered.setdefault("window", ("window-token", callback))[0]
-    dds_app.register_popup_callback = lambda callback: registered.setdefault("popup", ("popup-token", callback))[0]
+    dds_app.register_window_callback = lambda callback: registered.setdefault(
+        "window", ("window-token", callback)
+    )[0]
+    dds_app.register_popup_callback = lambda callback: registered.setdefault(
+        "popup", ("popup-token", callback)
+    )[0]
     dds_app.unregister_window_callback = lambda token: unregistered.append(("window", token))
     dds_app.unregister_popup_callback = lambda token: unregistered.append(("popup", token))
     dds_app.WindowChange = SimpleNamespace(OPENED="opened")
@@ -226,7 +230,9 @@ def test_dds_popup_accepts_empty_selection_and_unregisters_returned_handles(monk
     ui = context_ui.ContextUi("dds", registry)
     ui.setup()
     popup = Menu()
-    dds_file = SimpleNamespace(data_path="C:/demo_wrk/data/report.dds", name="report", selected_objects=[])
+    dds_file = SimpleNamespace(
+        data_path="C:/demo_wrk/data/report.dds", name="report", selected_objects=[]
+    )
     window = SimpleNamespace(current_page=SimpleNamespace(name="Main"))
     registered["popup"][1](popup, dds_file, window, object())
     popup.find_action(context_ui.ACTION_NAME).triggered.emit()
@@ -246,8 +252,12 @@ def test_dds_opened_window_gets_owned_top_level_menu(monkeypatch):
     main_window = MainWindow()
     dds = types.ModuleType("keysight.ads.dds")
     dds_app = types.ModuleType("keysight.ads.dds.app")
-    dds_app.register_window_callback = lambda callback: registered.setdefault("window", callback) or callback
-    dds_app.register_popup_callback = lambda callback: registered.setdefault("popup", callback) or callback
+    dds_app.register_window_callback = lambda callback: (
+        registered.setdefault("window", callback) or callback
+    )
+    dds_app.register_popup_callback = lambda callback: (
+        registered.setdefault("popup", callback) or callback
+    )
     dds_app.unregister_window_callback = lambda token: None
     dds_app.unregister_popup_callback = lambda token: None
     dds_app.WindowChange = SimpleNamespace(OPENED="opened")
@@ -257,7 +267,9 @@ def test_dds_opened_window_gets_owned_top_level_menu(monkeypatch):
     registry = context.ContextRegistry("dds", slot="unit")
     ui = context_ui.ContextUi("dds", registry)
     ui.setup()
-    dds_file = SimpleNamespace(data_path="C:/demo_wrk/data/report.dds", name="report", selected_objects=[])
+    dds_file = SimpleNamespace(
+        data_path="C:/demo_wrk/data/report.dds", name="report", selected_objects=[]
+    )
     window = SimpleNamespace(current_page=SimpleNamespace(name="Main"))
     registered["window"](dds_file, window, dds_app.WindowChange.OPENED)
 

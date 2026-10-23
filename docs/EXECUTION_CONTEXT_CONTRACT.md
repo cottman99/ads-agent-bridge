@@ -25,7 +25,7 @@ Schemas:
 - `schemas/bridge-capability-descriptor-v1.schema.json`
 
 The runtime snapshot describes bounded live state. Separately, governed
-`native.batch` returns a private-host-backed continuation Context after a
+`native.execute` returns a private-host-backed continuation Context after a
 successful content fingerprint has been observed. The opaque handle lets a
 later batch materialize exact identity and content-state fields without making
 the token an authority or exposing the bound workspace/fingerprint in it. See

@@ -9,20 +9,20 @@ It is not a replacement schematic, layout, DDS, or solver API. The official ADS
 APIs remain the functional surface. The Bridge supplies a governed execution
 and verification envelope around them.
 
-## Capability route
+## Shared semantic route
 
-```text
-natural-language task
-  -> exact ADS Context and version-matched docs
-  -> matching bootstrap experience and anti-pattern assets
-  -> matching asset-bound compiled shortcut, when eligible
-     OR governed official Python/AEL batch
-  -> workspace staging and lifecycle
-  -> readback, artifact validation, and evidence
-```
-
-The shared coverage definitions and promotion rules are maintained in the
+The common experience, documentation, implementation-discovery, and native
+fallback order is defined once in the
 [EDA Runtime capability model](https://github.com/cottman99/eda-bridge-runtime/blob/main/docs/CAPABILITY_MODEL.md).
+This Bridge contributes only ADS-specific contracts: installation/profile,
+DE/DDS session identity, workspace lifecycle, official Python/AEL execution,
+and ADS readback. Its ordinary operation catalogue omits certified workflows;
+an exact `experience.get` result supplies a compiled implementation binding when
+that asset owns one.
+When version, profile, and primary operation are exact, the same call resolves
+one unique metadata match directly; zero or multiple matches fail explicitly.
+This removes an index-listing turn without making the Bridge choose engineering
+semantics.
 
 ## Product boundary
 
@@ -30,7 +30,7 @@ Bridge infrastructure owns installation, profile, slot, display, workspace,
 selection Context, session ownership, dialog safety, transport, runtime
 selection, staging, fingerprints, retries, and evidence normalization.
 
-For multi-turn governed work, a successful native batch returns an opaque
+For multi-turn governed work, a successful native program returns an opaque
 content-bound continuation Context. Its private ADS-host record binds the exact
 target identity and source fingerprint; the next batch may reuse those facts
 but not prior authority, effect, write scope, program, idempotency, or
@@ -41,13 +41,27 @@ Python or AEL. It must declare Context, effect scope, timeout, artifacts, and
 validation; it is not an unrestricted shell.
 
 Certified workflows such as schematic construction, circuit simulation, DDS
-creation, and generated-input Momentum solving remain useful, maintained
-shortcuts. Their experience asset is semantic truth; implementation code is a
-compiled command-group cache for lower token cost and fewer transcription
-errors. A shortcut is preferred only while asset id/version/hash,
-applicability, runtime probe, parameters, and validation match. They do not
-define the outer boundary of ADS functionality and must
+creation, and generated-input Momentum solving remain compatible shortcuts.
+Their experience asset is semantic truth; implementation code is a compiled
+command-group cache. A shortcut is selected only when the applicable experience
+references it, its binding and validation match, and same-task evidence shows a
+concrete latency, reliability, or token benefit. They do not define the outer
+boundary of ADS functionality and must
 not grow into a second ADS API one component or plot type at a time.
+
+Operation descriptors are deterministic request and safety contracts. They are
+not a catalogue of everything ADS can do. Official ADS Python/AEL reach plus the
+governed execution envelope is the capability backbone.
+
+## Live and background lanes
+
+A Context copied from the ADS GUI defaults to the same open DE or DDS session.
+The Agent controls it through official internal APIs and the user sees changes
+immediately; no mouse automation is implied. An independent background
+workspace is reserved for explicit non-interference, long-running or high-risk
+work, or a proven live-API limitation. The lanes never write one workspace at
+the same time and meet only at explicit save, reload, ownership-transfer, or
+promotion boundaries.
 
 The wheel carries the independent Bootstrap Experience Library. The read-only
 `experience.list/get` gateway makes it reachable across local or SSH

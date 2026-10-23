@@ -12,7 +12,9 @@ def _fake_process(proc_root: Path, pid: int, name: str, environment: dict[str, s
     (process_root / "status").write_text(f"Name:\t{name}\nPPid:\t1\n", encoding="utf-8")
 
 
-def test_linux_process_discovery_requires_exact_nonce_slot_and_ads_process_name(tmp_path: Path) -> None:
+def test_linux_process_discovery_requires_exact_nonce_slot_and_ads_process_name(
+    tmp_path: Path,
+) -> None:
     environment = {
         "ADS_AGENT_MANAGED_SESSION_ID": "owned-nonce",
         "ADS_AGENT_SLOT": "blind-slot",

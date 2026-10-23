@@ -26,16 +26,22 @@ def setup(
 ) -> dict[str, object]:
     instances = discover(roots, search_roots)
     if not instances:
-        raise ValueError("No ADS installation found. Pass --ads-root with the installation directory.")
+        raise ValueError(
+            "No ADS installation found. Pass --ads-root with the installation directory."
+        )
     if len(instances) == 1:
         selected = instances[0]
     elif non_interactive:
         choices = ", ".join(item.instance_id for item in instances)
-        raise ValueError(f"Multiple ADS installations found ({choices}). Pass one --ads-root or run interactively.")
+        raise ValueError(
+            f"Multiple ADS installations found ({choices}). Pass one --ads-root or run interactively."
+        )
     else:
         print("Discovered ADS installations:")
         for index, instance in enumerate(instances, start=1):
-            print(f"  {index}. {instance.product_version} [{instance.support_tier}] {instance.install_root}")
+            print(
+                f"  {index}. {instance.product_version} [{instance.support_tier}] {instance.install_root}"
+            )
         raw = input("Select the default ADS installation [1]: ").strip() or "1"
         try:
             selected = instances[int(raw) - 1]
@@ -45,7 +51,10 @@ def setup(
     docs = (
         ensure_fast_index(selected)
         if selected.capabilities.get("local_docs")
-        else {"status": "not_available", "reason": "No installed local HTML documentation was discovered."}
+        else {
+            "status": "not_available",
+            "reason": "No installed local HTML documentation was discovered.",
+        }
     )
     docs_build = None
     if start_docs_build and selected.capabilities.get("local_docs"):
@@ -96,14 +105,21 @@ def quickstart(
 
     quickstart_root = data_dir() / "quickstarts"
     quickstart_root.mkdir(parents=True, exist_ok=True)
-    selected_workspace = (workspace or (quickstart_root / time.strftime("minimal-ac-%Y%m%d-%H%M%S"))).expanduser().resolve()
+    selected_workspace = (
+        (workspace or (quickstart_root / time.strftime("minimal-ac-%Y%m%d-%H%M%S")))
+        .expanduser()
+        .resolve()
+    )
     if selected_workspace.exists():
         raise ValueError(f"Quickstart workspace already exists: {selected_workspace}")
     if instance.capabilities.get("local_docs"):
         docs = ensure_fast_index(instance)
         probe = query(instance, "Python", limit=3)
     else:
-        docs = {"status": "not_available", "reason": "No installed local HTML documentation was discovered."}
+        docs = {
+            "status": "not_available",
+            "reason": "No installed local HTML documentation was discovered.",
+        }
         probe = {"results": []}
     runner = files("ads_agent_bridge").joinpath("quickstart_circuit.py")
     command = [instance.python_executable, str(runner), "--workspace", str(selected_workspace)]
@@ -142,7 +158,9 @@ def quickstart(
             "returncode": None,
             "timed_out": True,
             "timeout_seconds": timeout,
-            "partial_workspace_path": str(selected_workspace) if selected_workspace.exists() else None,
+            "partial_workspace_path": str(selected_workspace)
+            if selected_workspace.exists()
+            else None,
             "stdout_tail": stdout,
             "stderr_tail": _tail(exc.stderr),
             "error": f"ADS quickstart exceeded the {timeout:g}-second timeout.",
@@ -170,8 +188,16 @@ def quickstart(
         "instance": instance.to_dict(),
         "gates": {
             "documentation_index": "passed" if documentation_available else "not_available",
-            "documentation_query": "passed" if probe["results"] else "not_available" if not documentation_available else "no_results",
-            "addon_registration": "installed" if addon_installed else "not_required" if not addon_required else "not_installed",
+            "documentation_query": "passed"
+            if probe["results"]
+            else "not_available"
+            if not documentation_available
+            else "no_results",
+            "addon_registration": "installed"
+            if addon_installed
+            else "not_required"
+            if not addon_required
+            else "not_installed",
             "workspace_creation": "passed" if simulation.get("workspace") else "failed",
             "circuit_simulation": "passed" if simulation.get("ok") else "failed",
             "dataset_readback": "passed" if simulation.get("rows", 0) else "failed",

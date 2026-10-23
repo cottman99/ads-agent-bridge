@@ -22,9 +22,7 @@ def test_public_release_references_match_package_version():
     expected_tag = f"v{version}"
 
     readme = (root / "README.md").read_text(encoding="utf-8")
-    installer_tags = set(
-        re.findall(r"releases/download/(v[^/]+)/install\.(?:sh|ps1)", readme)
-    )
+    installer_tags = set(re.findall(r"releases/download/(v[^/]+)/install\.(?:sh|ps1)", readme))
     assert installer_tags == {expected_tag}
 
     changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
@@ -53,9 +51,7 @@ def test_github_actions_are_pinned_to_full_commit_shas():
         text = workflow.read_text(encoding="utf-8")
         for action_ref in re.findall(r"^\s*- uses:\s+([^\s#]+)", text, re.MULTILINE):
             _, separator, ref = action_ref.rpartition("@")
-            assert separator == "@", (
-                f"missing action ref in {workflow.name}: {action_ref}"
-            )
+            assert separator == "@", f"missing action ref in {workflow.name}: {action_ref}"
             assert re.fullmatch(r"[0-9a-f]{40}", ref), (
                 f"unpinned action in {workflow.name}: {action_ref}"
             )
@@ -92,9 +88,7 @@ def test_public_capability_claims_keep_plugin_and_comparison_scope_explicit():
     root = Path(__file__).parents[1]
     english = (root / "README.md").read_text(encoding="utf-8")
     chinese = (root / "README.zh-CN.md").read_text(encoding="utf-8")
-    matrix = (root / "docs" / "CAPABILITY_MATRIX.md").read_text(
-        encoding="utf-8"
-    )
+    matrix = (root / "docs" / "CAPABILITY_MATRIX.md").read_text(encoding="utf-8")
 
     for readme in (english, chinese):
         assert "docs/CAPABILITY_MATRIX.md" in readme
@@ -112,12 +106,8 @@ def test_public_capability_claims_keep_plugin_and_comparison_scope_explicit():
     assert "BENCHMARK_ADS2027_HEADLESS_AC.md" in matrix
 
     execution_summary = root / "docs" / "benchmarks" / "ads2027-v3-public-summary.json"
-    execution_chart = (
-        root / "docs" / "assets" / "readme" / "ads2027-headless-ac-benchmark.svg"
-    )
-    knowledge_chart = (
-        root / "docs" / "assets" / "readme" / "ads2027-knowledge-benchmark.svg"
-    )
+    execution_chart = root / "docs" / "assets" / "readme" / "ads2027-headless-ac-benchmark.svg"
+    knowledge_chart = root / "docs" / "assets" / "readme" / "ads2027-knowledge-benchmark.svg"
     assert execution_summary.is_file()
     assert execution_chart.is_file()
     assert knowledge_chart.is_file()

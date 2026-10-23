@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+
 try:
     from PySide6 import QtWidgets
 except ImportError:
@@ -50,7 +52,7 @@ class ContextUi:
             elif self.profile == "dds":
                 self._setup_dds()
             else:
-                raise ValueError("unsupported ADS UI profile: {0}".format(self.profile))
+                raise ValueError(f"unsupported ADS UI profile: {self.profile}")
         except Exception:
             self.stop()
             raise
@@ -85,7 +87,7 @@ class ContextUi:
             except Exception as exc:
                 self._last_error = str(exc)
                 self._publish_status("error")
-                print("ADS Agent Bridge context action failed: {0}".format(exc))
+                print(f"ADS Agent Bridge context action failed: {exc}")
                 return None
 
         return wrapped
@@ -99,7 +101,7 @@ class ContextUi:
         if clipboard is None:
             raise RuntimeError("Qt clipboard is unavailable")
         clipboard.setText(text)
-        print("ADS Agent context copied: {0}".format(text))
+        print(f"ADS Agent context copied: {text}")
         return envelope
 
     # -- Design Environment -------------------------------------------------
@@ -113,7 +115,9 @@ class ContextUi:
         self._de_app = de_app.Application()
         self._remove_de_callbacks()
         self._de_app.add_popup_callback(self._guard(self._de_popup), DE_POPUP_CALLBACK)
-        self._de_app.add_main_popup_callback(self._guard(self._de_main_popup), DE_MAIN_POPUP_CALLBACK)
+        self._de_app.add_main_popup_callback(
+            self._guard(self._de_main_popup), DE_MAIN_POPUP_CALLBACK
+        )
         experimental = getattr(self._de_app_module, "experimental", None)
         self._surfaces = {
             "design-window": "available",
@@ -131,10 +135,8 @@ class ContextUi:
             ("remove_popup_callback", DE_POPUP_CALLBACK),
             ("remove_main_popup_callback", DE_MAIN_POPUP_CALLBACK),
         ):
-            try:
+            with contextlib.suppress(Exception):
                 _safe_call(self._de_app, method_name, callback_name)
-            except Exception:
-                pass
 
     def _stop_de(self):
         self._remove_de_callbacks()
@@ -207,7 +209,11 @@ class ContextUi:
     def _de_main_popup(self, popup_menu, widget):
         del widget
         experimental = getattr(self._de_app_module, "experimental", None)
-        selected = _safe_call(experimental, "selected_workspace_items") if experimental is not None else None
+        selected = (
+            _safe_call(experimental, "selected_workspace_items")
+            if experimental is not None
+            else None
+        )
         try:
             captured = tuple(selected or ())
         except Exception:
@@ -239,22 +245,20 @@ class ContextUi:
         self._surfaces = {"dds-window": "available"}
 
     def _register_dds_callback(self, kind, callback):
-        register = getattr(self._dds_app, "register_{0}_callback".format(kind))
+        register = getattr(self._dds_app, f"register_{kind}_callback")
         token = register(callback)
         self._dds_callbacks.append((kind, token, callback))
 
     def _stop_dds(self):
         for kind, token, callback in reversed(self._dds_callbacks):
-            unregister = getattr(self._dds_app, "unregister_{0}_callback".format(kind), None)
+            unregister = getattr(self._dds_app, f"unregister_{kind}_callback", None)
             if not callable(unregister):
                 continue
             try:
                 unregister(token if token is not None else callback)
             except Exception:
-                try:
+                with contextlib.suppress(Exception):
                     unregister(callback)
-                except Exception:
-                    pass
         self._dds_callbacks = []
 
     def _dds_window_callback(self, dds_file, window, change):

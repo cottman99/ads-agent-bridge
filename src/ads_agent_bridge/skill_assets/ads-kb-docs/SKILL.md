@@ -106,3 +106,7 @@ If `ADS_DOC_REPO` points to a full `keysight-ads-agent-kit` checkout, prefer its
 - A readable dataset is not interpreted simulation evidence.
 - A documented API is not proof that the selected ADS runtime exposes or successfully executes it.
 - For live DE/DDS, headless simulation, or AEL execution, route to `$ads-agent-bridge` and require a separate runtime acceptance gate.
+
+## Automatic preparation
+
+The first query prepares supported local sources when Markdown is absent. Source changes refresh the private version partition under a single build lock. Existing Markdown is preserved. Inspect ready, partial, building or source-missing state without interpreting it as execution permission. Missing documentation does not disable native execution. Official examples, installed SDK signatures/docstrings and bounded native observations can supply additional evidence; source code is never imported merely to index it.

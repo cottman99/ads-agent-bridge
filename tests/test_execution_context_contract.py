@@ -10,7 +10,6 @@ from ads_agent_bridge.addon.AdsAgentBridge.contracts import (
     commands_by_safety,
 )
 
-
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_DIR = ROOT / "docs" / "schemas"
 
@@ -40,7 +39,7 @@ def test_capability_catalog_is_unique_complete_and_json_shaped() -> None:
     assert RUNTIME_SNAPSHOT_SCHEMA_VERSION == 1
     assert len(ids) == len(set(ids))
     assert set(ids) == set(commands_by_safety("safe")) | set(commands_by_safety("bounded")) | set(
-        commands_by_safety("unsafe")
+        commands_by_safety("native")
     )
     assert "runtime_snapshot" in commands_by_safety("safe")
     assert json.loads(json.dumps(specs)) == specs

@@ -10,24 +10,30 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Iterator
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterator
 
 import html2text
 from bs4 import BeautifulSoup
+from eda_bridge_runtime.build_lock import build_lock
 
 from .models import AdsInstance
 from .paths import docs_cache
 from .processes import pid_running
-
 
 INDEX_SCHEMA_VERSION = 4
 BATCH_SIZE = 100
 SOURCE_FALLBACK_MAX_FILES = 200
 SOURCE_FALLBACK_MAX_BYTES = 64 * 1024
 SOURCE_FALLBACK_MAX_SECONDS = 1.0
-MAIN_CONTENT_SELECTORS = ("#ks-content", "#mc-main-content", "main", '[role="main"]', "article")
+MAIN_CONTENT_SELECTORS = (
+    "#ks-content",
+    "#mc-main-content",
+    "main",
+    '[role="main"]',
+    "article",
+)
 DOCUMENT_DOMAINS = {"ads", "ael", "python", "dds"}
 MAX_QUERY_MATCHES = 6
 MAX_QUERY_RESULTS = 20
@@ -81,7 +87,9 @@ def fingerprint(instance: AdsInstance) -> tuple[str, int]:
         except OSError:
             continue
         relative = path.relative_to(root).as_posix()
-        digest.update(f"{domain}\0{root}\0{relative}\0{stat.st_size}\0{stat.st_mtime_ns}\n".encode("utf-8"))
+        digest.update(
+            f"{domain}\0{root}\0{relative}\0{stat.st_size}\0{stat.st_mtime_ns}\n".encode()
+        )
         count += 1
     return digest.hexdigest(), count
 
@@ -103,12 +111,22 @@ def _page_record(domain: str, root: Path, path: Path) -> tuple[str, str, str, st
     with path.open("rb") as stream:
         raw = stream.read(BOOTSTRAP_PREFIX_BYTES).decode("utf-8", errors="ignore")
     title_match = re.search(r"(?is)<title\b[^>]*>(.*?)</title>", raw)
-    title = _strip_product_branding(_plain_fragment(title_match.group(1))) if title_match else path.stem
+    title = (
+        _strip_product_branding(_plain_fragment(title_match.group(1))) if title_match else path.stem
+    )
     heading_matches = re.findall(r"(?is)<h[1-4]\b[^>]*>(.*?)</h[1-4]>", raw)[:30]
     headings = " | ".join(_plain_fragment(item) for item in heading_matches)
     text = f"{path.stem} {_plain_fragment(raw)[:BOOTSTRAP_TEXT_CHARS]}"
     stat = path.stat()
-    return domain, str(root), path.relative_to(root).as_posix(), title, headings + " " + text, stat.st_mtime_ns, stat.st_size
+    return (
+        domain,
+        str(root),
+        path.relative_to(root).as_posix(),
+        title,
+        headings + " " + text,
+        stat.st_mtime_ns,
+        stat.st_size,
+    )
 
 
 def _normalized_title(soup: BeautifulSoup, path: Path, content=None) -> str:
@@ -126,7 +144,10 @@ def _normalized_title(soup: BeautifulSoup, path: Path, content=None) -> str:
 
 
 def _main_content(soup: BeautifulSoup):
-    content = next((node for selector in MAIN_CONTENT_SELECTORS if (node := soup.select_one(selector))), None)
+    content = next(
+        (node for selector in MAIN_CONTENT_SELECTORS if (node := soup.select_one(selector))),
+        None,
+    )
     if content is None:
         content = soup.body or soup
     removable = content.select(
@@ -196,6 +217,26 @@ def _write_manifest(path: Path, payload: dict[str, object]) -> None:
 
 def ensure_fast_index(instance: AdsInstance, force: bool = False) -> dict[str, object]:
     cache = docs_cache(instance.instance_id)
+    previous = _load_manifest(cache / "manifest.json") or {}
+    if (
+        not force
+        and (cache / "fast-index.sqlite").is_file()
+        and previous.get("schema_version") == INDEX_SCHEMA_VERSION
+    ):
+        current_fingerprint, _ = fingerprint(instance)
+        if previous.get("fingerprint") == current_fingerprint:
+            return {
+                **previous,
+                "status": "ready",
+                "reused": True,
+                "db_path": str(cache / "fast-index.sqlite"),
+            }
+    with build_lock(docs_cache(instance.instance_id) / ".index.lock"):
+        return _ensure_fast_index(instance, force)
+
+
+def _ensure_fast_index(instance: AdsInstance, force: bool = False) -> dict[str, object]:
+    cache = docs_cache(instance.instance_id)
     db_path = cache / "fast-index.sqlite"
     manifest_path = cache / "manifest.json"
     current_fingerprint, file_count = fingerprint(instance)
@@ -203,8 +244,16 @@ def ensure_fast_index(instance: AdsInstance, force: bool = False) -> dict[str, o
         raise ValueError(f"No local HTML documentation found for {instance.product_version}.")
     if not force and db_path.is_file() and manifest_path.is_file():
         manifest = _load_manifest(manifest_path) or {}
-        if manifest.get("schema_version") == INDEX_SCHEMA_VERSION and manifest.get("fingerprint") == current_fingerprint:
-            return {**manifest, "status": "ready", "reused": True, "db_path": str(db_path)}
+        if (
+            manifest.get("schema_version") == INDEX_SCHEMA_VERSION
+            and manifest.get("fingerprint") == current_fingerprint
+        ):
+            return {
+                **manifest,
+                "status": "ready",
+                "reused": True,
+                "db_path": str(db_path),
+            }
 
     fd, temporary_name = tempfile.mkstemp(prefix=".fast-index.", suffix=".sqlite", dir=cache)
     os.close(fd)
@@ -239,7 +288,15 @@ def ensure_fast_index(instance: AdsInstance, force: bool = False) -> dict[str, o
                     else:
                         stat = path.stat()
                         relative = path.relative_to(root).as_posix()
-                        record = (domain, str(root), relative, path.stem, relative, stat.st_mtime_ns, stat.st_size)
+                        record = (
+                            domain,
+                            str(root),
+                            relative,
+                            path.stem,
+                            relative,
+                            stat.st_mtime_ns,
+                            stat.st_size,
+                        )
                     connection.execute(
                         "INSERT OR REPLACE INTO pages "
                         "(domain, source_root, relative_path, source_ref, title, content, mtime_ns, size, enriched, markdown_path) "
@@ -288,7 +345,16 @@ def ensure_fast_index(instance: AdsInstance, force: bool = False) -> dict[str, o
     return {**manifest, "status": "ready", "reused": False, "db_path": str(db_path)}
 
 
-def build_full_index(instance: AdsInstance, *, force: bool = False, max_pages: int | None = None) -> dict[str, object]:
+def build_full_index(
+    instance: AdsInstance, *, force: bool = False, max_pages: int | None = None
+) -> dict[str, object]:
+    with build_lock(docs_cache(instance.instance_id) / ".index.lock"):
+        return _build_full_index(instance, force=force, max_pages=max_pages)
+
+
+def _build_full_index(
+    instance: AdsInstance, *, force: bool = False, max_pages: int | None = None
+) -> dict[str, object]:
     state = ensure_fast_index(instance)
     cache = docs_cache(instance.instance_id)
     db_path = Path(str(state["db_path"]))
@@ -300,7 +366,10 @@ def build_full_index(instance: AdsInstance, *, force: bool = False, max_pages: i
         where = "" if force else " WHERE enriched = 0"
         limit = "" if max_pages is None else f" LIMIT {max(0, int(max_pages))}"
         rows = connection.execute(
-            "SELECT domain, source_root, relative_path FROM pages" + where + " ORDER BY source_root, relative_path" + limit
+            "SELECT domain, source_root, relative_path FROM pages"
+            + where
+            + " ORDER BY source_root, relative_path"
+            + limit
         ).fetchall()
         for row in rows:
             root = Path(row["source_root"])
@@ -320,7 +389,9 @@ def build_full_index(instance: AdsInstance, *, force: bool = False, max_pages: i
             except (OSError, UnicodeError, ValueError) as exc:
                 errors.append({"source_path": str(source), "error": str(exc)})
         connection.commit()
-        enriched = int(connection.execute("SELECT count(*) FROM pages WHERE enriched = 1").fetchone()[0])
+        enriched = int(
+            connection.execute("SELECT count(*) FROM pages WHERE enriched = 1").fetchone()[0]
+        )
         total = int(connection.execute("SELECT count(*) FROM pages").fetchone()[0])
 
     manifest = _load_manifest(manifest_path) or {}
@@ -369,6 +440,11 @@ def _database_progress(db_path: Path) -> tuple[int, int] | None:
 
 
 def start_background_build(instance: AdsInstance, *, force: bool = False) -> dict[str, object]:
+    with build_lock(docs_cache(instance.instance_id) / ".spawn.lock"):
+        return _start_background_build(instance, force=force)
+
+
+def _start_background_build(instance: AdsInstance, *, force: bool = False) -> dict[str, object]:
     ensure_fast_index(instance)
     cache = docs_cache(instance.instance_id)
     state_path = cache / "build-state.json"
@@ -377,18 +453,34 @@ def start_background_build(instance: AdsInstance, *, force: bool = False) -> dic
     if pid_running(previous_pid):
         return {**previous, "status": "running", "reused": True}
     log_path = cache / "build.log"
-    command = [sys.executable, "-m", "ads_agent_bridge", "docs", "build", "--ads", instance.instance_id]
+    command = [
+        sys.executable,
+        "-m",
+        "ads_agent_bridge",
+        "docs",
+        "build",
+        "--ads",
+        instance.instance_id,
+    ]
     if force:
         command.append("--force")
     creationflags = 0
     kwargs: dict[str, object] = {"cwd": str(cache)}
     if os.name == "nt":
-        creationflags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        creationflags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(
+            subprocess, "CREATE_NEW_PROCESS_GROUP", 0
+        )
         kwargs["creationflags"] = creationflags
     else:
         kwargs["start_new_session"] = True
     with log_path.open("ab") as log:
-        process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, **kwargs)
+        process = subprocess.Popen(
+            command,
+            stdin=subprocess.DEVNULL,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            **kwargs,
+        )
     payload = {
         "schema_version": 1,
         "status": "running",
@@ -419,11 +511,17 @@ def status(instance: AdsInstance) -> dict[str, object]:
             "background_build": None,
         }
     build_state = _load_manifest(cache / "build-state.json") or {}
-    if build_state and build_state.get("status") == "running" and not pid_running(int(build_state.get("pid") or 0)):
+    if (
+        build_state
+        and build_state.get("status") == "running"
+        and not pid_running(int(build_state.get("pid") or 0))
+    ):
         updated_at = str(payload.get("enrichment_updated_at") or "")
         started_at = str(build_state.get("started_at") or "")
         if updated_at and updated_at >= started_at:
-            build_state["status"] = "completed" if payload.get("enrichment_status") == "ready" else "partial"
+            build_state["status"] = (
+                "completed" if payload.get("enrichment_status") == "ready" else "partial"
+            )
         else:
             build_state["status"] = "interrupted"
     if build_state.get("status") == "running":
@@ -435,7 +533,12 @@ def status(instance: AdsInstance) -> dict[str, object]:
             payload["enrichment_status"] = "running"
             build_state["enriched_file_count"] = enriched
             build_state["source_file_count"] = total
-    return {**payload, "status": "ready", "db_path": str(db_path), "background_build": build_state or None}
+    return {
+        **payload,
+        "status": "ready",
+        "db_path": str(db_path),
+        "background_build": build_state or None,
+    }
 
 
 def _document_body(content: str) -> str:
@@ -503,14 +606,23 @@ def _matched_sections(content: str, terms: list[str], *, width: int = 500) -> li
         if normalized in seen or normalized not in lowered:
             continue
         seen.add(normalized)
-        matches.append({"query_term": term, "excerpt": _context_excerpt(content, [normalized], width=width)})
+        matches.append(
+            {
+                "query_term": term,
+                "excerpt": _context_excerpt(content, [normalized], width=width),
+            }
+        )
         if len(matches) >= MAX_QUERY_MATCHES:
             break
     return matches
 
 
 def _focus_terms(text: str | None) -> list[str]:
-    terms = [term.casefold() for term in re.findall(r"[\w.:-]+", text or "", flags=re.UNICODE) if len(term) > 1]
+    terms = [
+        term.casefold()
+        for term in re.findall(r"[\w.:-]+", text or "", flags=re.UNICODE)
+        if len(term) > 1
+    ]
     symbol_terms = [term for term in terms if any(marker in term for marker in ("_", ".", ":"))]
     return list(dict.fromkeys(symbol_terms or terms))
 
@@ -572,17 +684,13 @@ def _merge_reference_candidates(
                 sum(term in str(row["title"]).casefold() for term in uncovered),
             ),
         )
-        gains = {
-            term for term in uncovered if term in str(candidate["title"]).casefold()
-        }
+        gains = {term for term in uncovered if term in str(candidate["title"]).casefold()}
         if not gains:
             break
         topic_supplements.append(candidate)
         existing_refs.add(str(candidate["source_ref"]))
         uncovered -= gains
-        remaining = [
-            row for row in remaining if str(row["source_ref"]) not in existing_refs
-        ]
+        remaining = [row for row in remaining if str(row["source_ref"]) not in existing_refs]
     reference_quota = min(3, limit // 2)
     existing_references = sum(_is_reference_result(row) for row in strict_rows[:limit])
     needed = max(0, reference_quota - existing_references)
@@ -659,9 +767,14 @@ def _query_index(
     )
     with sqlite3.connect(db_path) as connection:
         connection.row_factory = sqlite3.Row
-        rows = [dict(row) for row in connection.execute(sql, [*score_params, *where_params, *domains, limit])]
+        rows = [
+            dict(row)
+            for row in connection.execute(sql, [*score_params, *where_params, *domains, limit])
+        ]
         for row in rows:
-            row["snippet"] = _context_excerpt(str(row["_content"]), terms, width=QUERY_SNIPPET_CHARS)
+            row["snippet"] = _context_excerpt(
+                str(row["_content"]), terms, width=QUERY_SNIPPET_CHARS
+            )
             row.pop("relevance", None)
     return rows
 
@@ -675,11 +788,11 @@ def query(
 ) -> dict[str, object]:
     if limit < 1 or limit > MAX_QUERY_RESULTS:
         raise ValueError(f"limit must be between 1 and {MAX_QUERY_RESULTS}.")
-    state = status(instance)
-    if state.get("status") != "ready":
-        state = ensure_fast_index(instance)
+    state = ensure_fast_index(instance)
     db_path = Path(str(state["db_path"]))
-    terms = [term.lower() for term in re.findall(r"[\w.:-]+", text, flags=re.UNICODE) if len(term) > 1]
+    terms = [
+        term.lower() for term in re.findall(r"[\w.:-]+", text, flags=re.UNICODE) if len(term) > 1
+    ]
     if not terms:
         raise ValueError("Query must contain at least one searchable term.")
     explicit_domains = [domain.casefold() for domain in (domains or [])]
@@ -712,6 +825,13 @@ def query(
         rows = _query_source_fallback(instance, search_terms, limit, domains=selected_domains)
         search_mode = "source_fallback_bounded"
     rows = [_decorate_result(row, search_terms) for row in rows]
+    preparation_errors = []
+    for row in rows:
+        if row.get("source_ref"):
+            try:
+                get_document(instance, str(row["source_ref"]), max_chars=200, _index_state=state)
+            except (ValueError, OSError, RuntimeError) as exc:
+                preparation_errors.append({"source_ref": row["source_ref"], "reason": str(exc)})
     return {
         "instance_id": instance.instance_id,
         "product_version": instance.product_version,
@@ -731,6 +851,10 @@ def query(
         "evidence_boundary": "Version-matched local documentation evidence; not runtime verification.",
         "next_action": "Use docs get <source_ref> --focus <symbol-or-topic> only when returned excerpts are insufficient.",
         "result_count": len(rows),
+        "preparation": {
+            "status": "partial" if preparation_errors else "ready",
+            "errors": preparation_errors,
+        },
         "results": rows,
     }
 
@@ -741,12 +865,11 @@ def get_document(
     *,
     focus: str | None = None,
     max_chars: int = 4000,
+    _index_state: dict | None = None,
 ) -> dict[str, object]:
     if max_chars < 200 or max_chars > MAX_GET_CHARS:
         raise ValueError(f"max_chars must be between 200 and {MAX_GET_CHARS}.")
-    state = status(instance)
-    if state.get("status") != "ready":
-        state = ensure_fast_index(instance)
+    state = _index_state or ensure_fast_index(instance)
     db_path = Path(str(state["db_path"]))
     with sqlite3.connect(db_path) as connection:
         connection.row_factory = sqlite3.Row
@@ -756,7 +879,9 @@ def get_document(
             (source_ref,),
         ).fetchone()
     if stored is None:
-        raise ValueError(f"Unknown documentation source_ref for {instance.instance_id}: {source_ref}")
+        raise ValueError(
+            f"Unknown documentation source_ref for {instance.instance_id}: {source_ref}"
+        )
     row = dict(stored)
     retrieval_mode = "enriched_index"
     if not row["enriched"]:
@@ -766,6 +891,16 @@ def get_document(
         row["title"] = title
         row["content"] = content
         retrieval_mode = "on_demand_cleaning"
+        with build_lock(docs_cache(instance.instance_id) / ".index.lock"):
+            markdown = _markdown_path(
+                docs_cache(instance.instance_id), root, str(row["relative_path"])
+            )
+            _atomic_write_text(markdown, content)
+            with sqlite3.connect(db_path) as connection:
+                connection.execute(
+                    "UPDATE pages SET title = ?, content = ?, enriched = 1, markdown_path = ? WHERE source_ref = ?",
+                    (title, content, str(markdown), source_ref),
+                )
     terms = _focus_terms(focus)
     sections: list[dict[str, str]] = []
     excerpt: str | None = None
@@ -777,15 +912,16 @@ def get_document(
         for term in terms:
             if term not in matched_terms and term in title_text:
                 sections.append(
-                    {"query_term": term, "excerpt": _context_excerpt(str(row["content"]), [], width=section_width)}
+                    {
+                        "query_term": term,
+                        "excerpt": _context_excerpt(str(row["content"]), [], width=section_width),
+                    }
                 )
     else:
         excerpt = _context_excerpt(str(row["content"]), [], width=max_chars)
     source_kind, validation_status = _source_evidence(str(row["domain"]), str(row["relative_path"]))
     returned_chars = (
-        sum(len(section["excerpt"]) for section in sections)
-        if terms
-        else len(excerpt or "")
+        sum(len(section["excerpt"]) for section in sections) if terms else len(excerpt or "")
     )
     return {
         "instance_id": instance.instance_id,
@@ -801,7 +937,9 @@ def get_document(
         "retrieval_mode": retrieval_mode,
         "returned_chars": returned_chars,
         **({"sections": sections} if terms else {"excerpt": excerpt}),
-        "content_hash": hashlib.sha256(_document_body(str(row["content"])).encode("utf-8")).hexdigest(),
+        "content_hash": hashlib.sha256(
+            _document_body(str(row["content"])).encode("utf-8")
+        ).hexdigest(),
         "evidence_boundary": "Version-matched local documentation evidence; not runtime verification.",
     }
 
@@ -820,7 +958,10 @@ def _query_source_fallback(
     for domain, root, path in _iter_html(instance):
         if domains and domain.lower() not in domains:
             continue
-        if scanned >= SOURCE_FALLBACK_MAX_FILES or time.monotonic() - started >= SOURCE_FALLBACK_MAX_SECONDS:
+        if (
+            scanned >= SOURCE_FALLBACK_MAX_FILES
+            or time.monotonic() - started >= SOURCE_FALLBACK_MAX_SECONDS
+        ):
             break
         scanned += 1
         try:

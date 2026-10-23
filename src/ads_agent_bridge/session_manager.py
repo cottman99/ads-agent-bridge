@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 import time
 import uuid
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -16,7 +16,6 @@ from .config import select_instance
 from .models import AdsInstance
 from .paths import _override_root
 from .processes import managed_ads_processes, managed_host_processes, pid_running
-
 
 DEFAULT_WAIT_SECONDS = 120.0
 MANAGED_PREFIX = "managed-session-"
@@ -77,10 +76,8 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
         with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
             json.dump(payload, stream, ensure_ascii=False, indent=2)
             stream.write("\n")
-        try:
+        with suppress(OSError):
             os.chmod(temporary_name, 0o600)
-        except OSError:
-            pass
         os.replace(temporary_name, path)
     finally:
         if os.path.exists(temporary_name):
@@ -246,7 +243,8 @@ def _identity_matches(record: dict[str, Any] | None, bridge: dict[str, Any] | No
     return (
         record.get("managed_session_id")
         and record.get("managed_session_id") == bridge.get("managed_session_id")
-        and normalize_slot(str(record.get("slot") or "")) == normalize_slot(str(bridge.get("slot") or ""))
+        and normalize_slot(str(record.get("slot") or ""))
+        == normalize_slot(str(bridge.get("slot") or ""))
         and (recorded_pid == 0 or recorded_pid == bridge_pid)
     )
 
@@ -267,7 +265,9 @@ def _managed_process_snapshot(record: dict[str, Any]) -> dict[str, Any]:
 def _host_ui_wait_contract(managed: dict[str, Any]) -> dict[str, Any]:
     managed_session_id = str(managed.get("managed_session_id") or "")
     slot = normalize_slot(str(managed.get("slot") or ""))
-    candidate_processes = managed_host_processes(managed_session_id, slot, managed.get("launcher_pid"))
+    candidate_processes = managed_host_processes(
+        managed_session_id, slot, managed.get("launcher_pid")
+    )
     if not candidate_processes:
         candidate_processes = managed.get("managed_processes", [])
     return {
@@ -291,18 +291,29 @@ def _host_ui_wait_contract(managed: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _session_summary(slot: str, bridge: dict[str, Any] | None, managed: dict[str, Any] | None) -> dict[str, Any]:
+def _session_summary(
+    slot: str, bridge: dict[str, Any] | None, managed: dict[str, Any] | None
+) -> dict[str, Any]:
     normalized = normalize_slot(slot)
     if bridge is None:
         if managed is None:
-            return {"slot": normalized, "state": "absent", "ownership": "none", "reachable": False}
+            return {
+                "slot": normalized,
+                "state": "absent",
+                "ownership": "none",
+                "reachable": False,
+            }
         managed = _managed_process_snapshot(managed)
         ads_alive = pid_running(managed.get("ads_pid"))
         launcher_alive = pid_running(managed.get("launcher_pid"))
-        starting = managed.get("state") in {"starting", "waiting-for-host-ui"} and (ads_alive or launcher_alive)
+        starting = managed.get("state") in {"starting", "waiting-for-host-ui"} and (
+            ads_alive or launcher_alive
+        )
         alive = ads_alive or launcher_alive
-        waiting_for_host_ui = starting and ads_alive and (
-            managed.get("state") == "waiting-for-host-ui" or not launcher_alive
+        waiting_for_host_ui = (
+            starting
+            and ads_alive
+            and (managed.get("state") == "waiting-for-host-ui" or not launcher_alive)
         )
         state = (
             "waiting-for-host-ui"
@@ -316,7 +327,11 @@ def _session_summary(slot: str, bridge: dict[str, Any] | None, managed: dict[str
         summary = {
             "slot": normalized,
             "state": state,
-            "ownership": "agent-owned-unverified" if starting else "agent-owned-record" if alive else "orphaned-record",
+            "ownership": "agent-owned-unverified"
+            if starting
+            else "agent-owned-record"
+            if alive
+            else "orphaned-record",
             "reachable": False,
             "managed_session_id": managed.get("managed_session_id"),
             "ads_pid": managed.get("ads_pid"),
@@ -339,11 +354,18 @@ def _session_summary(slot: str, bridge: dict[str, Any] | None, managed: dict[str
                     "Resolve a verified startup dialog under the host Agent risk policy, then run status again.",
                 ]
                 if waiting_for_host_ui
-                else ["Inspect the launch log or ADS window for a license or first-run dialog.", "Run status again after resolving it."]
+                else [
+                    "Inspect the launch log or ADS window for a license or first-run dialog.",
+                    "Run status again after resolving it.",
+                ]
                 if starting
-                else ["Inspect the launch log and ADS window; do not start another session in this slot."]
+                else [
+                    "Inspect the launch log and ADS window; do not start another session in this slot."
+                ]
                 if alive
-                else ["The stale record can be replaced by the next launch after verifying ADS is not running."]
+                else [
+                    "The stale record can be replaced by the next launch after verifying ADS is not running."
+                ]
             ),
         }
         if waiting_for_host_ui:
@@ -358,7 +380,13 @@ def _session_summary(slot: str, bridge: dict[str, Any] | None, managed: dict[str
     owned = _identity_matches(managed, bridge)
     ui = result.get("ui") if isinstance(result.get("ui"), dict) else {}
     workspace_open = result.get("workspace_is_open") is True
-    state = "blocked-by-dialog" if ui.get("modal_blocking") else "workspace-ready" if workspace_open else "bridge-ready"
+    state = (
+        "blocked-by-dialog"
+        if ui.get("modal_blocking")
+        else "workspace-ready"
+        if workspace_open
+        else "bridge-ready"
+    )
     summary: dict[str, Any] = {
         "slot": normalized,
         "state": state,
@@ -381,23 +409,40 @@ def _session_summary(slot: str, bridge: dict[str, Any] | None, managed: dict[str
     if response and not response.get("ok"):
         summary.update({"state": "degraded", "reachable": False, "error": response.get("error")})
     if managed is not None and not owned:
-        summary["warning"] = "Managed record does not match the live bridge identity; treating it as user-owned."
+        summary["warning"] = (
+            "Managed record does not match the live bridge identity; treating it as user-owned."
+        )
     return summary
 
 
 def status(slot: str | None = None) -> dict[str, Any]:
-    managed_by_slot = {normalize_slot(str(item.get("slot") or "")): item for item in _managed_records()}
-    live_by_slot = {normalize_slot(str(item.get("slot") or "")): item for item in list_sessions("de")}
+    managed_by_slot = {
+        normalize_slot(str(item.get("slot") or "")): item for item in _managed_records()
+    }
+    live_by_slot = {
+        normalize_slot(str(item.get("slot") or "")): item for item in list_sessions("de")
+    }
     if slot is not None:
         normalized = normalize_slot(slot)
-        sessions = [_session_summary(normalized, live_by_slot.get(normalized), managed_by_slot.get(normalized))]
+        sessions = [
+            _session_summary(
+                normalized,
+                live_by_slot.get(normalized),
+                managed_by_slot.get(normalized),
+            )
+        ]
     else:
         slots = sorted(set(live_by_slot) | set(managed_by_slot))
-        sessions = [_session_summary(item, live_by_slot.get(item), managed_by_slot.get(item)) for item in slots]
+        sessions = [
+            _session_summary(item, live_by_slot.get(item), managed_by_slot.get(item))
+            for item in slots
+        ]
     return {"status": "ok", "sessions": sessions}
 
 
-def _launch_environment(instance: AdsInstance, slot: str, managed_session_id: str, display: str | None) -> dict[str, str]:
+def _launch_environment(
+    instance: AdsInstance, slot: str, managed_session_id: str, display: str | None
+) -> dict[str, str]:
     environment = os.environ.copy()
     environment.update(
         {
@@ -436,7 +481,9 @@ def _verified_workspace(slot: str, expected: Path) -> dict[str, Any]:
     result = result if isinstance(result, dict) else {}
     actual = result.get("workspace")
     return {
-        "ok": response.get("ok") is True and result.get("workspace_is_open") is True and same_path(actual, expected),
+        "ok": response.get("ok") is True
+        and result.get("workspace_is_open") is True
+        and same_path(actual, expected),
         "expected": str(expected),
         "actual": actual,
         "bridge_response": response,
@@ -461,13 +508,19 @@ def _reuse_session(instance: AdsInstance, slot: str, workspace: Path) -> dict[st
         )
     opened = False
     if not current:
-        response = request("open_workspace", {"workspace": str(workspace)}, slot, "de", timeout=60.0)
+        response = request(
+            "open_workspace", {"workspace": str(workspace)}, slot, "de", timeout=60.0
+        )
         if not response.get("ok"):
-            raise SessionError(f"Could not open workspace in existing ADS session: {response.get('error')}")
+            raise SessionError(
+                f"Could not open workspace in existing ADS session: {response.get('error')}"
+            )
         opened = True
     verification = _verified_workspace(slot, workspace)
     if not verification["ok"]:
-        raise SessionError(f"Existing ADS session did not bind the requested workspace: {verification}")
+        raise SessionError(
+            f"Existing ADS session did not bind the requested workspace: {verification}"
+        )
     bridge = select_session(slot, "de")
     managed = _managed_record(slot)
     ownership = "agent-owned" if _identity_matches(managed, bridge) else "user-owned"
@@ -496,6 +549,20 @@ def launch(
 ) -> dict[str, Any]:
     instance = select_instance(instance_id)
     normalized_slot = normalize_slot(slot or default_slot(instance))
+    from eda_bridge_runtime.execution_scope import current_execution
+
+    if current_execution() is None and not dry_run:
+        return _submit_session(
+            "session.launch",
+            normalized_slot,
+            {
+                "instance": instance.instance_id,
+                "workspace": str(workspace),
+                "display": display,
+                "timeout_seconds": wait_seconds,
+                "reuse_existing": reuse_existing,
+            },
+        )
     with _slot_operation_lock(normalized_slot):
         return _launch_locked(
             instance,
@@ -559,7 +626,9 @@ def _launch_locked(
 
     managed_session_id = uuid.uuid4().hex
     command = [str(executable), str(workspace)]
-    environment = _launch_environment(instance, normalized_slot, managed_session_id, selected_display)
+    environment = _launch_environment(
+        instance, normalized_slot, managed_session_id, selected_display
+    )
     log_path = runtime_dir() / f"{MANAGED_PREFIX}{normalized_slot}.log"
     plan = {
         "instance_id": instance.instance_id,
@@ -586,10 +655,8 @@ def _launch_locked(
     if os.name != "nt":
         popen_kwargs["start_new_session"] = True
     log_stream = log_path.open("ab", buffering=0)
-    try:
+    with suppress(OSError):
         log_path.chmod(0o600)
-    except OSError:
-        pass
     popen_kwargs["stdout"] = log_stream
     try:
         process = subprocess.Popen(command, **popen_kwargs)
@@ -628,7 +695,9 @@ def _launch_locked(
             _write_json(_managed_path(normalized_slot), record)
         session = _session_summary(normalized_slot, None, record)
         return {
-            "status": session.get("state") if session.get("state") == "waiting-for-host-ui" else "starting",
+            "status": session.get("state")
+            if session.get("state") == "waiting-for-host-ui"
+            else "starting",
             "launched": True,
             "reused": False,
             "ownership": "agent-owned-unverified",
@@ -729,8 +798,37 @@ def shutdown(slot: str | None = None, wait_seconds: float = 30.0) -> dict[str, A
             )
         slot = str(candidates[0]["slot"])
     normalized = normalize_slot(slot)
+    from eda_bridge_runtime.execution_scope import current_execution
+
+    if current_execution() is None:
+        return _submit_session("session.shutdown", normalized, {"timeout_seconds": wait_seconds})
     with _slot_operation_lock(normalized):
         return _shutdown_locked(normalized, wait_seconds)
+
+
+def _submit_session(operation: str, slot: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """Public session helpers use the same admission path as Runtime clients."""
+    import uuid
+
+    from eda_bridge_runtime import RequestEnvelope
+
+    from .runtime_adapter import build_runtime, default_ledger_path
+
+    response = build_runtime(default_ledger_path()).execute(
+        RequestEnvelope(
+            purpose="Execute the requested ADS session operation: " + operation,
+            target={"eda": "keysight-ads", "slot": slot},
+            operation=operation,
+            payload={**payload, "mutating": True},
+            idempotency_key="session-" + uuid.uuid4().hex,
+        )
+    )
+    if response.status != "passed":
+        result = response.result.get("data", {}).get("bridge")
+        if result:
+            return {**result, "run_id": response.run_id, "execution_error": response.error}
+        raise SessionError((response.error or {}).get("message", "Session operation failed"))
+    return response.result["data"]["bridge"]
 
 
 def _shutdown_locked(normalized: str, wait_seconds: float) -> dict[str, Any]:
@@ -754,7 +852,10 @@ def _shutdown_locked(normalized: str, wait_seconds: float) -> dict[str, Any]:
     except OSError as exc:
         if pid_running(managed.get("ads_pid")):
             raise SessionError(f"ADS did not acknowledge the safe shutdown request: {exc}") from exc
-        response = {"ok": True, "result": {"accepted": True, "bridge_disconnected_during_exit": True}}
+        response = {
+            "ok": True,
+            "result": {"accepted": True, "bridge_disconnected_during_exit": True},
+        }
     if not response.get("ok"):
         raise SessionError(f"ADS rejected the safe shutdown request: {response.get('error')}")
     result = response.get("result") if isinstance(response.get("result"), dict) else {}

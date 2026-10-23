@@ -41,9 +41,7 @@ def test_inspect_citi_accepts_float_normalization_and_finite_two_port_data(tmp_p
         "S[2,1]",
         "S[2,2]",
     }
-    assert result["s_parameters"]["S[2,1]"][0]["magnitude"] == pytest.approx(
-        abs(complex(0.1, 0.2))
-    )
+    assert result["s_parameters"]["S[2,1]"][0]["magnitude"] == pytest.approx(abs(complex(0.1, 0.2)))
 
 
 def test_inspect_citi_rejects_non_finite_values(tmp_path):
@@ -54,9 +52,7 @@ def test_inspect_citi_rejects_non_finite_values(tmp_path):
         momentum.inspect_citi(path)
 
 
-def test_generated_momentum_runs_on_copy_and_commits_only_verified_output(
-    tmp_path, monkeypatch
-):
+def test_generated_momentum_runs_on_copy_and_commits_only_verified_output(tmp_path, monkeypatch):
     source = tmp_path / "source"
     output = tmp_path / "output"
     source.mkdir()
@@ -152,8 +148,6 @@ def test_command_timeout_stops_process_tree(monkeypatch, tmp_path):
     monkeypatch.setattr(momentum, "_terminate_process_tree", stopped.append)
 
     with pytest.raises(RuntimeError, match="process tree stopped"):
-        momentum._run_momentum_command(
-            ["adsMomWrapper"], cwd=tmp_path, env={}, timeout=1
-        )
+        momentum._run_momentum_command(["adsMomWrapper"], cwd=tmp_path, env={}, timeout=1)
 
     assert stopped == [process]

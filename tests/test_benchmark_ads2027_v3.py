@@ -19,9 +19,7 @@ def _runner():
 def test_v3_contract_compares_mcp_surfaces_without_legacy_cli():
     root = Path(__file__).parents[1]
     contract = json.loads(
-        (root / "docs" / "benchmarks" / "ads2027-v3-contract.json").read_text(
-            encoding="utf-8"
-        )
+        (root / "docs" / "benchmarks" / "ads2027-v3-contract.json").read_text(encoding="utf-8")
     )
     assert set(contract["arms"]) == {"runtime", "official"}
     assert "EDA Runtime MCP" in contract["arms"]["runtime"]["surface"]
@@ -31,9 +29,7 @@ def test_v3_contract_compares_mcp_surfaces_without_legacy_cli():
 
 def test_schedule_is_serial_and_counterbalanced():
     runner = _runner()
-    observed = list(
-        runner.schedule(["runtime", "official"], ["codex", "pi"], ["K1"], 2)
-    )
+    observed = list(runner.schedule(["runtime", "official"], ["codex", "pi"], ["K1"], 2))
     assert len(observed) == 8
     assert [row[3] for row in observed[:2]] == ["runtime", "official"]
     assert [row[3] for row in observed[4:6]] == ["official", "runtime"]
@@ -48,7 +44,7 @@ def test_runtime_validation_rejects_cli_and_official_surface(tmp_path: Path):
     runner = _runner()
     answer = {
         "case_id": "K1",
-        "answer": "Use Runtime MCP eda.submit with native.batch in no-GUI mode and read a finite dataset sample.",
+        "answer": "Use Runtime MCP eda.submit with native.execute in no-GUI mode and read a finite dataset sample.",
         "code": "",
         "sources": [],
     }
@@ -64,12 +60,9 @@ def test_runtime_validation_rejects_cli_and_official_surface(tmp_path: Path):
 def test_prompt_requires_run_unique_idempotency_key(tmp_path: Path):
     runner = _runner()
     contract = json.loads(
-        (
-            Path(__file__).parents[1]
-            / "docs"
-            / "benchmarks"
-            / "ads2027-v3-contract.json"
-        ).read_text(encoding="utf-8")
+        (Path(__file__).parents[1] / "docs" / "benchmarks" / "ads2027-v3-contract.json").read_text(
+            encoding="utf-8"
+        )
     )
     prompt = runner.prompt_for(contract, "runtime", "E3", tmp_path)
     assert "derive a unique key from this RUN_DIRECTORY" in prompt
@@ -81,12 +74,15 @@ def test_validation_ignores_surface_names_in_prompt_and_checks_actual_tools(
     runner = _runner()
     answer = {
         "case_id": "K1",
-        "answer": "Use Runtime MCP native.batch in automation mode and read a finite dataset sample.",
+        "answer": "Use Runtime MCP native.execute in automation mode and read a finite dataset sample.",
         "code": "",
         "sources": [],
     }
     events = [
-        {"type": "message_start", "prompt": "Do not invoke ads-agent CLI or official MCP"},
+        {
+            "type": "message_start",
+            "prompt": "Do not invoke ads-agent CLI or official MCP",
+        },
         {"type": "tool_execution_start", "toolName": "eda_read"},
     ]
     assert runner.validate("K1", "runtime", tmp_path, answer, events) == []
@@ -149,7 +145,7 @@ def test_event_facts_records_each_completed_tool_once_with_elapsed_time():
                 "id": "item_1",
                 "type": "mcp_tool_call",
                 "tool": "eda.submit",
-                "arguments": {"operation": "native.batch"},
+                "arguments": {"operation": "native.execute"},
             },
         },
         {
@@ -159,14 +155,14 @@ def test_event_facts_records_each_completed_tool_once_with_elapsed_time():
                 "id": "item_1",
                 "type": "mcp_tool_call",
                 "tool": "eda.submit",
-                "arguments": {"operation": "native.batch"},
+                "arguments": {"operation": "native.execute"},
                 "result": {},
             },
         },
     ]
     facts = runner.event_facts(events, "codex")
     assert facts["tool_names"] == ["eda.submit"]
-    assert facts["timing_ms"] == {"tool_native_batch_ms": [2500.0]}
+    assert facts["timing_ms"] == {"tool_native_execute_ms": [2500.0]}
 
 
 def test_k6_requires_the_documented_ads2027_drc_flow(tmp_path: Path):
@@ -208,7 +204,7 @@ def test_k1_accepts_a_named_ds_artifact_with_finite_readback(tmp_path: Path):
     answer = {
         "case_id": "K1",
         "answer": (
-            "Use Runtime MCP workspace.create then native.batch headlessly. "
+            "Use Runtime MCP workspace.create then native.execute headlessly. "
             "Retain <cell>.ds and freshly validate one finite sample."
         ),
         "code": "",
@@ -238,7 +234,9 @@ def test_codex_oauth_is_normalized_for_pi_without_changing_source(tmp_path: Path
     source = tmp_path / "codex-auth.json"
     destination = tmp_path / "pi-auth.json"
     payload = {"exp": 2_000_000_000}
-    encoded = __import__("base64").urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+    encoded = (
+        __import__("base64").urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+    )
     original = {
         "tokens": {
             "access_token": f"x.{encoded}.x",

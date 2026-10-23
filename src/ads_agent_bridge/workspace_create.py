@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import os
@@ -30,22 +31,15 @@ def _context_path(context_id: str) -> Path:
 
 def _write_context(target: dict[str, Any]) -> tuple[str, int]:
     stable = json.dumps(
-        {
-            key: target.get(key)
-            for key in ("workspace", "top_design", "slot", "profile")
-        },
+        {key: target.get(key) for key in ("workspace", "top_design", "slot", "profile")},
         sort_keys=True,
     )
     context_id = "ctx_" + hashlib.sha256(stable.encode("utf-8")).hexdigest()[:20]
     path = _context_path(context_id)
     generation = 1
     if path.is_file():
-        try:
-            generation = (
-                int(json.loads(path.read_text(encoding="utf-8"))["generation"]) + 1
-            )
-        except (OSError, ValueError, KeyError, TypeError):
-            pass
+        with contextlib.suppress(OSError, ValueError, KeyError, TypeError):
+            generation = int(json.loads(path.read_text(encoding="utf-8"))["generation"]) + 1
     payload = {
         "schema_version": 1,
         "generation": generation,
@@ -96,15 +90,11 @@ def create_workspace(
         )
     workspace_path = Path(workspace).expanduser().resolve()
     if workspace_path.exists():
-        raise FileExistsError(
-            f"Refusing to overwrite an existing workspace: {workspace_path}"
-        )
+        raise FileExistsError(f"Refusing to overwrite an existing workspace: {workspace_path}")
     workspace_path.parent.mkdir(parents=True, exist_ok=True)
     instance = select_instance(instance_id)
     if not instance.python_executable:
-        raise RuntimeError(
-            f"ADS Python was not discovered for {instance.product_version}"
-        )
+        raise RuntimeError(f"ADS Python was not discovered for {instance.product_version}")
     runner = files("ads_agent_bridge").joinpath("minimal_workspace.py")
     command = [
         instance.python_executable,
@@ -158,7 +148,7 @@ def create_workspace(
     }
     context_id, generation = _write_context(target)
     # Preserve the general workspace Context for lifecycle operations while
-    # also returning a content-bound Context that can bootstrap native.batch.
+    # also returning a content-bound Context that can bootstrap native.execute.
     from .continuation_context import continuation_ref, create_continuation_context
 
     continuation_context, continuation_state = create_continuation_context(
@@ -178,9 +168,7 @@ def create_workspace(
     locator = {"context_id": context_id, "slot": selected_slot, "profile": profile}
     if connection_id:
         locator["connection_id"] = connection_id
-    capability_states = {
-        name: "available" for name in ("open", "inspect", "edit", "simulate")
-    }
+    capability_states = {name: "available" for name in ("open", "inspect", "edit", "simulate")}
     token = EDAContext(
         eda="keysight-ads",
         target_kind="workspace",

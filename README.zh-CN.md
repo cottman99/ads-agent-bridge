@@ -12,6 +12,12 @@
 
 ![射频工程师从空白电路出发，经过仿真得到经过检查的原生结果](docs/assets/readme/ads-engineer-workflow-v3.png)
 
+## 运行官方 ADS Python，并核对保存后的结果
+
+ADS Bridge 0.2.0a1 在精确绑定的现场会话或后台暂存工作区执行普通官方 Python。10 月验收在 Windows/Linux 保存并重新打开读回 75 Ohm；Linux 现场修改在同一会话读回 90 Ohm。
+
+[10 月版本验收](https://github.com/cottman99/eda-bridge-runtime/blob/v0.2.0a1/docs/VALIDATION_2026-10-23_NATIVE_CORE.md) · [执行方式与迁移](docs/NATIVE_EXECUTION.md)。下方电路、求解和耗时示例保留各自标注日期的历史验收结果。
+
 ## 一段对话完成“电路到结果”
 
 > “从空白工作区开始，搭建这个测试平台，运行仿真，导出数据，并把响应曲线
@@ -82,8 +88,8 @@ MCP/插件；只运行 ADS 的主机不需要 Agent 侧插件。
 工作区创建、最小电路仿真和数据集回读分别通过后才会成功。
 
 如果机器上还没有 `pipx` 或合适的 Python，可使用版本化的
-[Linux 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a49/install.sh)
-或 [Windows PowerShell 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.1.0a49/install.ps1)。
+[Linux 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.2.0a1/install.sh)
+或 [Windows PowerShell 安装器](https://github.com/cottman99/ads-agent-bridge/releases/download/v0.2.0a1/install.ps1)。
 它会创建隔离环境，不替换外部管理的系统 Python。
 
 之后再打开真实工作区：
